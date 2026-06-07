@@ -1,34 +1,100 @@
-const eventRows = [
-  {
-    type: "LARGE_TRANSFER",
-    wallet: "0x8f2a...19ce",
-    score: 92,
-    status: "critical",
-    summary: "이전 활동 이력이 없는 신규 지갑으로 2,140 ETH가 이동했습니다."
-  },
-  {
-    type: "EXCHANGE_FLOW",
-    wallet: "0x71bc...2af1",
-    score: 81,
-    status: "high",
-    summary: "12분 내 거래소 태그 지갑으로 반복 유입 패턴이 감지되었습니다."
-  },
-  {
-    type: "RAPID_TRANSFER",
-    wallet: "0xa91e...44d0",
-    score: 67,
-    status: "elevated",
-    summary: "연결된 5개 지갑 사이에서 짧은 시간 내 연속 이체가 발생했습니다."
-  }
-];
+import { startTransition, useEffect, useState } from "react";
+import {
+  fetchEvents,
+  fetchHealth,
+  fetchRecentEventFeed,
+  fetchRecentTransactionFeed
+} from "./api";
+import type {
+  DetectionEventItem,
+  EventStatus,
+  FeedEventItem,
+  FeedTransactionItem,
+  HealthResponse
+} from "./types";
 
-const feedRows = [
-  "Etherscan 소스에서 블록 #20124591 수집 완료",
-  "Kafka Consumer가 최근 탐지 이벤트 3건을 Redis에 캐시함",
-  "AI 분석 파이프라인은 FastAPI 엔드포인트 설정 대기 중"
-];
+function toStatus(riskScore: number): EventStatus {
+  if (riskScore >= 85) {
+    return "critical";
+  }
+  if (riskScore >= 70) {
+    return "high";
+  }
+  return "elevated";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function formatEventType(value: string) {
+  const map: Record<string, string> = {
+    LARGE_TRANSFER: "대규모 이체",
+    EXCHANGE_FLOW: "거래소 입출금",
+    RAPID_TRANSFER: "반복 이체",
+    WATCHLIST_ACTIVITY: "관심 지갑 활동"
+  };
+
+  return map[value] ?? value;
+}
 
 export default function App() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [events, setEvents] = useState<DetectionEventItem[]>([]);
+  const [eventFeed, setEventFeed] = useState<FeedEventItem[]>([]);
+  const [transactionFeed, setTransactionFeed] = useState<FeedTransactionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDashboard() {
+      try {
+        const [healthData, eventsData, eventFeedData, transactionFeedData] = await Promise.all([
+          fetchHealth(),
+          fetchEvents(),
+          fetchRecentEventFeed(),
+          fetchRecentTransactionFeed()
+        ]);
+
+        if (!active) {
+          return;
+        }
+
+        startTransition(() => {
+          setHealth(healthData);
+          setEvents(eventsData.content);
+          setEventFeed(eventFeedData);
+          setTransactionFeed(transactionFeedData);
+          setError(null);
+          setLoading(false);
+        });
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        startTransition(() => {
+          setError("백엔드 API에 연결되지 않았습니다. local 프로필 백엔드를 실행해주세요.");
+          setLoading(false);
+        });
+      }
+    }
+
+    loadDashboard();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const criticalCount = events.filter((event) => event.riskScore >= 85).length;
+
   return (
     <main className="app-shell">
       <section className="hero-panel">
@@ -39,23 +105,24 @@ export default function App() {
             Kafka, Redis, PostgreSQL, AI 리포트 파이프라인을 기반으로 대규모 자금 이동,
             거래소 입출금 패턴, 고래 지갑 활동을 추적하는 백엔드 중심 탐지 시스템입니다.
           </p>
+          {error ? <div className="banner error">{error}</div> : null}
         </div>
 
         <div className="hero-metrics">
           <article className="metric-card">
             <span>탐지 이벤트</span>
-            <strong>128</strong>
-            <small>최근 24시간</small>
+            <strong>{events.length}</strong>
+            <small>현재 조회 결과</small>
           </article>
           <article className="metric-card">
             <span>치명 위험</span>
-            <strong>14</strong>
-            <small>즉시 알림 필요</small>
+            <strong>{criticalCount}</strong>
+            <small>위험 점수 85 이상</small>
           </article>
           <article className="metric-card">
-            <span>수집 소스</span>
-            <strong>Etherscan</strong>
-            <small>메인넷 연결 중</small>
+            <span>백엔드 상태</span>
+            <strong>{health?.status ?? (loading ? "LOADING" : "DOWN")}</strong>
+            <small>{health?.service ?? "chainwatch-backend 미연결"}</small>
           </article>
         </div>
       </section>
@@ -67,20 +134,26 @@ export default function App() {
               <p className="section-kicker">탐지 피드</p>
               <h2>우선 대응이 필요한 이상거래 목록</h2>
             </div>
-            <button className="ghost-button">전체 이벤트 보기</button>
+            <button className="ghost-button">최근 이벤트</button>
           </div>
 
           <div className="table-wrap">
-            {eventRows.map((row) => (
-              <div className="event-row" key={`${row.type}-${row.wallet}`}>
+            {events.length === 0 && !loading ? (
+              <div className="empty-state">표시할 탐지 이벤트가 없습니다.</div>
+            ) : null}
+
+            {events.map((row) => (
+              <div className="event-row" key={row.id}>
                 <div>
-                  <span className={`status-pill ${row.status}`}>{row.status}</span>
-                  <h3>{row.type}</h3>
+                  <span className={`status-pill ${toStatus(row.riskScore)}`}>
+                    {row.riskLevel.toLowerCase()}
+                  </span>
+                  <h3>{formatEventType(row.eventType)}</h3>
                 </div>
                 <p>{row.summary}</p>
                 <div className="wallet-col">
-                  <span>{row.wallet}</span>
-                  <strong>{row.score}</strong>
+                  <span>{row.walletAddress}</span>
+                  <strong>{row.riskScore}</strong>
                 </div>
               </div>
             ))}
@@ -97,16 +170,16 @@ export default function App() {
 
           <ul className="pulse-list">
             <li>
-              <span className="dot online" />
-              Collector {"->"} Kafka 발행 활성화
+              <span className={`dot ${health?.status === "UP" ? "online" : "standby"}`} />
+              백엔드 헬스 체크: {health?.status ?? "확인 불가"}
             </li>
             <li>
-              <span className="dot online" />
-              Redis 피드 캐시 Consumer 동작 중
+              <span className={`dot ${transactionFeed.length > 0 ? "online" : "standby"}`} />
+              Redis 최근 트랜잭션 피드: {transactionFeed.length}건
             </li>
             <li>
-              <span className="dot standby" />
-              AI 분석 엔드포인트 실연동 검증 대기
+              <span className={`dot ${eventFeed.length > 0 ? "online" : "standby"}`} />
+              Redis 최근 이벤트 피드: {eventFeed.length}건
             </li>
           </ul>
         </article>
@@ -115,14 +188,26 @@ export default function App() {
           <div className="section-head compact">
             <div>
               <p className="section-kicker">최근 구현 메모</p>
-              <h2>백엔드 진행 현황</h2>
+              <h2>실시간 수집 피드</h2>
             </div>
           </div>
 
           <div className="notes-feed">
-            {feedRows.map((item) => (
-              <div className="note-item" key={item}>
-                {item}
+            {transactionFeed.length === 0 && eventFeed.length === 0 && !loading ? (
+              <div className="empty-state">최근 피드 데이터가 없습니다.</div>
+            ) : null}
+
+            {transactionFeed.map((item) => (
+              <div className="note-item" key={`tx-${item.transactionId}`}>
+                블록 {item.blockNumber}에서 트랜잭션 {item.txHash.slice(0, 12)}... 수집
+                <small>{formatDate(item.timestamp)}</small>
+              </div>
+            ))}
+
+            {eventFeed.map((item) => (
+              <div className="note-item" key={`event-${item.eventId}`}>
+                {formatEventType(item.eventType)} 이벤트 감지, 위험 점수 {item.riskScore}
+                <small>{formatDate(item.detectedAt)}</small>
               </div>
             ))}
           </div>
