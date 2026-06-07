@@ -1,4 +1,4 @@
-package com.chainwatch.backend.api;
+package com.chainwatch.backend.common.exception;
 
 import com.chainwatch.backend.collector.exception.CollectorException;
 import java.io.IOException;

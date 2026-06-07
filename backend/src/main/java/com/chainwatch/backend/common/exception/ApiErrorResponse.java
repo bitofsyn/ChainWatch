@@ -1,4 +1,4 @@
-package com.chainwatch.backend.api;
+package com.chainwatch.backend.common.exception;
 
 import java.time.Instant;
 

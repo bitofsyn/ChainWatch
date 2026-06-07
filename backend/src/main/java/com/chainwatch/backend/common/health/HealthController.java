@@ -1,4 +1,4 @@
-package com.chainwatch.backend.api;
+package com.chainwatch.backend.common.health;
 
 import java.time.Instant;
 import java.util.Map;
