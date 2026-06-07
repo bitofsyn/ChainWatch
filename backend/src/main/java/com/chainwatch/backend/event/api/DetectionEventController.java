@@ -1,5 +1,7 @@
 package com.chainwatch.backend.event.api;
 
+import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
+import com.chainwatch.backend.analysis.service.AiAnalysisService;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.domain.EventType;
@@ -21,9 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class DetectionEventController {
 
     private final DetectionEventRepository detectionEventRepository;
+    private final AiAnalysisService aiAnalysisService;
 
-    public DetectionEventController(DetectionEventRepository detectionEventRepository) {
+    public DetectionEventController(
+            DetectionEventRepository detectionEventRepository,
+            AiAnalysisService aiAnalysisService
+    ) {
         this.detectionEventRepository = detectionEventRepository;
+        this.aiAnalysisService = aiAnalysisService;
     }
 
     @GetMapping
@@ -45,6 +52,10 @@ public class DetectionEventController {
     public DetectionEventDetailResponse getEvent(@PathVariable Long id) {
         DetectionEvent event = detectionEventRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Detection event not found: " + id));
-        return DetectionEventDetailResponse.from(event);
+        var report = aiAnalysisService.getReport(id);
+        return DetectionEventDetailResponse.from(
+                event,
+                report != null ? AiAnalysisReportResponse.from(report) : null
+        );
     }
 }

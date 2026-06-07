@@ -1,5 +1,6 @@
 package com.chainwatch.backend.event.api;
 
+import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -14,9 +15,10 @@ public record DetectionEventDetailResponse(
         String walletAddress,
         String txHash,
         Instant detectedAt,
-        Long transactionId
+        Long transactionId,
+        AiAnalysisReportResponse aiReport
 ) {
-    public static DetectionEventDetailResponse from(DetectionEvent event) {
+    public static DetectionEventDetailResponse from(DetectionEvent event, AiAnalysisReportResponse aiReport) {
         return new DetectionEventDetailResponse(
                 event.getId(),
                 event.getEventType(),
@@ -26,7 +28,8 @@ public record DetectionEventDetailResponse(
                 event.getWalletAddress(),
                 event.getTransaction() != null ? event.getTransaction().getTxHash() : null,
                 event.getDetectedAt(),
-                event.getTransaction() != null ? event.getTransaction().getId() : null
+                event.getTransaction() != null ? event.getTransaction().getId() : null,
+                aiReport
         );
     }
 }
