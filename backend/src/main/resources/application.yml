@@ -34,6 +34,10 @@ chainwatch:
     topics:
       collected-transactions: chainwatch.collected-transactions
       detected-events: chainwatch.detected-events
+  feed:
+    recent-transactions-key: chainwatch:feed:transactions
+    recent-events-key: chainwatch:feed:events
+    max-size: 100
   collector:
     provider: etherscan
     enabled: false
