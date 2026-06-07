@@ -61,7 +61,7 @@ public class KafkaConsumerConfig {
         properties.put(
                 ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                 kafkaProperties.getConsumer().getAutoOffsetReset() != null
-                        ? kafkaProperties.getConsumer().getAutoOffsetReset().name().toLowerCase()
+                        ? kafkaProperties.getConsumer().getAutoOffsetReset()
                         : "earliest"
         );
 
