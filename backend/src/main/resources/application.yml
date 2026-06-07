@@ -29,3 +29,7 @@ server:
 chainwatch:
   ethereum:
     network: ethereum-mainnet
+  collector:
+    enabled: false
+    fixed-delay-ms: 15000
+    start-block: 0

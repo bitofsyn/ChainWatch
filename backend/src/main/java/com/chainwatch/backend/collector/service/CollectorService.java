@@ -1,7 +1,11 @@
 package com.chainwatch.backend.collector.service;
 
 import com.chainwatch.backend.collector.api.CollectorResponse;
+import com.chainwatch.backend.collector.config.CollectorProperties;
+import com.chainwatch.backend.collector.domain.CollectorState;
 import com.chainwatch.backend.collector.config.EthereumProperties;
+import com.chainwatch.backend.collector.exception.CollectorException;
+import com.chainwatch.backend.collector.repository.CollectorStateRepository;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import com.chainwatch.backend.transaction.repository.TransactionRepository;
 import java.io.IOException;
@@ -22,17 +26,25 @@ import org.web3j.utils.Convert;
 @ConditionalOnProperty(prefix = "chainwatch.ethereum", name = "rpc-url")
 public class CollectorService {
 
+    private static final String COLLECTOR_NAME = "ethereum-main-collector";
+
     private final Web3j web3j;
     private final EthereumProperties ethereumProperties;
+    private final CollectorProperties collectorProperties;
+    private final CollectorStateRepository collectorStateRepository;
     private final TransactionRepository transactionRepository;
 
     public CollectorService(
             Web3j web3j,
             EthereumProperties ethereumProperties,
+            CollectorProperties collectorProperties,
+            CollectorStateRepository collectorStateRepository,
             TransactionRepository transactionRepository
     ) {
         this.web3j = web3j;
         this.ethereumProperties = ethereumProperties;
+        this.collectorProperties = collectorProperties;
+        this.collectorStateRepository = collectorStateRepository;
         this.transactionRepository = transactionRepository;
     }
 
@@ -40,6 +52,16 @@ public class CollectorService {
     public CollectorResponse collectLatestBlock() throws IOException {
         BigInteger latestBlockNumber = web3j.ethBlockNumber().send().getBlockNumber();
         return collectBlock(latestBlockNumber.longValue());
+    }
+
+    @Transactional
+    public CollectorResponse collectNextBlock() {
+        try {
+            long nextBlockNumber = getNextBlockNumber();
+            return collectBlock(nextBlockNumber);
+        } catch (IOException exception) {
+            throw new CollectorException("Failed to collect next block from Ethereum RPC", exception);
+        }
     }
 
     @Transactional
@@ -70,6 +92,7 @@ public class CollectorService {
         }
 
         transactionRepository.saveAll(newTransactions);
+        updateCollectorState(block.getNumber().longValue());
         return new CollectorResponse(
                 block.getNumber().longValue(),
                 newTransactions.size(),
@@ -105,5 +128,18 @@ public class CollectorService {
         }
 
         return null;
+    }
+
+    private long getNextBlockNumber() throws IOException {
+        return collectorStateRepository.findById(COLLECTOR_NAME)
+                .map(state -> state.getLastCollectedBlock() + 1)
+                .orElseGet(collectorProperties::startBlock);
+    }
+
+    private void updateCollectorState(long blockNumber) {
+        CollectorState collectorState = collectorStateRepository.findById(COLLECTOR_NAME)
+                .orElseGet(() -> new CollectorState(COLLECTOR_NAME, blockNumber, Instant.now()));
+        collectorState.updateLastCollectedBlock(blockNumber);
+        collectorStateRepository.save(collectorState);
     }
 }
