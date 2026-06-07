@@ -1,57 +1,51 @@
 package com.chainwatch.backend.collector.service;
 
 import com.chainwatch.backend.collector.api.CollectorResponse;
+import com.chainwatch.backend.collector.client.BlockClient;
+import com.chainwatch.backend.collector.client.CollectedBlock;
+import com.chainwatch.backend.collector.client.CollectedTransaction;
 import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.domain.CollectorState;
-import com.chainwatch.backend.collector.config.EthereumProperties;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.collector.repository.CollectorStateRepository;
+import com.chainwatch.backend.detection.service.DetectionService;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import com.chainwatch.backend.transaction.repository.TransactionRepository;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameter;
-import org.web3j.protocol.core.methods.response.EthBlock;
-import org.web3j.utils.Convert;
 
 @Service
-@ConditionalOnProperty(prefix = "chainwatch.ethereum", name = "rpc-url")
 public class CollectorService {
 
     private static final String COLLECTOR_NAME = "ethereum-main-collector";
 
-    private final Web3j web3j;
-    private final EthereumProperties ethereumProperties;
+    private final BlockClient blockClient;
     private final CollectorProperties collectorProperties;
     private final CollectorStateRepository collectorStateRepository;
     private final TransactionRepository transactionRepository;
+    private final DetectionService detectionService;
 
     public CollectorService(
-            Web3j web3j,
-            EthereumProperties ethereumProperties,
+            BlockClient blockClient,
             CollectorProperties collectorProperties,
             CollectorStateRepository collectorStateRepository,
-            TransactionRepository transactionRepository
+            TransactionRepository transactionRepository,
+            DetectionService detectionService
     ) {
-        this.web3j = web3j;
-        this.ethereumProperties = ethereumProperties;
+        this.blockClient = blockClient;
         this.collectorProperties = collectorProperties;
         this.collectorStateRepository = collectorStateRepository;
         this.transactionRepository = transactionRepository;
+        this.detectionService = detectionService;
     }
 
     @Transactional
     public CollectorResponse collectLatestBlock() throws IOException {
-        BigInteger latestBlockNumber = web3j.ethBlockNumber().send().getBlockNumber();
-        return collectBlock(latestBlockNumber.longValue());
+        return collectBlock(blockClient.getLatestBlockNumber());
     }
 
     @Transactional
@@ -66,68 +60,38 @@ public class CollectorService {
 
     @Transactional
     public CollectorResponse collectBlock(long blockNumber) throws IOException {
-        EthBlock.Block block = web3j.ethGetBlockByNumber(
-                        DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
-                        true
-                )
-                .send()
-                .getBlock();
-
-        if (block == null) {
-            throw new IllegalArgumentException("Block not found: " + blockNumber);
-        }
+        CollectedBlock block = blockClient.getBlock(blockNumber);
 
         List<Transaction> newTransactions = new ArrayList<>();
-        for (EthBlock.TransactionResult<?> result : block.getTransactions()) {
-            Object value = result.get();
-            if (!(value instanceof EthBlock.TransactionObject transactionObject)) {
+        for (CollectedTransaction transactionData : block.transactions()) {
+            if (transactionRepository.findByTxHash(transactionData.txHash()).isPresent()) {
                 continue;
             }
 
-            if (transactionRepository.findByTxHash(transactionObject.getHash()).isPresent()) {
-                continue;
-            }
-
-            newTransactions.add(toTransaction(block, transactionObject));
+            newTransactions.add(toTransaction(block, transactionData));
         }
 
-        transactionRepository.saveAll(newTransactions);
-        updateCollectorState(block.getNumber().longValue());
+        List<Transaction> savedTransactions = transactionRepository.saveAll(newTransactions);
+        detectionService.analyzeTransactions(savedTransactions);
+        updateCollectorState(block.blockNumber());
         return new CollectorResponse(
-                block.getNumber().longValue(),
-                newTransactions.size(),
-                ethereumProperties.network()
+                block.blockNumber(),
+                savedTransactions.size(),
+                collectorProperties.provider()
         );
     }
 
-    private Transaction toTransaction(EthBlock.Block block, EthBlock.TransactionObject transactionObject) {
+    private Transaction toTransaction(CollectedBlock block, CollectedTransaction transactionData) {
         return new Transaction(
-                transactionObject.getHash(),
-                transactionObject.getFrom(),
-                transactionObject.getTo() == null ? "CONTRACT_CREATION" : transactionObject.getTo(),
-                fromWei(transactionObject.getValue()),
-                fromWei(transactionObject.getGasPrice().multiply(transactionObject.getGas())),
-                block.getNumber().longValue(),
-                Instant.ofEpochSecond(block.getTimestamp().longValue()),
-                inferContractAddress(transactionObject)
+                transactionData.txHash(),
+                transactionData.fromAddress(),
+                transactionData.toAddress(),
+                transactionData.amount(),
+                transactionData.gasFee(),
+                block.blockNumber(),
+                block.timestamp(),
+                transactionData.contractAddress()
         );
-    }
-
-    private BigDecimal fromWei(BigInteger value) {
-        return Convert.fromWei(new BigDecimal(value), Convert.Unit.ETHER);
-    }
-
-    private String inferContractAddress(EthBlock.TransactionObject transactionObject) {
-        if (transactionObject.getTo() == null) {
-            return null;
-        }
-
-        String input = transactionObject.getInput();
-        if (input != null && !input.equals("0x")) {
-            return transactionObject.getTo();
-        }
-
-        return null;
     }
 
     private long getNextBlockNumber() throws IOException {

@@ -4,12 +4,10 @@ import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "chainwatch.ethereum", name = "rpc-url")
 public class CollectorScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(CollectorScheduler.class);

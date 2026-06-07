@@ -2,7 +2,6 @@ package com.chainwatch.backend.collector.api;
 
 import com.chainwatch.backend.collector.service.CollectorService;
 import java.io.IOException;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/collector")
-@ConditionalOnProperty(prefix = "chainwatch.ethereum", name = "rpc-url")
 public class CollectorController {
 
     private final CollectorService collectorService;

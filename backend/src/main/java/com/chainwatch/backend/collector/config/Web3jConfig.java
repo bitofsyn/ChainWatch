@@ -7,6 +7,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.http.HttpService;
 
 @Configuration
+@ConditionalOnProperty(prefix = "chainwatch.collector", name = "provider", havingValue = "rpc", matchIfMissing = true)
 @ConditionalOnProperty(prefix = "chainwatch.ethereum", name = "rpc-url")
 public class Web3jConfig {
 
