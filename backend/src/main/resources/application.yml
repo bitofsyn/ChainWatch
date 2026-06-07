@@ -38,6 +38,12 @@ chainwatch:
     recent-transactions-key: chainwatch:feed:transactions
     recent-events-key: chainwatch:feed:events
     max-size: 100
+  ai:
+    enabled: false
+    provider: fastapi
+    model: claude
+    base-url:
+    analyze-path: /api/v1/analyze
   collector:
     provider: etherscan
     enabled: false

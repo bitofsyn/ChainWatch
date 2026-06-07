@@ -59,6 +59,12 @@ curl http://localhost:18080/api/feed/recent-transactions
 curl http://localhost:18080/api/feed/recent-events
 ```
 
+AI 분석 수동 요청:
+
+```bash
+curl -X POST http://localhost:18080/api/events/{eventId}/analysis
+```
+
 ## Kafka 토픽
 
 백엔드가 자동 생성 또는 사용하는 토픽:
@@ -82,3 +88,4 @@ curl http://localhost:18080/api/feed/recent-events
 - Kafka broker 내부 주소는 `kafka:9092`, 호스트 머신에서는 `localhost:9094`를 사용한다.
 - Kafka 토픽은 애플리케이션 시작 시 자동 생성되며, 수집 데이터는 `chainwatch.collected-transactions`, 탐지 이벤트는 `chainwatch.detected-events`로 발행된다.
 - Kafka Consumer는 위 두 토픽을 구독해 최근 트랜잭션 / 이벤트 피드를 Redis에 적재한다.
+- AI 분석 연동은 `chainwatch.ai.enabled=true` 와 `chainwatch.ai.base-url` 설정 후 활성화된다.
