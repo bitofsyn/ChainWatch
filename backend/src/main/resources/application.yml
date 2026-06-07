@@ -30,6 +30,10 @@ chainwatch:
   ethereum:
     network: ethereum-mainnet
     chain-id: "1"
+  kafka:
+    topics:
+      collected-transactions: chainwatch.collected-transactions
+      detected-events: chainwatch.detected-events
   collector:
     provider: etherscan
     enabled: false

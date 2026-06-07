@@ -9,6 +9,7 @@ import com.chainwatch.backend.collector.domain.CollectorState;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.collector.repository.CollectorStateRepository;
 import com.chainwatch.backend.detection.service.DetectionService;
+import com.chainwatch.backend.messaging.producer.ChainWatchKafkaProducer;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import com.chainwatch.backend.transaction.repository.TransactionRepository;
 import java.io.IOException;
@@ -28,19 +29,22 @@ public class CollectorService {
     private final CollectorStateRepository collectorStateRepository;
     private final TransactionRepository transactionRepository;
     private final DetectionService detectionService;
+    private final ChainWatchKafkaProducer kafkaProducer;
 
     public CollectorService(
             BlockClient blockClient,
             CollectorProperties collectorProperties,
             CollectorStateRepository collectorStateRepository,
             TransactionRepository transactionRepository,
-            DetectionService detectionService
+            DetectionService detectionService,
+            ChainWatchKafkaProducer kafkaProducer
     ) {
         this.blockClient = blockClient;
         this.collectorProperties = collectorProperties;
         this.collectorStateRepository = collectorStateRepository;
         this.transactionRepository = transactionRepository;
         this.detectionService = detectionService;
+        this.kafkaProducer = kafkaProducer;
     }
 
     @Transactional
@@ -72,6 +76,7 @@ public class CollectorService {
         }
 
         List<Transaction> savedTransactions = transactionRepository.saveAll(newTransactions);
+        kafkaProducer.publishCollectedTransactions(savedTransactions);
         detectionService.analyzeTransactions(savedTransactions);
         updateCollectorState(block.blockNumber());
         return new CollectorResponse(
