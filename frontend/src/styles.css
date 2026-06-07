@@ -112,6 +112,19 @@ button {
   font-size: 2rem;
 }
 
+.banner {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+}
+
+.banner.error {
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  color: #ffc2c2;
+}
+
 .grid-panel {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -151,6 +164,13 @@ button {
 .table-wrap {
   display: grid;
   gap: 14px;
+}
+
+.empty-state {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
 }
 
 .event-row {
@@ -245,6 +265,12 @@ button {
   border-left: 2px solid rgba(123, 223, 246, 0.4);
   background: rgba(255, 255, 255, 0.03);
   border-radius: 14px;
+}
+
+.note-item small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-soft);
 }
 
 @media (max-width: 960px) {
