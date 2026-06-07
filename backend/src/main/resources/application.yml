@@ -29,7 +29,15 @@ server:
 chainwatch:
   ethereum:
     network: ethereum-mainnet
+    chain-id: "1"
   collector:
+    provider: rpc
     enabled: false
     fixed-delay-ms: 15000
     start-block: 0
+  etherscan:
+    base-url: https://api.etherscan.io
+    api-key: ${ETHERSCAN_API_KEY:}
+    chain-id: "1"
+  detection:
+    large-transfer-threshold-eth: 100.0
