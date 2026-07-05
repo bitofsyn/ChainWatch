@@ -4,6 +4,11 @@ ChainWatch 주요 변경 이력. 형식: Phase 단위 + 날짜.
 
 ## 2026-07-05
 
+### Phase 8 — 운영 환경
+- 백엔드/프론트엔드 Dockerfile, compose `app` 프로필로 전체 스택 컨테이너 기동
+- Nginx 리버스 프록시(frontend), Prometheus + Grafana 모니터링 스택
+- GitHub Actions 백엔드/프론트엔드 CI, logback 포맷 통일, 운영 가이드(docs/OPERATIONS.md)
+
 ### Phase 7 — Notification (`b144d5f`)
 - Slack/Discord Webhook 알림 채널, 위험도 임계 정책, TTL 중복 방지
 - Kafka detected-events 기반 별도 컨슈머 그룹으로 발송

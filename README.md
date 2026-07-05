@@ -92,6 +92,7 @@ cd ai/analysis-server && pytest      # AI 서버
 
 - [CHANGELOG.md](CHANGELOG.md) — 변경 이력
 - [TODO.md](TODO.md) — 남은 작업
+- [docs/OPERATIONS.md](docs/OPERATIONS.md) — 운영 가이드 (Docker/모니터링/CI/AWS 배포)
 - [docs/BACKEND_IMPLEMENTATION_PLAN.md](docs/BACKEND_IMPLEMENTATION_PLAN.md) — 백엔드 구현 체크리스트
 - [docs/LOCAL_INFRA_SETUP.md](docs/LOCAL_INFRA_SETUP.md) — 로컬 인프라 상세
 - [ai/analysis-server/README.md](ai/analysis-server/README.md) — AI 서버 상세
