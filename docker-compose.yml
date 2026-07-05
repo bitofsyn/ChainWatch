@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: chainwatch
       POSTGRES_PASSWORD: chainwatch
     ports:
-      - "55432:5432"
+      - "127.0.0.1:55432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
     image: redis:7
     container_name: chainwatch-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
     image: apache/kafka:3.7.2
     container_name: chainwatch-kafka
     ports:
-      - "9094:9094"
+      - "127.0.0.1:9094:9094"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -63,7 +63,7 @@ services:
       CHAINWATCH_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CHAINWATCH_AI_GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   prometheus:
     image: prom/prometheus:v2.53.0
@@ -72,7 +72,7 @@ services:
       - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -88,7 +88,7 @@ services:
       - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   backend:
     build:
@@ -108,8 +108,13 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CHAINWATCH_ETHERSCAN_API_KEY: ${CHAINWATCH_ETHERSCAN_API_KEY:-}
+      # 아래 4개는 호스트에 export된 경우에만 컨테이너로 전달 (미설정 시 Spring 기본값 사용)
+      CHAINWATCH_JWT_ENABLED: ${CHAINWATCH_JWT_ENABLED:-false}
+      CHAINWATCH_JWT_SECRET:
+      CHAINWATCH_ADMIN_USERNAME:
+      CHAINWATCH_ADMIN_PASSWORD:
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   frontend:
     build:
@@ -131,7 +136,7 @@ services:
       KAFKA_CLUSTERS_0_NAME: chainwatch-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
 
 volumes:
   postgres-data:

@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 COPY --from=build /app/build/libs/*.jar app.jar
 
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin chainwatch
+USER chainwatch
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=5 --start-period=40s \
