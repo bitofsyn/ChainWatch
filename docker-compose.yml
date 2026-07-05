@@ -107,6 +107,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chainwatch
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CHAINWATCH_ETHERSCAN_API_KEY: ${CHAINWATCH_ETHERSCAN_API_KEY:-}
     ports:
       - "8080:8080"
 
