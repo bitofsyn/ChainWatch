@@ -15,7 +15,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = "chainwatch.security.jwt-enabled=true")
+@SpringBootTest(properties = {
+        "chainwatch.security.jwt-enabled=true",
+        "chainwatch.security.jwt-secret=test-secret-key-for-auth-api-integration-tests-0123456789"
+})
 @AutoConfigureMockMvc
 class AuthApiTest {
 

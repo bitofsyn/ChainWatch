@@ -41,8 +41,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IOException.class)
     public ResponseEntity<ApiErrorResponse> handleIoException(IOException exception) {
+        // 원문 메시지는 내부 호스트/경로가 섞일 수 있어 응답에는 일반 메시지만 내려보낸다.
+        log.warn("I/O error while calling upstream service", exception);
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(ApiErrorResponse.of("RPC_IO_ERROR", exception.getMessage()));
+                .body(ApiErrorResponse.of("RPC_IO_ERROR", "Failed to communicate with an upstream service"));
     }
 
     @ExceptionHandler(FeedCacheException.class)

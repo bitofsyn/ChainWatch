@@ -103,7 +103,7 @@ public class KafkaConsumerConfig {
         );
 
         JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(targetType, false);
-        valueDeserializer.addTrustedPackages("*");
+        valueDeserializer.addTrustedPackages("com.chainwatch.backend");
 
         return new DefaultKafkaConsumerFactory<>(
                 properties,
