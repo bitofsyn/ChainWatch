@@ -54,6 +54,17 @@ services:
       timeout: 10s
       retries: 10
 
+  ai-analysis:
+    build:
+      context: ./ai/analysis-server
+    container_name: chainwatch-ai-analysis
+    environment:
+      CHAINWATCH_AI_DEFAULT_PROVIDER: ${CHAINWATCH_AI_DEFAULT_PROVIDER:-mock}
+      CHAINWATCH_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHAINWATCH_AI_GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "8000:8000"
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: chainwatch-kafka-ui
