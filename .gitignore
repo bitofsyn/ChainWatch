@@ -45,3 +45,10 @@ bin/
 ### Frontend ###
 frontend/node_modules/
 frontend/dist/
+
+### Python (AI Analysis Server) ###
+ai/analysis-server/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+ai/analysis-server/.env
