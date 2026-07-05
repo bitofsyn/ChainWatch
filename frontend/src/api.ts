@@ -4,6 +4,7 @@ import type {
   FeedTransactionItem,
   HealthResponse
 } from "./types";
+import { buildEventsQuery, type EventFilters } from "./lib/events";
 
 async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -18,8 +19,8 @@ export function fetchHealth() {
   return requestJson<HealthResponse>("/api/health");
 }
 
-export function fetchEvents() {
-  return requestJson<DetectionEventPage>("/api/events?size=5");
+export function fetchEvents(filters: EventFilters = {}, size = 20) {
+  return requestJson<DetectionEventPage>(`/api/events?${buildEventsQuery(filters, size)}`);
 }
 
 export function fetchRecentEventFeed() {

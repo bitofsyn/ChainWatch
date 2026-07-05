@@ -1,17 +1,42 @@
 :root {
   font-family: "Noto Sans KR", sans-serif;
-  color: #f5f7fb;
-  background:
+  color: var(--text);
+  background: var(--page-bg);
+  color-scheme: dark;
+  --page-bg:
     radial-gradient(circle at top left, rgba(21, 121, 255, 0.35), transparent 28%),
     radial-gradient(circle at top right, rgba(0, 229, 184, 0.2), transparent 24%),
     linear-gradient(135deg, #07111f 0%, #0d1e30 45%, #08121c 100%);
-  color-scheme: dark;
   --panel: rgba(7, 20, 34, 0.72);
   --line: rgba(144, 182, 255, 0.14);
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-line: rgba(255, 255, 255, 0.05);
+  --text: #f5f7fb;
   --text-soft: #9eb0c8;
+  --accent: #7bdff6;
+  --accent-strong: #d8f8ff;
   --critical: #ff6b6b;
   --high: #ffb347;
   --elevated: #7bdff6;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page-bg:
+    radial-gradient(circle at top left, rgba(21, 121, 255, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(0, 180, 150, 0.1), transparent 26%),
+    linear-gradient(135deg, #f3f6fb 0%, #e9eff7 45%, #f4f7fb 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --line: rgba(30, 70, 130, 0.14);
+  --surface: rgba(20, 50, 90, 0.05);
+  --surface-line: rgba(20, 50, 90, 0.1);
+  --text: #16202e;
+  --text-soft: #51637c;
+  --accent: #0d7ea8;
+  --accent-strong: #0a6288;
+  --critical: #d63a3a;
+  --high: #c07a12;
+  --elevated: #0d7ea8;
 }
 
 * {
@@ -62,7 +87,7 @@ button {
 .eyebrow,
 .section-kicker {
   margin: 0 0 10px;
-  color: #7bdff6;
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-family: "Space Grotesk", sans-serif;
@@ -93,8 +118,8 @@ button {
 .metric-card {
   padding: 22px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
 }
 
 .metric-card span,
@@ -154,9 +179,9 @@ button {
 }
 
 .ghost-button {
-  border: 1px solid rgba(123, 223, 246, 0.35);
+  border: 1px solid var(--line);
   background: transparent;
-  color: #d8f8ff;
+  color: var(--accent-strong);
   border-radius: 999px;
   padding: 10px 16px;
 }
@@ -169,7 +194,7 @@ button {
 .empty-state {
   padding: 18px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface);
   color: var(--text-soft);
 }
 
@@ -179,8 +204,8 @@ button {
   gap: 16px;
   padding: 18px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
 }
 
 .event-row h3 {
@@ -262,8 +287,8 @@ button {
 
 .note-item {
   padding: 14px 16px;
-  border-left: 2px solid rgba(123, 223, 246, 0.4);
-  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--accent);
+  background: var(--surface);
   border-radius: 14px;
 }
 
@@ -273,7 +298,90 @@ button {
   color: var(--text-soft);
 }
 
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.theme-toggle {
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr auto;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.filter-bar select,
+.filter-bar input {
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.filter-bar input::placeholder {
+  color: var(--text-soft);
+}
+
+.filter-bar .ghost-button {
+  cursor: pointer;
+}
+
+.bar-chart {
+  display: grid;
+  gap: 14px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 36px;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--elevated));
+  transition: width 0.4s ease;
+}
+
+.bar-value {
+  font-family: "Space Grotesk", sans-serif;
+  text-align: right;
+}
+
 @media (max-width: 960px) {
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-bar input {
+    grid-column: span 2;
+  }
+
   .hero-panel,
   .grid-panel {
     grid-template-columns: 1fr;
