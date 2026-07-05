@@ -12,6 +12,7 @@ function event(overrides: Partial<DetectionEventItem>): DetectionEventItem {
     walletAddress: "0xabc",
     txHash: null,
     detectedAt: "2026-07-05T00:00:00Z",
+    status: "NEW" as const,
     ...overrides
   };
 }

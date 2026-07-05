@@ -1,13 +1,14 @@
-import type { EventStatus } from "../types";
+import type { EventLifecycleStatus, EventStatus } from "../types";
 
 export const CRITICAL_THRESHOLD = 85;
 export const HIGH_THRESHOLD = 70;
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   LARGE_TRANSFER: "대규모 이체",
+  WHALE_ACTIVITY: "관심 지갑 활동",
   EXCHANGE_FLOW: "거래소 입출금",
   RAPID_TRANSFER: "반복 이체",
-  WATCHLIST_ACTIVITY: "관심 지갑 활동"
+  WATCHLIST_MATCH: "watchlist 일치"
 };
 
 export const RISK_LEVEL_LABELS: Record<string, string> = {
@@ -16,6 +17,20 @@ export const RISK_LEVEL_LABELS: Record<string, string> = {
   HIGH: "높음",
   CRITICAL: "치명"
 };
+
+export const LIFECYCLE_STATUS_LABELS: Record<EventLifecycleStatus, string> = {
+  NEW: "신규",
+  ACKNOWLEDGED: "접수",
+  INVESTIGATING: "조사중",
+  RESOLVED: "해결"
+};
+
+export const LIFECYCLE_STATUS_ORDER: EventLifecycleStatus[] = [
+  "NEW",
+  "ACKNOWLEDGED",
+  "INVESTIGATING",
+  "RESOLVED"
+];
 
 export function toStatus(riskScore: number): EventStatus {
   if (riskScore >= CRITICAL_THRESHOLD) {
@@ -29,6 +44,10 @@ export function toStatus(riskScore: number): EventStatus {
 
 export function formatEventType(value: string): string {
   return EVENT_TYPE_LABELS[value] ?? value;
+}
+
+export function formatLifecycleStatus(value: string): string {
+  return LIFECYCLE_STATUS_LABELS[value as EventLifecycleStatus] ?? value;
 }
 
 export function formatDate(value: string): string {

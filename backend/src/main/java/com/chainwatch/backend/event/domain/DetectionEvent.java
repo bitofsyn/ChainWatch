@@ -46,6 +46,11 @@ public class DetectionEvent {
     @JoinColumn(name = "transaction_id")
     private Transaction transaction;
 
+    /** 기존 데이터 마이그레이션 없이 컬럼을 추가하기 위해 nullable로 두고, null은 NEW로 간주한다. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private EventStatus status;
+
     protected DetectionEvent() {
     }
 
@@ -97,5 +102,13 @@ public class DetectionEvent {
 
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    public EventStatus getStatus() {
+        return status != null ? status : EventStatus.NEW;
+    }
+
+    public void changeStatus(EventStatus status) {
+        this.status = status;
     }
 }
