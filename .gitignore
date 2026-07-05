@@ -52,3 +52,12 @@ __pycache__/
 *.pyc
 .pytest_cache/
 ai/analysis-server/.env
+
+### Frontend build artifacts ###
+frontend/vite.config.js
+frontend/vite.config.d.ts
+*.tsbuildinfo
+
+### Env files ###
+.env
+*.env.local
