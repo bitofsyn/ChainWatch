@@ -28,7 +28,7 @@ export interface FeedEventItem {
 }
 
 export interface FeedTransactionItem {
-  transactionId: number;
+  transactionId: number | null;
   txHash: string;
   fromAddress: string;
   toAddress: string | null;

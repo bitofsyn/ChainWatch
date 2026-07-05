@@ -220,7 +220,7 @@ export default function App() {
             ) : null}
 
             {transactionFeed.map((item) => (
-              <div className="note-item" key={`tx-${item.transactionId}`}>
+              <div className="note-item" key={`tx-${item.txHash}`}>
                 블록 {item.blockNumber}에서 트랜잭션 {item.txHash.slice(0, 12)}... 수집
                 <small>{formatDate(item.timestamp)}</small>
               </div>

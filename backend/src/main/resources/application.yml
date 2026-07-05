@@ -1,6 +1,17 @@
 spring:
   application:
     name: chainwatch-backend
+  http:
+    client:
+      connect-timeout: 5s   # 아웃바운드 RestClient(웹훅 등) 연결 타임아웃
+      read-timeout: 10s      # 응답이 없는 원격이 호출 스레드를 무한 점유하지 않도록 제한
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        "[max.block.ms]": 5000   # 브로커 장애 시 수집 루프가 send()에서 60초씩 멈추지 않도록 제한
+        "[spring.json.add.type.headers]": false
   datasource:
     url: jdbc:h2:mem:chainwatch;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -21,7 +32,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
 
 server:
   port: 8080
@@ -40,9 +51,13 @@ chainwatch:
   ethereum:
     network: ethereum-mainnet
     chain-id: "1"
+    http-url: ${ETHEREUM_RPC_HTTP_URL:https://ethereum-rpc.publicnode.com}
+    ws-url: ${ETHEREUM_RPC_WS_URL:wss://ethereum-rpc.publicnode.com}
+    request-timeout-seconds: 30
   kafka:
     topics:
-      collected-transactions: chainwatch.collected-transactions
+      raw-blocks: chainwatch.raw-blocks
+      raw-transactions: chainwatch.raw-transactions
       detected-events: chainwatch.detected-events
   feed:
     recent-transactions-key: chainwatch:feed:transactions
@@ -61,15 +76,31 @@ chainwatch:
     base-url:
     analyze-path: /api/v1/analyze
   collector:
-    provider: etherscan
-    enabled: false
-    fixed-delay-ms: 15000
-    start-block: 0
+    provider: ${CHAINWATCH_COLLECTOR_PROVIDER:rpc}   # rpc | etherscan
+    mode: ${CHAINWATCH_COLLECTOR_MODE:polling}       # polling | websocket
+    enabled: ${CHAINWATCH_COLLECTOR_ENABLED:false}
+    poll-interval-ms: 15000
+    start-block: 0        # 0 이하면 최신 블록부터 수집
+    max-blocks-per-poll: 5
+    reorg-rewind-depth: 6  # parentHash 불일치(reorg) 감지 시 되감을 블록 수
+    retry:
+      max-attempts: 4
+      initial-delay-ms: 500
+      multiplier: 2.0
+      max-delay-ms: 15000
+    websocket-reconnect:
+      max-attempts: 10
+      initial-delay-ms: 1000
+      multiplier: 2.0
+      max-delay-ms: 60000
+    throttle:
+      min-interval-ms: 200
   etherscan:
     base-url: https://api.etherscan.io
-    api-key: ${ETHERSCAN_API_KEY:}
+    api-key: DC6KB9WKJ5JPVE3N7ABQY1N1DW8XTJUBSX
     chain-id: "1"
   detection:
+    mode: ${CHAINWATCH_DETECTION_MODE:sync}   # sync | kafka (kafka: raw-transactions consumer가 탐지 수행)
     large-transfer-threshold-eth: 100.0
     exchange-flow-threshold-eth: 50.0
     rapid-transfer-threshold-count: 3
