@@ -54,8 +54,6 @@ __pycache__/
 ai/analysis-server/.env
 
 ### Frontend build artifacts ###
-frontend/vite.config.js
-frontend/vite.config.d.ts
 *.tsbuildinfo
 
 ### Env files ###
