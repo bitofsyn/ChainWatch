@@ -26,11 +26,14 @@ Phase 기준 남은 작업. 완료 항목은 [CHANGELOG.md](CHANGELOG.md)로 이
 ## Phase 8 — 운영 환경
 - [x] AI 분석 서버 Dockerfile + docker-compose 통합
 - [x] GitHub Actions: AI 분석 서버 CI (pytest)
-- [ ] GitHub Actions: 백엔드 CI (Gradle build) — Collector 리팩토링 완료 후
-- [ ] 백엔드/프론트엔드 Dockerfile
-- [ ] Nginx 리버스 프록시, AWS 배포
-- [ ] Prometheus 메트릭 + Grafana 대시보드
-- [ ] 구조화 로깅 및 로그 수집
+- [x] GitHub Actions: 백엔드 CI (Gradle build+test), 프론트엔드 CI (vitest+build)
+- [x] 백엔드(멀티스테이지 Gradle)/프론트엔드(Nginx) Dockerfile + compose `app` 프로필
+- [x] Nginx 리버스 프록시 (frontend 이미지 내 /api 프록시)
+- [x] Prometheus + Grafana compose 구성 (데이터소스 자동 프로비저닝)
+- [x] logback 로그 포맷 통일
+- [x] 운영 가이드 문서 (docs/OPERATIONS.md — AWS EC2 배포 절차 포함)
+- [ ] AWS 실 배포 및 HTTPS(ALB/ACM) 구성 — 계정/도메인 필요
+- [ ] Grafana 대시보드 JSON 프로비저닝, 알림 규칙
 
 ## 기타
 - [ ] AI 실 LLM(Claude/Gemini) 연동 검증 (API 키 필요)
