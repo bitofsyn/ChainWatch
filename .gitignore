@@ -61,3 +61,7 @@ frontend/vite.config.d.ts
 ### Env files ###
 .env
 *.env.local
+
+### Local-only tooling ###
+.claude/
+docker-compose.override.yml
