@@ -48,6 +48,12 @@ chainwatch:
     recent-transactions-key: chainwatch:feed:transactions
     recent-events-key: chainwatch:feed:events
     max-size: 100
+  notification:
+    enabled: false
+    min-risk-score: 70
+    dedup-ttl-minutes: 30
+    slack-webhook-url: ${CHAINWATCH_SLACK_WEBHOOK_URL:}
+    discord-webhook-url: ${CHAINWATCH_DISCORD_WEBHOOK_URL:}
   ai:
     enabled: false
     provider: fastapi
