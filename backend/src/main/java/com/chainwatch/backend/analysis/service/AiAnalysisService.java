@@ -7,6 +7,7 @@ import com.chainwatch.backend.analysis.config.AiAnalysisProperties;
 import com.chainwatch.backend.analysis.domain.AiAnalysisReport;
 import com.chainwatch.backend.analysis.domain.AnalysisStatus;
 import com.chainwatch.backend.analysis.repository.AiAnalysisReportRepository;
+import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import java.time.Instant;
@@ -36,7 +37,7 @@ public class AiAnalysisService {
     @Transactional
     public AiAnalysisReport analyzeEvent(Long eventId) {
         DetectionEvent event = detectionEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Detection event not found: " + eventId));
+                .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
         AiAnalysisResult result = aiAnalysisClient.analyze(toRequest(event));
         Instant analyzedAt = Instant.now();
