@@ -9,8 +9,25 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     @Bean
-    public NewTopic collectedTransactionsTopic(KafkaTopicProperties properties) {
-        return TopicBuilder.name(properties.collectedTransactions())
+    public NewTopic rawBlocksTopic(KafkaTopicProperties properties) {
+        return TopicBuilder.name(properties.rawBlocks())
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic rawTransactionsTopic(KafkaTopicProperties properties) {
+        return TopicBuilder.name(properties.rawTransactions())
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    /** raw-transactions 소비 실패 메시지 격리용 DLT. 파티션 수는 원본 토픽과 일치해야 한다. */
+    @Bean
+    public NewTopic rawTransactionsDltTopic(KafkaTopicProperties properties) {
+        return TopicBuilder.name(properties.rawTransactions() + ".DLT")
                 .partitions(3)
                 .replicas(1)
                 .build();

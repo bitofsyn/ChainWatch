@@ -4,7 +4,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "chainwatch.kafka.topics")
 public record KafkaTopicProperties(
-        String collectedTransactions,
+        String rawBlocks,
+        String rawTransactions,
         String detectedEvents
 ) {
+
+    public KafkaTopicProperties {
+        if (rawBlocks == null || rawBlocks.isBlank()) {
+            rawBlocks = "chainwatch.raw-blocks";
+        }
+        if (rawTransactions == null || rawTransactions.isBlank()) {
+            rawTransactions = "chainwatch.raw-transactions";
+        }
+    }
 }
