@@ -4,6 +4,17 @@ ChainWatch 주요 변경 이력. 형식: Phase 단위 + 날짜.
 
 ## 2026-07-05
 
+### Phase 7 — Notification (`b144d5f`)
+- Slack/Discord Webhook 알림 채널, 위험도 임계 정책, TTL 중복 방지
+- Kafka detected-events 기반 별도 컨슈머 그룹으로 발송
+
+### Phase 6 — Frontend (`45fd7ec`)
+- 검색/필터 바(유형/등급/지갑), 이벤트 유형 분포 CSS 차트
+- 다크/라이트 테마 토글(localStorage), CSS 변수 테마 체계, vitest 도입
+
+### 문서/인프라 (`e41e88f`)
+- 루트 README/CHANGELOG/TODO, AI 서버 Dockerfile + compose 통합, AI 서버 CI
+
 ### Phase 5 — API Server 보안 (`edecc8d`)
 - Spring Security JWT 인증 추가 (`chainwatch.security.jwt-enabled` 플래그, 기본 비활성으로 호환성 유지)
 - `POST /api/auth/login` 로그인 API 및 Bearer 토큰 발급

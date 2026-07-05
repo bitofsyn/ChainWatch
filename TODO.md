@@ -10,14 +10,18 @@ Phase 기준 남은 작업. 완료 항목은 [CHANGELOG.md](CHANGELOG.md)로 이
 
 ## Phase 6 — Frontend
 - [ ] JWT 로그인 화면 및 토큰 저장/갱신 로직 (jwt-enabled 시)
-- [ ] 차트 기반 시각화 (위험도 분포, 시간대별 탐지 추이)
-- [ ] 검색/필터 UI 고도화 (지갑 주소, 기간, 위험도)
-- [ ] Dark Mode, 반응형 레이아웃, UI 통일
+- [x] 이벤트 유형 분포 차트 (CSS 바 차트)
+- [ ] 시간대별 탐지 추이 차트
+- [x] 검색/필터 UI (지갑 주소, 유형, 위험 등급)
+- [ ] 기간(from/to) 필터 UI
+- [x] Dark Mode 토글 + CSS 변수 테마
+- [x] 반응형 레이아웃 (기존 + 필터 바 대응)
 
 ## Phase 7 — Notification
-- [ ] Slack / Discord Webhook 연동
-- [ ] 위험도 기준 알림 정책, 중복 알림 방지
-- [ ] 알림 이력 저장
+- [x] Slack / Discord Webhook 연동 (URL 미설정 시 자동 비활성)
+- [x] 위험도 기준 알림 정책(min-risk-score), TTL 기반 중복 알림 방지
+- [ ] 알림 이력 DB 저장
+- [ ] Redis 기반 데듀플리케이터 (다중 인스턴스 대응)
 
 ## Phase 8 — 운영 환경
 - [x] AI 분석 서버 Dockerfile + docker-compose 통합
