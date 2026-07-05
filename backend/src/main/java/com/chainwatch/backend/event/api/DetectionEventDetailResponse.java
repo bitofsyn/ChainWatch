@@ -2,6 +2,7 @@ package com.chainwatch.backend.event.api;
 
 import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
 import com.chainwatch.backend.event.domain.DetectionEvent;
+import com.chainwatch.backend.event.domain.EventStatus;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import java.time.Instant;
@@ -16,6 +17,7 @@ public record DetectionEventDetailResponse(
         String txHash,
         Instant detectedAt,
         Long transactionId,
+        EventStatus status,
         AiAnalysisReportResponse aiReport
 ) {
     public static DetectionEventDetailResponse from(DetectionEvent event, AiAnalysisReportResponse aiReport) {
@@ -29,6 +31,7 @@ public record DetectionEventDetailResponse(
                 event.getTransaction() != null ? event.getTransaction().getTxHash() : null,
                 event.getDetectedAt(),
                 event.getTransaction() != null ? event.getTransaction().getId() : null,
+                event.getStatus(),
                 aiReport
         );
     }
