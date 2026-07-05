@@ -17,6 +17,10 @@ public class CollectorState {
     @Column(nullable = false)
     private Long lastCollectedBlock;
 
+    /** 마지막으로 수집한 블록의 해시. 다음 블록의 parentHash와 비교해 reorg를 감지한다. */
+    @Column(length = 66)
+    private String lastCollectedBlockHash;
+
     @Column(nullable = false)
     private Instant updatedAt;
 
@@ -37,12 +41,24 @@ public class CollectorState {
         return lastCollectedBlock;
     }
 
+    public String getLastCollectedBlockHash() {
+        return lastCollectedBlockHash;
+    }
+
     public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void updateLastCollectedBlock(Long lastCollectedBlock) {
+    public void updateLastCollectedBlock(Long lastCollectedBlock, String lastCollectedBlockHash) {
         this.lastCollectedBlock = lastCollectedBlock;
+        this.lastCollectedBlockHash = lastCollectedBlockHash;
+        this.updatedAt = Instant.now();
+    }
+
+    /** reorg 감지 시 되감기: 이후 수집이 rewind 지점 다음 블록부터 다시 시작된다. */
+    public void rewindTo(long blockNumber) {
+        this.lastCollectedBlock = blockNumber;
+        this.lastCollectedBlockHash = null;
         this.updatedAt = Instant.now();
     }
 }

@@ -1,8 +1,6 @@
 package com.chainwatch.backend.messaging.producer;
 
 import com.chainwatch.backend.messaging.config.KafkaTopicProperties;
-import com.chainwatch.backend.transaction.domain.Transaction;
-import java.util.List;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,16 +16,6 @@ public class ChainWatchKafkaProducer {
     ) {
         this.kafkaTemplate = kafkaTemplate;
         this.kafkaTopicProperties = kafkaTopicProperties;
-    }
-
-    public void publishCollectedTransactions(List<Transaction> transactions) {
-        for (Transaction transaction : transactions) {
-            kafkaTemplate.send(
-                    kafkaTopicProperties.collectedTransactions(),
-                    transaction.getTxHash(),
-                    CollectedTransactionMessage.from(transaction)
-            );
-        }
     }
 
     public void publishDetectedEvent(DetectedEventMessage eventMessage, String key) {

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/components/distributionchart.tsx","./src/components/searchfilterbar.tsx","./src/hooks/usetheme.ts","./src/lib/events.test.ts","./src/lib/events.ts","./src/lib/format.test.ts","./src/lib/format.ts"],"version":"5.9.3"}

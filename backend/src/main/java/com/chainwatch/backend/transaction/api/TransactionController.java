@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/transactions")
 public class TransactionController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final TransactionRepository transactionRepository;
 
     public TransactionController(TransactionRepository transactionRepository) {
@@ -33,7 +35,8 @@ public class TransactionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(page, safeSize, Sort.by(Sort.Direction.DESC, "timestamp"));
         return transactionRepository.search(wallet, blockNumber, from, to, pageable)
                 .map(TransactionResponse::from);
     }

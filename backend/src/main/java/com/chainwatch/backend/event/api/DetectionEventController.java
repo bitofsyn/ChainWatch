@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/events")
 public class DetectionEventController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final DetectionEventRepository detectionEventRepository;
     private final AiAnalysisService aiAnalysisService;
 
@@ -43,7 +45,8 @@ public class DetectionEventController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "detectedAt"));
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(page, safeSize, Sort.by(Sort.Direction.DESC, "detectedAt"));
         return detectionEventRepository.search(eventType, riskLevel, wallet, from, to, pageable)
                 .map(DetectionEventResponse::from);
     }
