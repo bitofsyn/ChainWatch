@@ -1,11 +1,13 @@
 package com.chainwatch.backend.common.exception;
 
+import com.chainwatch.backend.auth.exception.InvalidCredentialsException;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.analysis.exception.AiAnalysisException;
 import com.chainwatch.backend.feed.exception.FeedCacheException;
 import java.io.IOException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -34,6 +36,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleFeedCacheException(FeedCacheException exception) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of("FEED_CACHE_ERROR", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCredentialsException(InvalidCredentialsException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of("INVALID_CREDENTIALS", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("Validation failed");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of("VALIDATION_ERROR", message));
     }
 
     @ExceptionHandler(AiAnalysisException.class)
