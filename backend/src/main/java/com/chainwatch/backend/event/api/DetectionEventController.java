@@ -2,6 +2,7 @@ package com.chainwatch.backend.event.api;
 
 import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
 import com.chainwatch.backend.analysis.service.AiAnalysisService;
+import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.domain.EventType;
@@ -54,7 +55,7 @@ public class DetectionEventController {
     @GetMapping("/{id}")
     public DetectionEventDetailResponse getEvent(@PathVariable Long id) {
         DetectionEvent event = detectionEventRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Detection event not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + id));
         var report = aiAnalysisService.getReport(id);
         return DetectionEventDetailResponse.from(
                 event,

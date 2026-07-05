@@ -97,7 +97,7 @@ chainwatch:
       min-interval-ms: 200
   etherscan:
     base-url: https://api.etherscan.io
-    api-key: DC6KB9WKJ5JPVE3N7ABQY1N1DW8XTJUBSX
+    api-key: ${CHAINWATCH_ETHERSCAN_API_KEY:}
     chain-id: "1"
   detection:
     mode: ${CHAINWATCH_DETECTION_MODE:sync}   # sync | kafka (kafka: raw-transactions consumer가 탐지 수행)

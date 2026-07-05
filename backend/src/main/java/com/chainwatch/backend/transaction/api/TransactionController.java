@@ -1,5 +1,6 @@
 package com.chainwatch.backend.transaction.api;
 
+import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import com.chainwatch.backend.transaction.repository.TransactionRepository;
 import java.time.Instant;
@@ -44,7 +45,7 @@ public class TransactionController {
     @GetMapping("/{id}")
     public TransactionResponse getTransaction(@PathVariable Long id) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found: " + id));
         return TransactionResponse.from(transaction);
     }
 }
