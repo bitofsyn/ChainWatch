@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: chainwatch-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      # 컨테이너 배포 시 backend 서비스, 로컬 개발 시 host.docker.internal 사용
+      - targets:
+          - host.docker.internal:8080
+        labels:
+          service: chainwatch-backend
+
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
