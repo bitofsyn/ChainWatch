@@ -1,6 +1,7 @@
 package com.chainwatch.backend.event.api;
 
 import com.chainwatch.backend.event.domain.DetectionEvent;
+import com.chainwatch.backend.event.domain.EventStatus;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import java.time.Instant;
@@ -13,7 +14,8 @@ public record DetectionEventResponse(
         String summary,
         String walletAddress,
         String txHash,
-        Instant detectedAt
+        Instant detectedAt,
+        EventStatus status
 ) {
     public static DetectionEventResponse from(DetectionEvent event) {
         return new DetectionEventResponse(
@@ -24,7 +26,8 @@ public record DetectionEventResponse(
                 event.getSummary(),
                 event.getWalletAddress(),
                 event.getTransaction() != null ? event.getTransaction().getTxHash() : null,
-                event.getDetectedAt()
+                event.getDetectedAt(),
+                event.getStatus()
         );
     }
 }

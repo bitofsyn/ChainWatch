@@ -9,7 +9,7 @@ export interface EventFilters {
 
 export const DEFAULT_PAGE_SIZE = 20;
 
-export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE): string {
+export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE, page = 0): string {
   const params = new URLSearchParams();
   if (filters.eventType) {
     params.set("eventType", filters.eventType);
@@ -19,6 +19,9 @@ export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE
   }
   if (filters.wallet && filters.wallet.trim()) {
     params.set("wallet", filters.wallet.trim());
+  }
+  if (page > 0) {
+    params.set("page", String(page));
   }
   params.set("size", String(size));
   return params.toString();
