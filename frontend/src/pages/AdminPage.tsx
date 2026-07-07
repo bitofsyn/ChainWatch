@@ -4,6 +4,7 @@ import {
   ApiError,
   collectBlock,
   collectLatestBlock,
+  fetchAuditLogs,
   fetchCollectorState,
   fetchDetectionRules,
   fetchEvents,
@@ -14,7 +15,9 @@ import {
   login,
   requestAnalysis
 } from "../api";
+import type { AuditLogFilters } from "../api";
 import type {
+  AuditLogItem,
   CollectorResult,
   DetectionEventItem,
   DetectionRules,
@@ -25,15 +28,24 @@ import type {
 } from "../types";
 import type { AdminSection } from "../lib/router";
 import { clearToken, isAdmin, setToken } from "../lib/auth";
-import { formatDate, formatEventType, RISK_LEVEL_LABELS, shortenAddress } from "../lib/format";
+import {
+  formatDate,
+  formatEventType,
+  formatFullDate,
+  RISK_LEVEL_LABELS,
+  shortenAddress
+} from "../lib/format";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
+import { DataState } from "../components/DataState";
+import { Pagination } from "../components/Pagination";
 
 const SECTION_ITEMS: { section: AdminSection; path: string; label: string }[] = [
   { section: "dashboard", path: "/admin", label: "운영 대시보드" },
   { section: "pipeline", path: "/admin/pipeline", label: "파이프라인 상태" },
   { section: "analysis", path: "/admin/analysis", label: "재분석" },
-  { section: "policies", path: "/admin/policies", label: "탐지·알림 정책" }
+  { section: "policies", path: "/admin/policies", label: "탐지·알림 정책" },
+  { section: "audit", path: "/admin/audit", label: "감사 로그" }
 ];
 
 interface AdminPageProps {
@@ -82,6 +94,7 @@ export function AdminPage({ section }: AdminPageProps) {
       {section === "pipeline" ? <AdminPipeline /> : null}
       {section === "analysis" ? <AdminReanalysis onUnauthorized={handleLogout} /> : null}
       {section === "policies" ? <AdminPolicies /> : null}
+      {section === "audit" ? <AdminAuditLogs /> : null}
     </>
   );
 }
@@ -524,6 +537,160 @@ function AdminReanalysis({ onUnauthorized }: { onUnauthorized: () => void }) {
             </div>
           ))}
         </div>
+      </section>
+    </>
+  );
+}
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  EVENT_STATUS_CHANGE: "이벤트 상태 변경",
+  COLLECTOR_COLLECT_LATEST: "최신 블록 수집",
+  COLLECTOR_COLLECT_BLOCK: "블록 수집/재처리",
+  LOGIN_SUCCESS: "로그인 성공",
+  LOGIN_FAILURE: "로그인 실패"
+};
+
+const AUDIT_PAGE_SIZE = 20;
+
+function AdminAuditLogs() {
+  const [logs, setLogs] = useState<AuditLogItem[]>([]);
+  const [filters, setFilters] = useState<AuditLogFilters>({});
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
+
+  const load = useCallback(async (activeFilters: AuditLogFilters, activePage: number) => {
+    setLoading(true);
+    try {
+      const data = await fetchAuditLogs(activeFilters, AUDIT_PAGE_SIZE, activePage);
+      startTransition(() => {
+        setLogs(data.content);
+        setTotalPages(data.totalPages);
+        setTotalElements(data.totalElements);
+        setForbidden(false);
+        setError(null);
+        setLoading(false);
+      });
+    } catch (cause) {
+      startTransition(() => {
+        if (cause instanceof ApiError && cause.status === 403) {
+          setForbidden(true);
+          setError(null);
+        } else if (cause instanceof ApiError && cause.status === 401) {
+          setForbidden(true);
+          setError(null);
+        } else {
+          setForbidden(false);
+          setError("감사 로그 조회에 실패했습니다. 백엔드 상태를 확인해주세요.");
+        }
+        setLoading(false);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    load(filters, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault();
+    setPage(0);
+    load(filters, 0);
+  };
+
+  return (
+    <>
+      <p className="hint-text">
+        운영자 액션(상태 변경, 수집 트리거, 로그인)의 감사 기록입니다. ADMIN 권한 계정만 조회할 수
+        있습니다.
+      </p>
+
+      <section className="panel-card">
+        <form className="filter-bar audit-filter" onSubmit={handleSearch}>
+          <input
+            type="search"
+            aria-label="수행자(actor) 검색"
+            placeholder="수행자 (예: admin)"
+            value={filters.actor ?? ""}
+            onChange={(event) => setFilters({ ...filters, actor: event.target.value || undefined })}
+          />
+          <select
+            aria-label="액션 유형"
+            value={filters.action ?? ""}
+            onChange={(event) => setFilters({ ...filters, action: event.target.value || undefined })}
+          >
+            <option value="">전체 액션</option>
+            {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="ghost-button">
+            검색
+          </button>
+        </form>
+
+        {!forbidden && !loading && !error ? (
+          <p className="result-count">
+            총 <strong>{totalElements}</strong>건
+          </p>
+        ) : null}
+
+        <DataState
+          loading={loading && logs.length === 0}
+          unauthorized={forbidden}
+          unauthorizedMessage="감사 로그는 ADMIN 권한 계정만 조회할 수 있습니다. 현재 계정 권한을 확인해주세요."
+          error={error}
+          onRetry={() => load(filters, page)}
+          empty={!loading && !error && !forbidden && logs.length === 0}
+          emptyMessage="기록된 감사 로그가 없습니다."
+        />
+
+        {!forbidden && logs.length > 0 ? (
+          <div className="table-scroll">
+            <table className="data-table audit-table" aria-label="감사 로그">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">수행자</th>
+                  <th scope="col">권한</th>
+                  <th scope="col">액션</th>
+                  <th scope="col">대상</th>
+                  <th scope="col">상세</th>
+                  <th scope="col">IP</th>
+                  <th scope="col">시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((row) => (
+                  <tr key={row.id}>
+                    <td className="num">{row.id}</td>
+                    <td>{row.actor}</td>
+                    <td className="cell-muted">{row.role ? row.role.replace(/^ROLE_/, "") : "-"}</td>
+                    <td>
+                      <span className="audit-action">{AUDIT_ACTION_LABELS[row.action] ?? row.action}</span>
+                    </td>
+                    <td className="mono">
+                      {row.targetType}:{row.targetId}
+                    </td>
+                    <td className="cell-summary" title={row.detail ?? undefined}>
+                      {row.detail ?? "-"}
+                    </td>
+                    <td className="mono">{row.clientIp ?? "-"}</td>
+                    <td className="cell-time">{formatFullDate(row.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {!forbidden ? <Pagination page={page} totalPages={totalPages} onChange={setPage} /> : null}
       </section>
     </>
   );

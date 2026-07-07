@@ -2,6 +2,7 @@ import { startTransition, useEffect, useState } from "react";
 import { ApiError, fetchTransaction } from "../api";
 import type { TransactionItem } from "../types";
 import { formatDate } from "../lib/format";
+import { ConfirmationBadge } from "../components/ConfirmationBadge";
 
 interface TransactionDetailPageProps {
   transactionId: number;
@@ -82,6 +83,12 @@ export function TransactionDetailPage({ transactionId }: TransactionDetailPagePr
               <div>
                 <dt>블록 번호</dt>
                 <dd>{transaction.blockNumber}</dd>
+              </div>
+              <div>
+                <dt>확정 여부</dt>
+                <dd>
+                  <ConfirmationBadge transaction={transaction} />
+                </dd>
               </div>
               <div>
                 <dt>체결 시각</dt>
