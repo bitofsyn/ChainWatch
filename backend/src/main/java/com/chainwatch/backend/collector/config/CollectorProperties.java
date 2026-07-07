@@ -11,6 +11,7 @@ public record CollectorProperties(
         long startBlock,
         int maxBlocksPerPoll,
         int reorgRewindDepth,
+        int confirmationDepth,
         Backoff retry,
         Backoff websocketReconnect,
         Throttle throttle
@@ -31,6 +32,10 @@ public record CollectorProperties(
         }
         if (reorgRewindDepth <= 0) {
             reorgRewindDepth = 6;
+        }
+        if (confirmationDepth <= 0) {
+            // reorgRewindDepth(6)보다 깊게 잡아 "확정" 데이터는 rewind 범위 밖에 있도록 한다.
+            confirmationDepth = 12;
         }
         if (retry == null) {
             retry = new Backoff(0, 0, 0, 0);

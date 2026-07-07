@@ -2,7 +2,6 @@ package com.chainwatch.backend.collector.polling;
 
 import com.chainwatch.backend.collector.config.CollectionMode;
 import com.chainwatch.backend.collector.config.CollectorProperties;
-import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.collector.metrics.CollectorMetrics;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
 import org.slf4j.Logger;
@@ -42,7 +41,9 @@ public class BlockPollingScheduler {
             if (collected > 0) {
                 log.debug("Polling cycle collected {} block(s)", collected);
             }
-        } catch (CollectorException exception) {
+        } catch (RuntimeException exception) {
+            // CollectorException 외에도 DB 제약 위반(멀티 인스턴스 중복 수집 경합) 등 런타임 예외를
+            // 흡수해 에러 메트릭에 남기고, 다음 폴링 사이클이 저장된 상태에서 이어서 재시도하게 한다.
             metrics.incrementError();
             log.error("[ERROR] Polling cycle failed: {}", exception.getMessage(), exception);
         }

@@ -8,8 +8,14 @@ import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.messaging.producer.ChainWatchKafkaProducer;
 import com.chainwatch.backend.messaging.producer.DetectedEventMessage;
 import com.chainwatch.backend.transaction.domain.Transaction;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,25 +25,31 @@ import org.springframework.transaction.annotation.Transactional;
  * 2) detection_events (transaction_id, event_type) DB 유니크 제약: 동시 처리/멀티 인스턴스/
  *    Kafka 재소비 경합에서 exists 체크를 동시에 통과해도 한쪽 커밋만 성공한다.
  *    실패한 쪽은 트랜잭션 롤백 후 재처리 시 exists 체크로 수렴하므로 중복 이벤트가 남지 않는다.
+ *    (KAFKA 모드에서는 DefaultErrorHandler의 재시도가 재처리를 담당한다.)
  */
 @Service
 public class DetectionService {
+
+    private static final Logger log = LoggerFactory.getLogger(DetectionService.class);
 
     private final List<DetectionRule> detectionRules;
     private final DetectionEventRepository detectionEventRepository;
     private final ChainWatchKafkaProducer kafkaProducer;
     private final ChainWatchMetrics metrics;
+    private final ObjectMapper objectMapper;
 
     public DetectionService(
             List<DetectionRule> detectionRules,
             DetectionEventRepository detectionEventRepository,
             ChainWatchKafkaProducer kafkaProducer,
-            ChainWatchMetrics metrics
+            ChainWatchMetrics metrics,
+            ObjectMapper objectMapper
     ) {
         this.detectionRules = detectionRules;
         this.detectionEventRepository = detectionEventRepository;
         this.kafkaProducer = kafkaProducer;
         this.metrics = metrics;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -68,7 +80,7 @@ public class DetectionService {
     }
 
     private DetectionEvent toDetectionEvent(DetectionCommand command) {
-        return new DetectionEvent(
+        DetectionEvent event = new DetectionEvent(
                 command.eventType(),
                 command.riskLevel(),
                 command.riskScore(),
@@ -77,5 +89,30 @@ public class DetectionService {
                 Instant.now(),
                 command.transaction()
         );
+        event.attachRuleEvidence(command.ruleVersion(), serializeEvidence(command));
+        return event;
+    }
+
+    /**
+     * evidence를 {"rule": ..., "ruleVersion": ..., ...룰별 필드} 형태의 JSON으로 직렬화한다.
+     * 직렬화 실패는 탐지 자체를 막지 않도록 null(evidence 없음)로 강등한다.
+     */
+    private String serializeEvidence(DetectionCommand command) {
+        if (command.ruleName() == null && (command.evidence() == null || command.evidence().isEmpty())) {
+            return null;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("rule", command.ruleName());
+        payload.put("ruleVersion", command.ruleVersion());
+        if (command.evidence() != null) {
+            payload.putAll(command.evidence());
+        }
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException exception) {
+            log.warn("Failed to serialize detection evidence for rule {} (eventType={}); storing event without evidence",
+                    command.ruleName(), command.eventType(), exception);
+            return null;
+        }
     }
 }

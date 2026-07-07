@@ -119,7 +119,7 @@ class EthereumWebSocketSubscriberTest {
 
     private EthereumWebSocketSubscriber subscriber(Web3jWebSocketConnector connector, int maxReconnectAttempts) {
         CollectorProperties properties = new CollectorProperties(
-                ProviderType.RPC, CollectionMode.WEBSOCKET, true, 15_000, 0, 5, 6,
+                ProviderType.RPC, CollectionMode.WEBSOCKET, true, 15_000, 0, 5, 6, 12,
                 null,
                 new CollectorProperties.Backoff(maxReconnectAttempts, 1, 1.0, 5),
                 null);

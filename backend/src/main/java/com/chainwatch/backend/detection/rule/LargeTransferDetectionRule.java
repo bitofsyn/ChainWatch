@@ -6,11 +6,16 @@ import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LargeTransferDetectionRule implements DetectionRule {
+
+    static final String RULE_NAME = "large-transfer";
+    static final String RULE_VERSION = "1.0";
 
     private final DetectionProperties detectionProperties;
 
@@ -25,13 +30,22 @@ public class LargeTransferDetectionRule implements DetectionRule {
             return Optional.empty();
         }
 
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("thresholdEth", threshold);
+        evidence.put("observedAmountEth", transaction.getAmount());
+        evidence.put("fromAddress", transaction.getFromAddress());
+        evidence.put("toAddress", transaction.getToAddress());
+
         return Optional.of(new DetectionCommand(
                 EventType.LARGE_TRANSFER,
                 RiskLevel.HIGH,
                 85,
                 "Large transfer detected: " + transaction.getAmount() + " ETH moved to " + transaction.getToAddress(),
                 transaction.getToAddress(),
-                transaction
+                transaction,
+                RULE_NAME,
+                RULE_VERSION,
+                evidence
         ));
     }
 }

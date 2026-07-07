@@ -8,6 +8,8 @@ public record SecurityProperties(
         String jwtSecret,
         long jwtExpirationMinutes,
         String adminUsername,
-        String adminPassword
+        String adminPassword,
+        String analystUsername,
+        String analystPassword
 ) {
 }
