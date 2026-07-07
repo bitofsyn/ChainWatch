@@ -16,7 +16,7 @@ import type {
   TransactionPage,
   WalletSummary
 } from "./types";
-import { buildEventsQuery, type EventFilters } from "./lib/events";
+import { buildEventsQuery, type EventFilters, type EventTrend } from "./lib/events";
 import { clearToken, getToken } from "./lib/auth";
 
 export class ApiError extends Error {
@@ -64,6 +64,10 @@ export function fetchEventDetail(id: number) {
 
 export function fetchEventStats() {
   return requestJson<EventStats>("/api/events/stats");
+}
+
+export function fetchEventTrend(hours = 24) {
+  return requestJson<EventTrend>(`/api/events/stats/trend?hours=${hours}`);
 }
 
 export function updateEventStatus(id: number, status: EventLifecycleStatus) {

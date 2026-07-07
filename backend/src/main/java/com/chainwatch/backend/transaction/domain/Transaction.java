@@ -5,12 +5,21 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "transactions")
+@Table(
+        name = "transactions",
+        indexes = {
+                @Index(name = "idx_transactions_from_address", columnList = "from_address"),
+                @Index(name = "idx_transactions_to_address", columnList = "to_address"),
+                @Index(name = "idx_transactions_block_number", columnList = "block_number"),
+                @Index(name = "idx_transactions_timestamp", columnList = "timestamp")
+        }
+)
 public class Transaction {
 
     @Id

@@ -31,6 +31,17 @@ describe("buildEventsQuery", () => {
   it("returns only size when no filters set", () => {
     expect(buildEventsQuery({}, 20)).toBe("size=20");
   });
+
+  it("converts from/to datetime-local values to ISO instants", () => {
+    const query = buildEventsQuery({ from: "2026-07-01T09:00", to: "2026-07-02T09:00" }, 20);
+    const params = new URLSearchParams(query);
+    expect(params.get("from")).toBe(new Date("2026-07-01T09:00").toISOString());
+    expect(params.get("to")).toBe(new Date("2026-07-02T09:00").toISOString());
+  });
+
+  it("skips invalid from/to values", () => {
+    expect(buildEventsQuery({ from: "not-a-date" }, 20)).toBe("size=20");
+  });
 });
 
 describe("aggregateEventTypeCounts", () => {

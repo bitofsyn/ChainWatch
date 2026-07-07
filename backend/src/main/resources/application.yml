@@ -67,6 +67,7 @@ chainwatch:
     enabled: false
     min-risk-score: 70
     dedup-ttl-minutes: 30
+    dedup-store: ${CHAINWATCH_NOTIFICATION_DEDUP_STORE:redis}   # redis | memory (redis: 다중 인스턴스 안전, 장애 시 fail-open)
     slack-webhook-url: ${CHAINWATCH_SLACK_WEBHOOK_URL:}
     discord-webhook-url: ${CHAINWATCH_DISCORD_WEBHOOK_URL:}
   ai:

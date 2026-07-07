@@ -2,6 +2,7 @@ import { Layout } from "./components/Layout";
 import { useTheme } from "./hooks/useTheme";
 import {
   matchAdminSection,
+  matchAgentTeamDetail,
   matchEventDetail,
   matchTransactionDetail,
   matchWalletDetail,
@@ -14,6 +15,9 @@ import { WalletDetailPage } from "./pages/WalletDetailPage";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage";
 import { RulesPage } from "./pages/RulesPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AgentConsolePage } from "./pages/AgentConsolePage";
+import { AgentTeamDetailPage } from "./pages/AgentTeamDetailPage";
+import { AgentActivityPage } from "./pages/AgentActivityPage";
 
 function resolvePage(route: string) {
   if (route === "/") {
@@ -24,6 +28,16 @@ function resolvePage(route: string) {
   }
   if (route === "/rules") {
     return <RulesPage />;
+  }
+  if (route === "/agents") {
+    return <AgentConsolePage />;
+  }
+  if (route === "/agents/activity") {
+    return <AgentActivityPage />;
+  }
+  const agentTeamId = matchAgentTeamDetail(route);
+  if (agentTeamId != null) {
+    return <AgentTeamDetailPage teamId={agentTeamId} />;
   }
   const eventId = matchEventDetail(route);
   if (eventId != null) {
