@@ -3,9 +3,10 @@
 import asyncio
 import logging
 
-from app.adapters.base import ModelAdapter, ModelAdapterError
+from app.adapters.base import AdapterResult, ModelAdapter, ModelAdapterError
 from app.config import Settings
-from app.prompts import PROMPT_VERSION, build_analysis_prompt
+from app.prompts import PROMPT_VERSION, SYSTEM_PROMPT, build_analysis_prompt
+from app.report_parser import parse_structured_report
 from app.schemas import AnalysisRequest, AnalysisResponse
 
 logger = logging.getLogger(__name__)
@@ -50,26 +51,57 @@ class AnalysisService:
             adapter = self._adapters[provider_name]
             result = await self._generate_with_retry(adapter, prompt)
             if result is not None:
+                response = self._to_response(request, provider_name, result)
                 logger.info(
-                    "analysis completed | eventId=%s provider=%s model=%s",
-                    request.detection_event_id, provider_name, result.model,
+                    "analysis completed | eventId=%s provider=%s model=%s structured=%s",
+                    request.detection_event_id, provider_name, result.model, response.structured,
                 )
-                return AnalysisResponse(
-                    report=result.report,
-                    raw_response=result.raw_response,
-                    provider=provider_name,
-                    model=result.model,
-                    prompt_version=PROMPT_VERSION,
-                )
+                return response
             last_error = self._last_errors.get(provider_name)
 
         raise AnalysisFailedError(order, last_error)
+
+    def _to_response(
+        self, request: AnalysisRequest, provider_name: str, result: AdapterResult
+    ) -> AnalysisResponse:
+        """Parse the model output into the structured schema; on parse failure,
+        degrade to a text-only report (structured=False) instead of erroring."""
+        parsed = parse_structured_report(result.report)
+        if parsed is None:
+            logger.warning(
+                "structured parse failed, degrading to text-only report | eventId=%s provider=%s",
+                request.detection_event_id, provider_name,
+            )
+            return AnalysisResponse(
+                report=result.report,
+                raw_response=result.raw_response,
+                provider=provider_name,
+                model=result.model,
+                prompt_version=PROMPT_VERSION,
+                structured=False,
+            )
+
+        return AnalysisResponse(
+            report=parsed.report or parsed.risk_summary,
+            raw_response=result.raw_response,
+            provider=provider_name,
+            model=result.model,
+            prompt_version=PROMPT_VERSION,
+            structured=True,
+            risk_summary=parsed.risk_summary,
+            evidence=parsed.evidence,
+            possible_scenarios=parsed.possible_scenarios,
+            recommended_actions=parsed.recommended_actions,
+            confidence=parsed.confidence,
+            false_positive_factors=parsed.false_positive_factors,
+            escalation_level=parsed.escalation_level,
+        )
 
     async def _generate_with_retry(self, adapter: ModelAdapter, prompt: str):
         max_attempts = max(1, self._settings.retry_max_attempts)
         for attempt in range(1, max_attempts + 1):
             try:
-                return await adapter.generate(prompt)
+                return await adapter.generate(prompt, system=SYSTEM_PROMPT)
             except ModelAdapterError as error:
                 self._last_errors[adapter.name] = error
                 logger.warning(

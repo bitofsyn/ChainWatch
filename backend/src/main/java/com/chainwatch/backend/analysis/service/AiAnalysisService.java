@@ -45,7 +45,8 @@ public class AiAnalysisService {
 
         AiAnalysisResult result = aiAnalysisClient.analyze(toRequest(event));
 
-        return upsertReport(event, AnalysisStatus.COMPLETED, result.report(), result.rawResponse());
+        return upsertReport(
+                event, AnalysisStatus.COMPLETED, result.report(), result.rawResponse(), result.structuredJson());
     }
 
     /** 비동기 분석 요청 접수 시 PENDING 리포트를 먼저 기록해 진행 상태를 조회 가능하게 한다. */
@@ -54,7 +55,7 @@ public class AiAnalysisService {
         DetectionEvent event = detectionEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
-        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null);
+        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null, null);
     }
 
     @Transactional
@@ -63,15 +64,19 @@ public class AiAnalysisService {
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
         String message = "AI 분석 실패: " + (reason != null ? reason : "unknown error");
-        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null);
+        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null, null);
     }
 
     private AiAnalysisReport upsertReport(
             DetectionEvent event,
             AnalysisStatus status,
             String report,
-            String rawResponse
+            String rawResponse,
+            String structuredReport
     ) {
+        // 컬럼 한도 초과 시 잘린 JSON을 저장하는 대신 텍스트 리포트만 유지한다.
+        String storedStructuredReport =
+                (structuredReport != null && structuredReport.length() > 8000) ? null : structuredReport;
         metrics.recordAiAnalysis(status.name());
         Instant analyzedAt = Instant.now();
         return aiAnalysisReportRepository.findByDetectionEventId(event.getId())
@@ -83,6 +88,7 @@ public class AiAnalysisService {
                             event.getSummary(),
                             report,
                             rawResponse,
+                            storedStructuredReport,
                             analyzedAt
                     );
                     return aiAnalysisReportRepository.save(existing);
@@ -95,6 +101,7 @@ public class AiAnalysisService {
                         event.getSummary(),
                         report,
                         rawResponse,
+                        storedStructuredReport,
                         analyzedAt
                 )));
     }

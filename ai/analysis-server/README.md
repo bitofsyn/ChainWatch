@@ -45,7 +45,7 @@ Backend (Spring) ──POST /api/v1/analyze──▶ AnalysisService
 }
 ```
 
-응답:
+응답 (prompts v3, 구조화 필드는 additive — 상세 계약은 `docs/WAVE1_AI_CONTRACT.md` 참고):
 
 ```json
 {
@@ -53,9 +53,21 @@ Backend (Spring) ──POST /api/v1/analyze──▶ AnalysisService
   "rawResponse": "...모델 원본 응답...",
   "provider": "claude",
   "model": "claude-opus-4-8",
-  "promptVersion": "v1"
+  "promptVersion": "v3",
+  "structured": true,
+  "riskSummary": "핵심 위험 요약",
+  "evidence": [{"source": "riskScore", "fact": "위험 점수 90"}],
+  "possibleScenarios": ["..."],
+  "recommendedActions": ["..."],
+  "confidence": "medium",
+  "falsePositiveFactors": ["..."],
+  "escalationLevel": "monitor"
 }
 ```
+
+- `confidence`: `low | medium | high`, `escalationLevel`: `none | monitor | escalate | urgent`
+- LLM 출력이 JSON 스키마로 파싱되지 않으면 에러 대신 `structured=false` + 텍스트 `report`만으로 degrade
+- 이벤트 유래 값은 신뢰할 수 없는 데이터로 취급되어 sentinel 블록 안에만 전달됨 (프롬프트 인젝션 방어)
 
 모든 프로바이더 실패 시 `502` + `{"code": "ANALYSIS_FAILED", "message": "..."}`.
 
