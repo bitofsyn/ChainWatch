@@ -21,6 +21,13 @@ class ModelAdapter(ABC):
     name: str
 
     @abstractmethod
-    async def generate(self, prompt: str) -> AdapterResult:
-        """Generate a report. Raises ModelAdapterError on any failure."""
+    async def generate(self, prompt: str, system: str | None = None) -> AdapterResult:
+        """Generate a report.
+
+        `prompt` is the user-turn content (may embed untrusted event data in
+        delimited blocks); `system` carries trusted instructions only and must
+        be sent in the provider's instruction channel when supported.
+
+        Raises ModelAdapterError on any failure.
+        """
         raise NotImplementedError

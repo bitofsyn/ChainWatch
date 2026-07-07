@@ -45,6 +45,10 @@ public class AiAnalysisReport {
     @Column(length = 4000)
     private String rawResponse;
 
+    /** AI 서버가 반환한 구조화 분석(JSON 문자열). 비구조화 응답이면 null. */
+    @Column(length = 8000)
+    private String structuredReport;
+
     @Column(nullable = false)
     private Instant analyzedAt;
 
@@ -61,6 +65,20 @@ public class AiAnalysisReport {
             String rawResponse,
             Instant analyzedAt
     ) {
+        this(detectionEvent, status, provider, model, promptSummary, report, rawResponse, null, analyzedAt);
+    }
+
+    public AiAnalysisReport(
+            DetectionEvent detectionEvent,
+            AnalysisStatus status,
+            String provider,
+            String model,
+            String promptSummary,
+            String report,
+            String rawResponse,
+            String structuredReport,
+            Instant analyzedAt
+    ) {
         this.detectionEvent = detectionEvent;
         this.status = status;
         this.provider = provider;
@@ -68,6 +86,7 @@ public class AiAnalysisReport {
         this.promptSummary = promptSummary;
         this.report = report;
         this.rawResponse = rawResponse;
+        this.structuredReport = structuredReport;
         this.analyzedAt = analyzedAt;
     }
 
@@ -103,6 +122,10 @@ public class AiAnalysisReport {
         return rawResponse;
     }
 
+    public String getStructuredReport() {
+        return structuredReport;
+    }
+
     public Instant getAnalyzedAt() {
         return analyzedAt;
     }
@@ -116,12 +139,26 @@ public class AiAnalysisReport {
             String rawResponse,
             Instant analyzedAt
     ) {
+        update(status, provider, model, promptSummary, report, rawResponse, null, analyzedAt);
+    }
+
+    public void update(
+            AnalysisStatus status,
+            String provider,
+            String model,
+            String promptSummary,
+            String report,
+            String rawResponse,
+            String structuredReport,
+            Instant analyzedAt
+    ) {
         this.status = status;
         this.provider = provider;
         this.model = model;
         this.promptSummary = promptSummary;
         this.report = report;
         this.rawResponse = rawResponse;
+        this.structuredReport = structuredReport;
         this.analyzedAt = analyzedAt;
     }
 }

@@ -52,7 +52,39 @@ def test_analyze_returns_camel_case_contract():
     assert body["report"]
     assert body["rawResponse"]
     assert body["provider"] == "mock"
-    assert body["promptVersion"] == "v2"
+    assert body["promptVersion"] == "v3"
+
+
+def test_analyze_returns_structured_fields_in_camel_case():
+    client = make_client()
+    response = client.post("/api/v1/analyze", json=ANALYZE_BODY)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["structured"] is True
+    assert body["riskSummary"]
+    assert isinstance(body["evidence"], list)
+    assert body["evidence"][0].keys() == {"source", "fact"}
+    assert isinstance(body["possibleScenarios"], list)
+    assert isinstance(body["recommendedActions"], list)
+    assert body["confidence"] in ("low", "medium", "high")
+    assert isinstance(body["falsePositiveFactors"], list)
+    assert body["escalationLevel"] in ("none", "monitor", "escalate", "urgent")
+
+
+def test_analyze_degrades_when_provider_returns_unstructured_text():
+    plain = StubAdapter("mock", report="자유 서술 리포트")
+    client = make_client(adapters={"mock": plain})
+    response = client.post("/api/v1/analyze", json=ANALYZE_BODY)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["structured"] is False
+    assert body["report"] == "자유 서술 리포트"
+    assert body["riskSummary"] is None
+    assert body["evidence"] == []
+    assert body["confidence"] is None
+    assert body["escalationLevel"] is None
 
 
 def test_analyze_missing_summary_returns_422():
