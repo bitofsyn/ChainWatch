@@ -1,10 +1,15 @@
 # ChainWatch 운영 가이드
 
+관련 문서:
+- [RUNBOOKS.md](./RUNBOOKS.md) — 장애 시나리오별 대응 절차 (RPC/Kafka/Postgres/Redis/AI 장애, 웹훅 실패, DLT 재처리, 수집기 pause/resume, reorg 급증)
+- [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) — Staging/Production 배포 체크리스트 (필수 환경변수, TLS, DB 마이그레이션 리스크, 롤백, AWS 배포안)
+- [LOCAL_INFRA_SETUP.md](./LOCAL_INFRA_SETUP.md) — 로컬 인프라 기동/토픽/포트 안내
+
 ## 구성 요소
 
 | 서비스 | 이미지/빌드 | 포트 | 비고 |
 |---|---|---|---|
-| backend | `backend/Dockerfile` (멀티스테이지 Gradle) | 8080 | `app` 프로필로 기동 |
+| backend | `backend/Dockerfile` (멀티스테이지 Gradle) | 컨테이너 내부 8080, 호스트 노출 18080 | `app` 프로필로 기동 (호스트 8080은 Jenkins 점유로 18080에 매핑) |
 | frontend | `frontend/Dockerfile` (Vite 빌드 → Nginx) | 80 | `/api` 리버스 프록시 포함 |
 | ai-analysis | `ai/analysis-server/Dockerfile` | 8000 | 기본 mock 프로바이더 |
 | postgres / redis / kafka | 공식 이미지 | 55432 / 6379 / 9094 | healthcheck 구성 |
@@ -37,14 +42,21 @@ docker compose --profile app up -d --build
 
 - backend는 micrometer-registry-prometheus로 `/actuator/prometheus`를 노출합니다.
   - 커스텀 지표: `chainwatch_detection_events_total{event_type,risk_level}`,
-    `chainwatch_notifications_sent_total{channel,result}`, `chainwatch_ai_analysis_total{status}`
+    `chainwatch_notifications_sent_total{channel,result}`, `chainwatch_ai_analysis_total{status}`,
+    `chainwatch_detection_dlt_messages_total`, `chainwatch_collector_blocks_collected_total`,
+    `chainwatch_collector_reorgs_total`, `chainwatch_collector_rpc_latency_seconds`,
+    `chainwatch_collector_retries_total`, `chainwatch_collector_errors_total`,
+    `chainwatch_collector_websocket_reconnects_total`
 - Prometheus 스크레이프 대상은 `infra/monitoring/prometheus.yml`에서 관리하며, 두 job이 동시에 등록되어
   실행 방식과 무관하게 지표가 수집됩니다 (다른 쪽 job은 down으로 표시됨).
   - `chainwatch-backend`: 컨테이너 배포용 (`backend:8080`)
   - `chainwatch-backend-local`: 호스트에서 backend 직접 실행 시 (`host.docker.internal:18080`, application-local.yml 포트)
 - Prometheus 알림 규칙은 `infra/monitoring/prometheus-rules.yml`에서 관리합니다
-  (BackendDown, 5xx 비율, 알림 실패, AI 분석 실패, JVM heap). Alertmanager 미구성 시에도
-  Prometheus UI `/alerts`에서 발화 여부를 확인할 수 있습니다.
+  (BackendDown, HTTP 5xx 비율, 알림 실패, AI 분석 실패, JVM heap, DLT 메시지 발생,
+  수집기 신규 블록 정체(proxy), reorg 급증). Alertmanager 미구성 시에도
+  Prometheus UI `/alerts`에서 발화 여부를 확인할 수 있습니다. 아직 Prometheus 메트릭으로 노출되지 않아
+  다루지 못하는 항목(DB/Redis/Kafka 개별 다운, 고위험 이벤트 미확인 SLA, 진짜 수집기 lag)은
+  [RUNBOOKS.md](./RUNBOOKS.md) 부록에 "요청 필요"로 정리해 두었습니다.
 - Grafana 데이터소스/대시보드는 `infra/monitoring/grafana/provisioning`으로 자동 등록됩니다.
   기본 제공 대시보드는 `ChainWatch Overview`(uid: chainwatch-overview)이며,
   추가로 커뮤니티 대시보드 ID `4701`(JVM Micrometer) 임포트를 권장합니다.

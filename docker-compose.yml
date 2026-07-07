@@ -95,6 +95,7 @@ services:
     build:
       context: ./backend
     container_name: chainwatch-backend
+    profiles: ["app"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +124,7 @@ services:
     build:
       context: ./frontend
     container_name: chainwatch-frontend
+    profiles: ["app"]
     depends_on:
       - backend
     ports:
