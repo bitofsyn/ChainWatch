@@ -2,10 +2,12 @@ import { startTransition, useEffect, useState } from "react";
 import {
   fetchEvents,
   fetchEventStats,
+  fetchEventTrend,
   fetchHealth,
   fetchRecentEventFeed,
   fetchRecentTransactionFeed
 } from "../api";
+import type { EventTrend } from "../lib/events";
 import type {
   DetectionEventItem,
   EventStats,
@@ -20,6 +22,7 @@ import {
   shortenAddress
 } from "../lib/format";
 import { DistributionChart } from "../components/DistributionChart";
+import { TrendChart } from "../components/TrendChart";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -32,6 +35,7 @@ function countOf(stats: EventStats | null, group: "riskLevelCounts" | "statusCou
 export function OverviewPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
+  const [trend, setTrend] = useState<EventTrend | null>(null);
   const [priorityEvents, setPriorityEvents] = useState<DetectionEventItem[]>([]);
   const [eventFeed, setEventFeed] = useState<FeedEventItem[]>([]);
   const [transactionFeed, setTransactionFeed] = useState<FeedTransactionItem[]>([]);
@@ -43,10 +47,11 @@ export function OverviewPage() {
 
     async function load() {
       try {
-        const [healthData, statsData, criticalPage, highPage, eventFeedData, transactionFeedData] =
+        const [healthData, statsData, trendData, criticalPage, highPage, eventFeedData, transactionFeedData] =
           await Promise.all([
             fetchHealth(),
             fetchEventStats(),
+            fetchEventTrend(24),
             fetchEvents({ riskLevel: "CRITICAL" }, 5),
             fetchEvents({ riskLevel: "HIGH" }, 5),
             fetchRecentEventFeed(6),
@@ -64,6 +69,7 @@ export function OverviewPage() {
         startTransition(() => {
           setHealth(healthData);
           setStats(statsData);
+          setTrend(trendData);
           setPriorityEvents(queue);
           setEventFeed(eventFeedData);
           setTransactionFeed(transactionFeedData);
@@ -201,6 +207,16 @@ export function OverviewPage() {
             </div>
           </div>
           <DistributionChart data={typeDistribution} emptyMessage="집계할 탐지 이벤트가 없습니다." />
+        </article>
+
+        <article className="glass-card">
+          <div className="section-head compact">
+            <div>
+              <p className="section-kicker">탐지 추이</p>
+              <h2>최근 24시간 시간대별 탐지</h2>
+            </div>
+          </div>
+          <TrendChart trend={trend} emptyMessage="최근 24시간 탐지 이벤트가 없습니다." />
         </article>
 
         <article className="glass-card">

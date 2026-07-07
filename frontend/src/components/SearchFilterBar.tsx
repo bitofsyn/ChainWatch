@@ -10,7 +10,7 @@ interface SearchFilterBarProps {
 export function SearchFilterBar({ filters, onChange, onSearch }: SearchFilterBarProps) {
   return (
     <form
-      className="filter-bar"
+      className="filter-bar with-range"
       onSubmit={(event) => {
         event.preventDefault();
         onSearch();
@@ -48,6 +48,24 @@ export function SearchFilterBar({ filters, onChange, onSearch }: SearchFilterBar
         placeholder="지갑 주소 검색 (0x...)"
         value={filters.wallet ?? ""}
         onChange={(event) => onChange({ ...filters, wallet: event.target.value || undefined })}
+      />
+
+      <input
+        type="datetime-local"
+        aria-label="조회 시작 시각"
+        title="조회 시작 시각"
+        value={filters.from ?? ""}
+        max={filters.to ?? undefined}
+        onChange={(event) => onChange({ ...filters, from: event.target.value || undefined })}
+      />
+
+      <input
+        type="datetime-local"
+        aria-label="조회 종료 시각"
+        title="조회 종료 시각"
+        value={filters.to ?? ""}
+        min={filters.from ?? undefined}
+        onChange={(event) => onChange({ ...filters, to: event.target.value || undefined })}
       />
 
       <button type="submit" className="ghost-button">

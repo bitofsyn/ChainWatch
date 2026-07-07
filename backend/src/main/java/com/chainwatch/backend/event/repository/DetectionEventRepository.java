@@ -1,9 +1,11 @@
 package com.chainwatch.backend.event.repository;
 
 import com.chainwatch.backend.event.domain.DetectionEvent;
+import com.chainwatch.backend.event.domain.EventStatus;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,40 @@ public interface DetectionEventRepository
     boolean existsByTransactionIdAndEventType(Long transactionId, EventType eventType);
 
     long countByDetectedAtAfter(Instant threshold);
+
+    List<DetectionEvent> findTop6ByOrderByDetectedAtDesc();
+
+    List<DetectionEvent> findTop6ByStatusInOrderByDetectedAtDesc(Collection<EventStatus> statuses);
+
+    /** AI 분석 리포트가 아직 없는 고위험 이벤트 수 (Analysis 팀 대기 큐) */
+    @Query("""
+            select count(e)
+            from DetectionEvent e
+            where e.riskLevel in :levels
+              and not exists (select 1 from AiAnalysisReport r where r.detectionEvent = e)
+            """)
+    long countPendingAnalysis(@Param("levels") Collection<RiskLevel> levels);
+
+    /** AI 분석 대기 중 가장 오래된 이벤트의 탐지 시각 */
+    @Query("""
+            select min(e.detectedAt)
+            from DetectionEvent e
+            where e.riskLevel in :levels
+              and not exists (select 1 from AiAnalysisReport r where r.detectionEvent = e)
+            """)
+    Instant oldestPendingAnalysisDetectedAt(@Param("levels") Collection<RiskLevel> levels);
+
+    /** 미처리(NEW/null) 이벤트 중 가장 오래된 탐지 시각 (Triage 팀 대기 큐) */
+    @Query("""
+            select min(e.detectedAt)
+            from DetectionEvent e
+            where e.status is null or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW
+            """)
+    Instant oldestUnresolvedDetectedAt();
+
+    /** 시간대별 추이 집계용. 버킷팅은 DB 방언 의존을 피해 애플리케이션에서 수행한다. */
+    @Query("select e.detectedAt from DetectionEvent e where e.detectedAt >= :since")
+    List<Instant> findDetectedAtSince(@Param("since") Instant since);
 
     @Query("select e.riskLevel, count(e) from DetectionEvent e group by e.riskLevel")
     List<Object[]> countGroupByRiskLevel();

@@ -36,6 +36,11 @@ export function matchWalletDetail(route: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+export function matchAgentTeamDetail(route: string): string | null {
+  const match = route.match(/^\/agents\/teams\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies";
 
 export function matchAdminSection(route: string): AdminSection | null {

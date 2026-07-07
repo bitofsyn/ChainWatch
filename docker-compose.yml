@@ -70,6 +70,7 @@ services:
     container_name: chainwatch-prometheus
     volumes:
       - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/prometheus-rules.yml:/etc/prometheus/prometheus-rules.yml:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
@@ -94,7 +95,6 @@ services:
     build:
       context: ./backend
     container_name: chainwatch-backend
-    profiles: ["app"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,6 +104,8 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: local
+      # local 프로파일의 server.port(18080)를 컨테이너 내부 8080으로 되돌림
+      SERVER_PORT: "8080"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chainwatch
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -114,13 +116,13 @@ services:
       CHAINWATCH_ADMIN_USERNAME:
       CHAINWATCH_ADMIN_PASSWORD:
     ports:
-      - "127.0.0.1:8080:8080"
+      # 호스트 8080은 Jenkins가 점유 중이라 18080으로 노출
+      - "127.0.0.1:18080:8080"
 
   frontend:
     build:
       context: ./frontend
     container_name: chainwatch-frontend
-    profiles: ["app"]
     depends_on:
       - backend
     ports:

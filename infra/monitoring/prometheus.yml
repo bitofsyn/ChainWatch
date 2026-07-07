@@ -2,15 +2,29 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/prometheus-rules.yml
+
 scrape_configs:
+  # docker compose로 backend 컨테이너까지 함께 띄운 경우 (컨테이너 내부 포트 8080)
   - job_name: chainwatch-backend
     metrics_path: /actuator/prometheus
     static_configs:
-      # 컨테이너 배포 시 backend 서비스, 로컬 개발 시 host.docker.internal 사용
       - targets:
-          - host.docker.internal:8080
+          - backend:8080
         labels:
           service: chainwatch-backend
+          deployment: docker
+
+  # backend를 호스트에서 직접 실행한 경우 (application-local.yml 기준 18080)
+  - job_name: chainwatch-backend-local
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:18080
+        labels:
+          service: chainwatch-backend
+          deployment: host
 
   - job_name: prometheus
     static_configs:

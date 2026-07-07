@@ -158,3 +158,104 @@ export interface DetectionRules {
   mode: string;
   rules: DetectionRule[];
 }
+
+/* ── AI Agent 팀 운영 콘솔 ─────────────────────── */
+
+export type AgentTeamStatus = "healthy" | "degraded" | "blocked";
+
+export type AgentTaskOutcome = "success" | "failed" | "retrying" | "in_progress";
+
+export type AgentHandoffResult = "accepted" | "queued" | "rejected" | "completed";
+
+export type SubAgentState = "idle" | "working" | "error";
+
+export interface AgentQueueMetric {
+  queued: number;
+  inProgress: number;
+  retrying: number;
+  failedLastHour: number;
+  oldestWaitingSeconds: number;
+}
+
+export interface AgentSlaTarget {
+  metric: string;
+  target: string;
+  current: string;
+  met: boolean;
+}
+
+export interface SubAgent {
+  id: string;
+  name: string;
+  role: string;
+  state: SubAgentState;
+  currentTask: string | null;
+}
+
+export interface AgentTaskRecord {
+  id: string;
+  title: string;
+  outcome: AgentTaskOutcome;
+  startedAt: string;
+  durationMs: number | null;
+  detail: string;
+}
+
+export interface AgentTeam {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  status: AgentTeamStatus;
+  statusReason: string | null;
+  queue: AgentQueueMetric;
+  successRate1h: number;
+  avgProcessingMs: number;
+  throughputPerHour: number;
+  lastHandoffTo: string | null;
+  inputTypes: string[];
+  outputTypes: string[];
+  subAgents: SubAgent[];
+  recentTasks: AgentTaskRecord[];
+  recentFailures: AgentTaskRecord[];
+  slaTargets: AgentSlaTarget[];
+  updatedAt: string;
+}
+
+export interface AgentHandoffEvent {
+  id: string;
+  fromTeamId: string;
+  toTeamId: string;
+  subject: string;
+  reason: string;
+  result: AgentHandoffResult;
+  occurredAt: string;
+}
+
+export interface AgentOpsAlert {
+  id: string;
+  severity: "critical" | "warning";
+  message: string;
+  teamId: string | null;
+  raisedAt: string;
+}
+
+export interface AgentOpsOverview {
+  generatedAt: string;
+  activeTeams: number;
+  totalTeams: number;
+  throughputPerHour: number;
+  avgResponseMs: number;
+  failed1h: number;
+  retried1h: number;
+  bottleneckTeamId: string | null;
+  alerts: AgentOpsAlert[];
+}
+
+export interface AgentOpsSnapshot {
+  overview: AgentOpsOverview;
+  teams: AgentTeam[];
+  handoffs: AgentHandoffEvent[];
+  /** 프론트 데이터 계층에서 채움: 실제 API 응답인지 mock 폴백인지 */
+  source?: "api" | "mock";
+}

@@ -1,0 +1,51 @@
+# ChainWatch Prometheus 알림 규칙.
+# Alertmanager 미구성 상태에서도 Prometheus UI(/alerts)에서 발화 여부를 확인할 수 있다.
+groups:
+  - name: chainwatch-backend
+    rules:
+      - alert: BackendDown
+        expr: up{service="chainwatch-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ChainWatch backend scrape target down"
+          description: "{{ $labels.job }} ({{ $labels.instance }}) has been unreachable for 2 minutes."
+
+      - alert: HighHttpErrorRate
+        expr: >
+          sum(rate(http_server_requests_seconds_count{status=~"5..", service="chainwatch-backend"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{service="chainwatch-backend"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch backend 5xx error rate above 5%"
+          description: "5xx responses exceeded 5% of traffic over the last 5 minutes."
+
+      - alert: NotificationFailures
+        expr: increase(chainwatch_notifications_sent_total{result="failure"}[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch notification delivery failures"
+          description: "At least one notification failed in the last 10 minutes. Check /api/notifications/history."
+
+      - alert: AiAnalysisFailures
+        expr: increase(chainwatch_ai_analysis_total{status="FAILED"}[15m]) > 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch AI analysis failing repeatedly"
+          description: "More than 3 AI analysis failures in 15 minutes. Check ai-analysis server health."
+
+      - alert: JvmHeapPressure
+        expr: >
+          sum(jvm_memory_used_bytes{area="heap", service="chainwatch-backend"})
+          / sum(jvm_memory_max_bytes{area="heap", service="chainwatch-backend"}) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch backend JVM heap above 90%"
+          description: "Heap usage stayed above 90% for 10 minutes; investigate memory leak or raise limits."

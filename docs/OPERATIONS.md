@@ -36,11 +36,18 @@ docker compose --profile app up -d --build
 ## 메트릭 / 모니터링
 
 - backend는 micrometer-registry-prometheus로 `/actuator/prometheus`를 노출합니다.
-- Prometheus 스크레이프 대상은 `infra/monitoring/prometheus.yml`에서 관리합니다.
-  - 로컬 개발(호스트에서 backend 실행): `host.docker.internal:8080` (기본값)
-  - 전체 컨테이너 배포: 대상을 `backend:8080`으로 교체
-- Grafana 데이터소스는 `infra/monitoring/grafana/provisioning`으로 자동 등록됩니다.
-  JVM 대시보드는 Grafana 커뮤니티 대시보드 ID `4701`(JVM Micrometer) 임포트를 권장합니다.
+  - 커스텀 지표: `chainwatch_detection_events_total{event_type,risk_level}`,
+    `chainwatch_notifications_sent_total{channel,result}`, `chainwatch_ai_analysis_total{status}`
+- Prometheus 스크레이프 대상은 `infra/monitoring/prometheus.yml`에서 관리하며, 두 job이 동시에 등록되어
+  실행 방식과 무관하게 지표가 수집됩니다 (다른 쪽 job은 down으로 표시됨).
+  - `chainwatch-backend`: 컨테이너 배포용 (`backend:8080`)
+  - `chainwatch-backend-local`: 호스트에서 backend 직접 실행 시 (`host.docker.internal:18080`, application-local.yml 포트)
+- Prometheus 알림 규칙은 `infra/monitoring/prometheus-rules.yml`에서 관리합니다
+  (BackendDown, 5xx 비율, 알림 실패, AI 분석 실패, JVM heap). Alertmanager 미구성 시에도
+  Prometheus UI `/alerts`에서 발화 여부를 확인할 수 있습니다.
+- Grafana 데이터소스/대시보드는 `infra/monitoring/grafana/provisioning`으로 자동 등록됩니다.
+  기본 제공 대시보드는 `ChainWatch Overview`(uid: chainwatch-overview)이며,
+  추가로 커뮤니티 대시보드 ID `4701`(JVM Micrometer) 임포트를 권장합니다.
 
 ## 로깅
 
@@ -75,6 +82,7 @@ docker compose --profile app up -d --build
 
 - [ ] `chainwatch.security.jwt-enabled=true` 및 시크릿/관리자 비밀번호 교체
 - [ ] `chainwatch.notification.enabled=true` + Slack/Discord Webhook URL 설정
+  (다중 인스턴스면 `dedup-store=redis` 기본값 유지, 단일 인스턴스 개발 환경은 `memory` 가능)
 - [ ] `chainwatch.collector.enabled=true` + RPC/Etherscan 키 설정
-- [ ] Prometheus 대상 `backend:8080`으로 전환, Grafana 알림 규칙 구성
+- [ ] Prometheus `/alerts`에서 규칙 로드 확인, Alertmanager 연동 여부 결정
 - [ ] PostgreSQL 볼륨 백업 정책 수립

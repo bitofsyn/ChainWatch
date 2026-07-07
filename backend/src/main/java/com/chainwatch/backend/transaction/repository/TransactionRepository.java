@@ -19,6 +19,8 @@ public interface TransactionRepository
 
     List<Transaction> findByTxHashIn(Collection<String> txHashes);
 
+    long countByTimestampAfter(Instant threshold);
+
     @Query("""
             select count(t)
             from Transaction t
