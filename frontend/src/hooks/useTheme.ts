@@ -9,7 +9,8 @@ function resolveInitialTheme(): Theme {
   if (stored === "dark" || stored === "light") {
     return stored;
   }
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  // 거래소 백오피스 기준 라이트 모드 우선: 명시적 다크 선호일 때만 다크
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function useTheme() {

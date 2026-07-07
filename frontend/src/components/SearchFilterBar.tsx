@@ -1,4 +1,4 @@
-import { EVENT_TYPE_LABELS, RISK_LEVEL_LABELS } from "../lib/format";
+import { EVENT_TYPE_LABELS, LIFECYCLE_STATUS_LABELS, LIFECYCLE_STATUS_ORDER, RISK_LEVEL_LABELS } from "../lib/format";
 import type { EventFilters } from "../lib/events";
 
 interface SearchFilterBarProps {
@@ -38,6 +38,19 @@ export function SearchFilterBar({ filters, onChange, onSearch }: SearchFilterBar
         {Object.entries(RISK_LEVEL_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="처리 상태"
+        value={filters.status ?? ""}
+        onChange={(event) => onChange({ ...filters, status: event.target.value || undefined })}
+      >
+        <option value="">전체 상태</option>
+        {LIFECYCLE_STATUS_ORDER.map((value) => (
+          <option key={value} value={value}>
+            {LIFECYCLE_STATUS_LABELS[value]}
           </option>
         ))}
       </select>

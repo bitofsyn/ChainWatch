@@ -4,6 +4,8 @@ import { formatEventType } from "./format";
 export interface EventFilters {
   eventType?: string;
   riskLevel?: string;
+  /** 처리 상태 필터 (Wave1: FALSE_POSITIVE 포함, NEW는 레거시 null status 포함) */
+  status?: string;
   wallet?: string;
   /** datetime-local 입력값 (예: 2026-07-07T09:00). 쿼리 시 ISO Instant로 변환된다. */
   from?: string;
@@ -28,6 +30,9 @@ export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE
   }
   if (filters.riskLevel) {
     params.set("riskLevel", filters.riskLevel);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
   }
   if (filters.wallet && filters.wallet.trim()) {
     params.set("wallet", filters.wallet.trim());

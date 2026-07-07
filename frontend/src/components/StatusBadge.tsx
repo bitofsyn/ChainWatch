@@ -8,7 +8,8 @@ const STATUS_CLASS: Record<string, string> = {
   NEW: "lifecycle-new",
   ACKNOWLEDGED: "lifecycle-ack",
   INVESTIGATING: "lifecycle-investigating",
-  RESOLVED: "lifecycle-resolved"
+  RESOLVED: "lifecycle-resolved",
+  FALSE_POSITIVE: "lifecycle-false-positive"
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {

@@ -7,6 +7,7 @@ import { SearchFilterBar } from "../components/SearchFilterBar";
 import { Pagination } from "../components/Pagination";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
+import { DataState } from "../components/DataState";
 
 const PAGE_SIZE = 20;
 
@@ -52,46 +53,81 @@ export function EventsPage() {
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">이상거래 목록</p>
-          <h1>탐지 이벤트 전체 조회</h1>
+          <p className="eyebrow">이상거래 큐</p>
+          <h1>탐지 이벤트 작업 큐</h1>
           <p className="page-lede">
-            유형·위험 등급·지갑 주소로 필터링할 수 있습니다. 행을 선택하면 상세 분석
-            페이지로 이동합니다.
+            상태·유형·위험 등급·지갑 주소·기간으로 필터링해 처리할 이벤트를 선별하세요.
           </p>
         </div>
-        {error ? <div className="banner error">{error}</div> : null}
       </section>
 
-      <section className="glass-card">
+      <section className="panel-card">
         <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} />
 
         <p className="result-count">
           총 <strong>{totalElements}</strong>건
         </p>
 
-        <div className="table-wrap">
-          {events.length === 0 && !loading ? (
-            <div className="empty-state">조건에 맞는 탐지 이벤트가 없습니다.</div>
-          ) : null}
+        <DataState
+          loading={loading && events.length === 0}
+          error={error}
+          onRetry={() => load(filters, page)}
+          empty={!loading && !error && events.length === 0}
+          emptyMessage="조건에 맞는 탐지 이벤트가 없습니다."
+        />
 
-          {events.map((row) => (
-            <a className="event-row linked detailed" key={row.id} href={`#/events/${row.id}`}>
-              <div>
-                <div className="badge-group">
-                  <RiskBadge riskLevel={row.riskLevel} riskScore={row.riskScore} />
-                  <StatusBadge status={row.status} />
-                </div>
-                <h3>{formatEventType(row.eventType)}</h3>
-                <small className="event-time">{formatDate(row.detectedAt)}</small>
-              </div>
-              <p>{row.summary}</p>
-              <div className="wallet-col">
-                <span title={row.walletAddress}>{shortenAddress(row.walletAddress)}</span>
-                <strong>{row.riskScore}</strong>
-              </div>
-            </a>
-          ))}
-        </div>
+        {events.length > 0 ? (
+          <div className="table-scroll">
+            <table className="data-table event-queue" aria-label="탐지 이벤트 작업 큐">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">위험</th>
+                  <th scope="col" className="num">
+                    점수
+                  </th>
+                  <th scope="col">상태</th>
+                  <th scope="col">유형</th>
+                  <th scope="col">요약</th>
+                  <th scope="col">지갑</th>
+                  <th scope="col">담당자</th>
+                  <th scope="col">탐지 시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((row) => (
+                  <tr key={row.id}>
+                    <td className="num">
+                      <a className="row-link" href={`#/events/${row.id}`}>
+                        {row.id}
+                      </a>
+                    </td>
+                    <td>
+                      <RiskBadge riskLevel={row.riskLevel} riskScore={row.riskScore} />
+                    </td>
+                    <td className="num strong-num">{row.riskScore}</td>
+                    <td>
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td>
+                      <a className="row-link" href={`#/events/${row.id}`}>
+                        {formatEventType(row.eventType)}
+                      </a>
+                    </td>
+                    <td className="cell-summary" title={row.summary}>
+                      {row.summary}
+                    </td>
+                    <td className="mono" title={row.walletAddress}>
+                      {shortenAddress(row.walletAddress)}
+                    </td>
+                    <td>{row.assignee || <span className="cell-muted">미지정</span>}</td>
+                    <td className="cell-time">{formatDate(row.detectedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </section>

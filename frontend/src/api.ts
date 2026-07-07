@@ -1,12 +1,13 @@
 import type {
+  AuditLogPage,
   CollectorResult,
   CollectorState,
   DetectionEventDetail,
   DetectionEventItem,
   DetectionEventPage,
   DetectionRules,
-  EventLifecycleStatus,
   EventStats,
+  EventStatusUpdateRequest,
   FeedEventItem,
   FeedTransactionItem,
   HealthResponse,
@@ -70,12 +71,32 @@ export function fetchEventTrend(hours = 24) {
   return requestJson<EventTrend>(`/api/events/stats/trend?hours=${hours}`);
 }
 
-export function updateEventStatus(id: number, status: EventLifecycleStatus) {
+export function updateEventStatus(id: number, request: EventStatusUpdateRequest) {
   return requestJson<DetectionEventItem>(`/api/events/${id}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status })
+    body: JSON.stringify(request)
   });
+}
+
+export interface AuditLogFilters {
+  actor?: string;
+  action?: string;
+}
+
+/** GET /api/audit-logs — ADMIN 전용, 403이면 ApiError(403) */
+export function fetchAuditLogs(filters: AuditLogFilters = {}, size = 20, page = 0) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (filters.actor && filters.actor.trim()) {
+    params.set("actor", filters.actor.trim());
+  }
+  if (filters.action && filters.action.trim()) {
+    params.set("action", filters.action.trim());
+  }
+  if (page > 0) {
+    params.set("page", String(page));
+  }
+  return requestJson<AuditLogPage>(`/api/audit-logs?${params}`);
 }
 
 export function fetchTransaction(id: number) {

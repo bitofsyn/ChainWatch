@@ -32,6 +32,15 @@ describe("buildEventsQuery", () => {
     expect(buildEventsQuery({}, 20)).toBe("size=20");
   });
 
+  it("includes status filter including FALSE_POSITIVE", () => {
+    expect(buildEventsQuery({ status: "FALSE_POSITIVE" }, 20)).toBe("status=FALSE_POSITIVE&size=20");
+    expect(buildEventsQuery({ status: "NEW" }, 20)).toBe("status=NEW&size=20");
+  });
+
+  it("skips empty status filter", () => {
+    expect(buildEventsQuery({ status: "" }, 20)).toBe("size=20");
+  });
+
   it("converts from/to datetime-local values to ISO instants", () => {
     const query = buildEventsQuery({ from: "2026-07-01T09:00", to: "2026-07-02T09:00" }, 20);
     const params = new URLSearchParams(query);
