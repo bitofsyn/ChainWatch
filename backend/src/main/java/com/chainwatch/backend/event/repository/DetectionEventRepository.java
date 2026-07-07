@@ -109,11 +109,12 @@ public interface DetectionEventRepository
     default Page<DetectionEvent> search(
             EventType eventType,
             RiskLevel riskLevel,
+            EventStatus status,
             String wallet,
             Instant from,
             Instant to,
             Pageable pageable
     ) {
-        return findAll(DetectionEventSpecifications.search(eventType, riskLevel, wallet, from, to), pageable);
+        return findAll(DetectionEventSpecifications.search(eventType, riskLevel, status, wallet, from, to), pageable);
     }
 }

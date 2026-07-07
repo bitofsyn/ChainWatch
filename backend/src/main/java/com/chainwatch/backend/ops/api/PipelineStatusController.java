@@ -129,12 +129,13 @@ public class PipelineStatusController {
     private ComponentStatus checkCollector() {
         long lastBlock = blockCollectionService.lastCollectedBlockNumber();
         String detail = String.format(
-                "provider=%s, mode=%s, 마지막 수집 블록=%s, 재시도 최대 %d회, reorg 되감기 %d블록",
+                "provider=%s, mode=%s, 마지막 수집 블록=%s, 재시도 최대 %d회, reorg 되감기 %d블록, 확정 기준 %d confirmations",
                 collectorProperties.provider(),
                 collectorProperties.mode(),
                 lastBlock >= 0 ? lastBlock : "없음",
                 collectorProperties.retry().maxAttempts(),
-                collectorProperties.reorgRewindDepth()
+                collectorProperties.reorgRewindDepth(),
+                collectorProperties.confirmationDepth()
         );
         if (!collectorProperties.enabled()) {
             return ComponentStatus.disabled("collector", "자동 수집 비활성 (수동 트리거만 가능). " + detail);

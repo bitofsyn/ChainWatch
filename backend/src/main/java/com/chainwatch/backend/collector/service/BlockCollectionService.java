@@ -69,6 +69,7 @@ public class BlockCollectionService {
             return 0;
         }
         try {
+            recordObservedChainHead(targetBlockNumber);
             long next = nextBlockNumber(targetBlockNumber);
             String expectedParentHash = expectedParentHashFor(next);
             int processed = 0;
@@ -105,6 +106,20 @@ public class BlockCollectionService {
         return collectorStateRepository.findById(CollectedBlockProcessor.COLLECTOR_NAME)
                 .map(CollectorState::getLastCollectedBlock)
                 .orElse(-1L);
+    }
+
+    /**
+     * 체인 head 관측치를 상태에 기록한다(단조 증가). confirmations 계산의 기준값이 된다.
+     * collectUpTo의 target은 폴러(fetchLatestBlockNumber)든 WebSocket(신규 head 블록)이든 항상 체인 head다.
+     * 상태 행이 아직 없으면(최초 기동) 이번 사이클의 블록 처리로 행이 생기고 다음 사이클부터 기록된다.
+     */
+    private void recordObservedChainHead(long chainHead) {
+        collectorStateRepository.findById(CollectedBlockProcessor.COLLECTOR_NAME)
+                .ifPresent(state -> {
+                    if (state.observeChainHead(chainHead)) {
+                        collectorStateRepository.save(state);
+                    }
+                });
     }
 
     /** 직전 수집 블록의 해시. 다음 블록의 parentHash와 일치해야 정상 체인이다. */

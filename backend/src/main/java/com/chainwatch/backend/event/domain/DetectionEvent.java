@@ -70,6 +70,40 @@ public class DetectionEvent {
     @Column(length = 30)
     private EventStatus status;
 
+    // --- 분석가 workflow 필드. 전부 nullable 추가 컬럼(additive)이라 기존 데이터와 호환된다. ---
+
+    /** 이벤트 담당 분석가 계정명 */
+    @Column(length = 100)
+    private String assignee;
+
+    @Column(name = "status_changed_at")
+    private Instant statusChangedAt;
+
+    /** RESOLVED 종결 사유 (RESOLVED 전이 시 필수) */
+    @Column(name = "resolution_reason", length = 500)
+    private String resolutionReason;
+
+    /** 오탐 판정 사유 (FALSE_POSITIVE 전이 시 필수) */
+    @Column(name = "false_positive_reason", length = 500)
+    private String falsePositiveReason;
+
+    /** 조사 메모 */
+    @Column(length = 2000)
+    private String notes;
+
+    // --- 룰 evidence 필드. nullable 추가 컬럼(additive)이라 기존 데이터/스키마와 호환된다. ---
+
+    /** 발화한 룰의 버전 (예: "1.0"). 레거시 이벤트는 null. */
+    @Column(name = "rule_version", length = 20)
+    private String ruleVersion;
+
+    /**
+     * 룰이 발화한 이유의 구조화 JSON (rule, ruleVersion, 임계값, 관측값, 매칭 주소 등).
+     * 룰별 스키마는 docs/WAVE2_BLOCKCHAIN_CONTRACTS.md 참조. 레거시 이벤트는 null.
+     */
+    @Column(name = "evidence", columnDefinition = "text")
+    private String evidence;
+
     protected DetectionEvent() {
     }
 
@@ -129,5 +163,81 @@ public class DetectionEvent {
 
     public void changeStatus(EventStatus status) {
         this.status = status;
+        this.statusChangedAt = Instant.now();
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public Instant getStatusChangedAt() {
+        return statusChangedAt;
+    }
+
+    public String getResolutionReason() {
+        return resolutionReason;
+    }
+
+    public String getFalsePositiveReason() {
+        return falsePositiveReason;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public String getRuleVersion() {
+        return ruleVersion;
+    }
+
+    public String getEvidence() {
+        return evidence;
+    }
+
+    /** 저장 전 룰 evidence를 부착한다. 기존 생성자 시그니처를 유지하기 위한 별도 메서드. */
+    public void attachRuleEvidence(String ruleVersion, String evidenceJson) {
+        this.ruleVersion = ruleVersion;
+        this.evidence = evidenceJson;
+    }
+
+    /**
+     * 분석가 workflow 상태 전이 규칙:
+     * RESOLVED는 resolutionReason, FALSE_POSITIVE는 falsePositiveReason이 필수다.
+     * assignee/notes는 전달된 경우에만 갱신한다(null이면 기존 값 유지).
+     */
+    public void applyStatusChange(
+            EventStatus newStatus,
+            String assignee,
+            String resolutionReason,
+            String falsePositiveReason,
+            String notes
+    ) {
+        if (newStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        if (newStatus == EventStatus.RESOLVED && isBlank(resolutionReason)) {
+            throw new IllegalArgumentException("resolutionReason is required when status is RESOLVED");
+        }
+        if (newStatus == EventStatus.FALSE_POSITIVE && isBlank(falsePositiveReason)) {
+            throw new IllegalArgumentException("falsePositiveReason is required when status is FALSE_POSITIVE");
+        }
+        this.status = newStatus;
+        this.statusChangedAt = Instant.now();
+        if (assignee != null) {
+            this.assignee = assignee.isBlank() ? null : assignee;
+        }
+        if (resolutionReason != null) {
+            this.resolutionReason = resolutionReason;
+        }
+        if (falsePositiveReason != null) {
+            this.falsePositiveReason = falsePositiveReason;
+        }
+        if (notes != null) {
+            this.notes = notes.isBlank() ? null : notes;
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

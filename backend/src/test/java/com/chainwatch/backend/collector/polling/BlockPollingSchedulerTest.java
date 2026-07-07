@@ -62,7 +62,7 @@ class BlockPollingSchedulerTest {
 
     private BlockPollingScheduler scheduler(boolean enabled, CollectionMode mode) {
         CollectorProperties properties = new CollectorProperties(
-                ProviderType.RPC, mode, enabled, 15_000, 0, 5, 6, null, null, null);
+                ProviderType.RPC, mode, enabled, 15_000, 0, 5, 6, 12, null, null, null);
         return new BlockPollingScheduler(properties, blockCollectionService, metrics);
     }
 }

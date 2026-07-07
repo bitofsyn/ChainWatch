@@ -15,7 +15,12 @@ public record DetectionEventResponse(
         String walletAddress,
         String txHash,
         Instant detectedAt,
-        EventStatus status
+        EventStatus status,
+        String assignee,
+        Instant statusChangedAt,
+        String resolutionReason,
+        String falsePositiveReason,
+        String notes
 ) {
     public static DetectionEventResponse from(DetectionEvent event) {
         return new DetectionEventResponse(
@@ -27,7 +32,12 @@ public record DetectionEventResponse(
                 event.getWalletAddress(),
                 event.getTransaction() != null ? event.getTransaction().getTxHash() : null,
                 event.getDetectedAt(),
-                event.getStatus()
+                event.getStatus(),
+                event.getAssignee(),
+                event.getStatusChangedAt(),
+                event.getResolutionReason(),
+                event.getFalsePositiveReason(),
+                event.getNotes()
         );
     }
 }

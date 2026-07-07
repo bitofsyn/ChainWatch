@@ -3,7 +3,6 @@ package com.chainwatch.backend.collector.websocket;
 import com.chainwatch.backend.collector.config.CollectionMode;
 import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.config.EthereumProperties;
-import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.collector.metrics.CollectorMetrics;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
 import com.chainwatch.backend.collector.util.BackoffRetryExecutor;
@@ -117,7 +116,9 @@ public class EthereumWebSocketSubscriber implements SmartLifecycle {
     private void collectSafely(long headNumber) {
         try {
             blockCollectionService.collectUpTo(headNumber);
-        } catch (CollectorException exception) {
+        } catch (RuntimeException exception) {
+            // DB 제약 위반 등 CollectorException 이외의 런타임 예외도 수집 스레드를 죽이지 않고
+            // 메트릭에 남긴다. 놓친 블록은 다음 newHead의 catch-up이 저장된 상태에서 복구한다.
             metrics.incrementError();
             log.error("[ERROR] Collection triggered by newHead {} failed: {}", headNumber, exception.getMessage());
         }
