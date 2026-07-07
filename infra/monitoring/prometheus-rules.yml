@@ -49,3 +49,42 @@ groups:
         annotations:
           summary: "ChainWatch backend JVM heap above 90%"
           description: "Heap usage stayed above 90% for 10 minutes; investigate memory leak or raise limits."
+
+      - alert: DltMessagesPresent
+        expr: increase(chainwatch_detection_dlt_messages_total[15m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "ChainWatch raw-transaction messages routed to DLT"
+          description: >
+            At least one message landed on the raw-transactions DLT in the last 15 minutes.
+            See docs/RUNBOOKS.md section 7 (DLT replay procedure) — inspect the DLT topic in Kafka UI
+            before replaying, poison messages will fail again if replayed as-is.
+
+      - alert: CollectorNoNewBlocksProxy
+        expr: increase(chainwatch_collector_blocks_collected_total[30m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch collector has not recorded a new block in 30 minutes"
+          description: >
+            Proxy alert only: this fires whenever chainwatch.collector.blocks.collected has not
+            incremented, which is also true (expected) whenever chainwatch.collector.enabled=false.
+            Only meaningful in environments where the collector is actively enabled — silence or
+            remove this rule for deployments that intentionally run with the collector disabled.
+            This does NOT measure true lag (chain head vs last collected block); that requires a new
+            gauge metric that does not exist yet (see docs/RUNBOOKS.md appendix, "요청 필요").
+            Check GET /api/collector/state and GET /api/ops/pipeline for the collector component detail,
+            and see docs/RUNBOOKS.md section 1 (RPC outage) and section 8 (pause/resume).
+
+      - alert: ReorgSpike
+        expr: increase(chainwatch_collector_reorgs_total[1h]) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: "ChainWatch detected an unusually high number of chain reorgs"
+          description: >
+            More than 5 reorg rewinds in the last hour. See docs/RUNBOOKS.md section 9 (reorg spike) —
+            check whether the configured RPC endpoint is pointing at an unstable node, and whether
+            reorg-rewind-depth (6 blocks) is deep enough for the observed reorgs.
