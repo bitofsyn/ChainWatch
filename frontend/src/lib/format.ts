@@ -22,14 +22,16 @@ export const LIFECYCLE_STATUS_LABELS: Record<EventLifecycleStatus, string> = {
   NEW: "신규",
   ACKNOWLEDGED: "접수",
   INVESTIGATING: "조사중",
-  RESOLVED: "해결"
+  RESOLVED: "해결",
+  FALSE_POSITIVE: "오탐 종결"
 };
 
 export const LIFECYCLE_STATUS_ORDER: EventLifecycleStatus[] = [
   "NEW",
   "ACKNOWLEDGED",
   "INVESTIGATING",
-  "RESOLVED"
+  "RESOLVED",
+  "FALSE_POSITIVE"
 ];
 
 export function toStatus(riskScore: number): EventStatus {
@@ -59,9 +61,34 @@ export function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+/** 연도까지 포함한 전체 시각 (감사 로그, 상태 변경 시각 등 정확성이 필요한 곳) */
+export function formatFullDate(value: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(new Date(value));
+}
+
+/** 코인 금액 포맷 (소수점 뒤 불필요한 0 제거, 최대 6자리) */
+export function formatAmount(value: number, unit = "ETH"): string {
+  const formatted = new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 6
+  }).format(value);
+  return `${formatted} ${unit}`;
+}
+
 export function shortenAddress(value: string, head = 8, tail = 6): string {
   if (value.length <= head + tail + 3) {
     return value;
   }
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
+}
+
+/** 해시/주소가 없을 때 표시할 값 */
+export function orDash(value: string | null | undefined): string {
+  return value && value.trim() ? value : "-";
 }

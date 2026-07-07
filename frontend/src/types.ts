@@ -1,6 +1,11 @@
 export type EventStatus = "critical" | "high" | "elevated";
 
-export type EventLifecycleStatus = "NEW" | "ACKNOWLEDGED" | "INVESTIGATING" | "RESOLVED";
+export type EventLifecycleStatus =
+  | "NEW"
+  | "ACKNOWLEDGED"
+  | "INVESTIGATING"
+  | "RESOLVED"
+  | "FALSE_POSITIVE";
 
 export interface DetectionEventItem {
   id: number;
@@ -12,6 +17,12 @@ export interface DetectionEventItem {
   txHash: string | null;
   detectedAt: string;
   status: EventLifecycleStatus;
+  /* 분석가 workflow 필드 (Wave1 백엔드 계약, 전부 nullable) */
+  assignee?: string | null;
+  statusChangedAt?: string | null;
+  resolutionReason?: string | null;
+  falsePositiveReason?: string | null;
+  notes?: string | null;
 }
 
 export interface DetectionEventPage {
@@ -19,6 +30,39 @@ export interface DetectionEventPage {
   totalElements: number;
   totalPages: number;
   number: number;
+}
+
+/** PATCH /api/events/{id}/status 요청 본문 (Wave1 계약과 1:1) */
+export interface EventStatusUpdateRequest {
+  status: EventLifecycleStatus;
+  /** null이면 기존 값 유지, ""이면 담당자 해제 */
+  assignee?: string | null;
+  /** status=RESOLVED일 때 필수, max 500 */
+  resolutionReason?: string | null;
+  /** status=FALSE_POSITIVE일 때 필수, max 500 */
+  falsePositiveReason?: string | null;
+  /** null이면 기존 값 유지, max 2000 */
+  notes?: string | null;
+}
+
+export type AiConfidence = "low" | "medium" | "high";
+
+export type AiEscalationLevel = "none" | "monitor" | "escalate" | "urgent";
+
+export interface AiEvidenceItem {
+  source: string;
+  fact: string;
+}
+
+/** Wave1 AI 계약의 structuredAnalysis 객체 */
+export interface AiStructuredAnalysis {
+  riskSummary: string | null;
+  evidence: AiEvidenceItem[];
+  possibleScenarios: string[];
+  recommendedActions: string[];
+  confidence: AiConfidence | null;
+  falsePositiveFactors: string[];
+  escalationLevel: AiEscalationLevel | null;
 }
 
 export interface AiAnalysisReport {
@@ -29,11 +73,18 @@ export interface AiAnalysisReport {
   promptSummary: string | null;
   report: string | null;
   analyzedAt: string | null;
+  /** 구조화 분석 존재 여부. 구버전 리포트는 필드 자체가 없을 수 있어 optional */
+  structured?: boolean;
+  structuredAnalysis?: AiStructuredAnalysis | null;
 }
 
 export interface DetectionEventDetail extends DetectionEventItem {
   transactionId: number | null;
   aiReport: AiAnalysisReport | null;
+  /** Wave2: 발화한 룰 버전. 레거시 이벤트는 null/부재 */
+  ruleVersion?: string | null;
+  /** Wave2: 룰 발화 근거 JSON (룰별 스키마 상이). 레거시/직렬화 실패 시 null */
+  evidence?: Record<string, unknown> | null;
 }
 
 export interface TransactionItem {
@@ -46,6 +97,10 @@ export interface TransactionItem {
   blockNumber: number;
   timestamp: string;
   contractAddress: string | null;
+  /** Wave2: head - blockNumber + 1. 둘 다 null이면 head 미관측(판정 불가) */
+  confirmations?: number | null;
+  /** Wave2: confirmations >= confirmation-depth(기본 12)이면 true. null = 판정 불가 */
+  confirmed?: boolean | null;
 }
 
 export interface TransactionPage {
@@ -53,6 +108,28 @@ export interface TransactionPage {
   totalElements: number;
   totalPages: number;
   number: number;
+}
+
+/* ── 감사 로그 (ADMIN 전용, Wave1 계약) ─────────── */
+
+export interface AuditLogItem {
+  id: number;
+  actor: string;
+  role: string | null;
+  action: string;
+  targetType: string;
+  targetId: string;
+  detail: string | null;
+  clientIp: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  content: AuditLogItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
 }
 
 export interface FeedEventItem {

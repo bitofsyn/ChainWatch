@@ -41,12 +41,12 @@ export function matchAgentTeamDetail(route: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies";
+export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies" | "audit";
 
 export function matchAdminSection(route: string): AdminSection | null {
   if (route === "/admin") {
     return "dashboard";
   }
-  const match = route.match(/^\/admin\/(pipeline|analysis|policies)$/);
+  const match = route.match(/^\/admin\/(pipeline|analysis|policies|audit)$/);
   return match ? (match[1] as AdminSection) : null;
 }
