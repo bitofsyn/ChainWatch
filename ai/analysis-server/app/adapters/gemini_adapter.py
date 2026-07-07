@@ -18,9 +18,11 @@ class GeminiAdapter(ModelAdapter):
         self._model = settings.gemini_model
         self._timeout = settings.http_timeout_seconds
 
-    async def generate(self, prompt: str) -> AdapterResult:
+    async def generate(self, prompt: str, system: str | None = None) -> AdapterResult:
         url = f"{self._base_url}/v1beta/models/{self._model}:generateContent"
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        payload: dict = {"contents": [{"parts": [{"text": prompt}]}]}
+        if system:
+            payload["systemInstruction"] = {"parts": [{"text": system}]}
         headers = {"x-goog-api-key": self._api_key}
 
         try:
@@ -30,11 +32,13 @@ class GeminiAdapter(ModelAdapter):
                 body = response.json()
         except httpx.HTTPError as error:
             raise ModelAdapterError(f"Gemini request failed: {error}") from error
+        except ValueError as error:
+            raise ModelAdapterError(f"Gemini returned invalid JSON: {error}") from error
 
         try:
             parts = body["candidates"][0]["content"]["parts"]
             report = "".join(part.get("text", "") for part in parts).strip()
-        except (KeyError, IndexError, TypeError) as error:
+        except (KeyError, IndexError, TypeError, AttributeError) as error:
             raise ModelAdapterError(f"Unexpected Gemini response shape: {error}") from error
 
         if not report:

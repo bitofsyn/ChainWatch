@@ -2,7 +2,12 @@ package com.chainwatch.backend.analysis.client;
 
 import com.chainwatch.backend.analysis.config.AiAnalysisProperties;
 import com.chainwatch.backend.analysis.exception.AiAnalysisException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -11,14 +16,22 @@ import org.springframework.web.reactive.function.client.WebClient;
 @ConditionalOnProperty(prefix = "chainwatch.ai", name = "enabled", havingValue = "true")
 public class FastApiAiAnalysisClient implements AiAnalysisClient {
 
+    private static final Logger log = LoggerFactory.getLogger(FastApiAiAnalysisClient.class);
+
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
 
     private final WebClient webClient;
     private final AiAnalysisProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public FastApiAiAnalysisClient(WebClient.Builder webClientBuilder, AiAnalysisProperties properties) {
+    public FastApiAiAnalysisClient(
+            WebClient.Builder webClientBuilder,
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper
+    ) {
         this.webClient = webClientBuilder.baseUrl(properties.baseUrl()).build();
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -42,12 +55,42 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
             throw new AiAnalysisException("AI analysis server returned an empty report");
         }
 
-        return new AiAnalysisResult(response.report(), response.rawResponse());
+        return new AiAnalysisResult(response.report(), response.rawResponse(), toStructuredJson(response));
+    }
+
+    /** 구조화 필드를 JSON 문자열로 직렬화한다. 비구조화 응답이거나 직렬화 실패 시 null. */
+    private String toStructuredJson(FastApiAiAnalysisResponse response) {
+        if (!Boolean.TRUE.equals(response.structured())) {
+            return null;
+        }
+        AiStructuredAnalysis structured = new AiStructuredAnalysis(
+                response.riskSummary(),
+                response.evidence(),
+                response.possibleScenarios(),
+                response.recommendedActions(),
+                response.confidence(),
+                response.falsePositiveFactors(),
+                response.escalationLevel()
+        );
+        try {
+            return objectMapper.writeValueAsString(structured);
+        } catch (JsonProcessingException exception) {
+            log.warn("Failed to serialize structured AI analysis; keeping text-only report", exception);
+            return null;
+        }
     }
 
     private record FastApiAiAnalysisResponse(
             String report,
-            String rawResponse
+            String rawResponse,
+            Boolean structured,
+            String riskSummary,
+            List<AiStructuredAnalysis.EvidenceItem> evidence,
+            List<String> possibleScenarios,
+            List<String> recommendedActions,
+            String confidence,
+            List<String> falsePositiveFactors,
+            String escalationLevel
     ) {
     }
 }
