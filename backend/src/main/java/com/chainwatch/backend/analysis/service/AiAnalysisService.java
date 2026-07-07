@@ -8,6 +8,7 @@ import com.chainwatch.backend.analysis.domain.AiAnalysisReport;
 import com.chainwatch.backend.analysis.domain.AnalysisStatus;
 import com.chainwatch.backend.analysis.repository.AiAnalysisReportRepository;
 import com.chainwatch.backend.common.exception.ResourceNotFoundException;
+import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import java.time.Instant;
@@ -21,17 +22,20 @@ public class AiAnalysisService {
     private final AiAnalysisReportRepository aiAnalysisReportRepository;
     private final DetectionEventRepository detectionEventRepository;
     private final AiAnalysisProperties properties;
+    private final ChainWatchMetrics metrics;
 
     public AiAnalysisService(
             AiAnalysisClient aiAnalysisClient,
             AiAnalysisReportRepository aiAnalysisReportRepository,
             DetectionEventRepository detectionEventRepository,
-            AiAnalysisProperties properties
+            AiAnalysisProperties properties,
+            ChainWatchMetrics metrics
     ) {
         this.aiAnalysisClient = aiAnalysisClient;
         this.aiAnalysisReportRepository = aiAnalysisReportRepository;
         this.detectionEventRepository = detectionEventRepository;
         this.properties = properties;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -40,31 +44,63 @@ public class AiAnalysisService {
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
         AiAnalysisResult result = aiAnalysisClient.analyze(toRequest(event));
-        Instant analyzedAt = Instant.now();
 
-        return aiAnalysisReportRepository.findByDetectionEventId(eventId)
+        return upsertReport(event, AnalysisStatus.COMPLETED, result.report(), result.rawResponse());
+    }
+
+    /** 비동기 분석 요청 접수 시 PENDING 리포트를 먼저 기록해 진행 상태를 조회 가능하게 한다. */
+    @Transactional
+    public AiAnalysisReport markPending(Long eventId) {
+        DetectionEvent event = detectionEventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
+
+        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null);
+    }
+
+    @Transactional
+    public AiAnalysisReport markFailed(Long eventId, String reason) {
+        DetectionEvent event = detectionEventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
+
+        String message = "AI 분석 실패: " + (reason != null ? reason : "unknown error");
+        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null);
+    }
+
+    private AiAnalysisReport upsertReport(
+            DetectionEvent event,
+            AnalysisStatus status,
+            String report,
+            String rawResponse
+    ) {
+        metrics.recordAiAnalysis(status.name());
+        Instant analyzedAt = Instant.now();
+        return aiAnalysisReportRepository.findByDetectionEventId(event.getId())
                 .map(existing -> {
                     existing.update(
-                            AnalysisStatus.COMPLETED,
+                            status,
                             properties.provider(),
                             properties.model(),
                             event.getSummary(),
-                            result.report(),
-                            result.rawResponse(),
+                            report,
+                            rawResponse,
                             analyzedAt
                     );
                     return aiAnalysisReportRepository.save(existing);
                 })
                 .orElseGet(() -> aiAnalysisReportRepository.save(new AiAnalysisReport(
                         event,
-                        AnalysisStatus.COMPLETED,
+                        status,
                         properties.provider(),
                         properties.model(),
                         event.getSummary(),
-                        result.report(),
-                        result.rawResponse(),
+                        report,
+                        rawResponse,
                         analyzedAt
                 )));
+    }
+
+    private String truncate(String value, int maxLength) {
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     @Transactional(readOnly = true)

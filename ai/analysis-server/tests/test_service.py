@@ -17,7 +17,7 @@ async def test_primary_provider_success(settings):
 
     assert response.report == "stub report"
     assert response.provider == "primary"
-    assert response.prompt_version == "v1"
+    assert response.prompt_version == "v2"
     assert primary.call_count == 1
 
 

@@ -1,5 +1,6 @@
 package com.chainwatch.backend.notification.service;
 
+import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.notification.channel.NotificationChannel;
 import com.chainwatch.backend.notification.config.NotificationProperties;
 import com.chainwatch.backend.notification.domain.NotificationMessage;
@@ -16,15 +17,21 @@ public class NotificationService {
     private final NotificationProperties properties;
     private final NotificationDeduplicator deduplicator;
     private final List<NotificationChannel> channels;
+    private final NotificationHistoryRecorder historyRecorder;
+    private final ChainWatchMetrics metrics;
 
     public NotificationService(
             NotificationProperties properties,
             NotificationDeduplicator deduplicator,
-            List<NotificationChannel> channels
+            List<NotificationChannel> channels,
+            NotificationHistoryRecorder historyRecorder,
+            ChainWatchMetrics metrics
     ) {
         this.properties = properties;
         this.deduplicator = deduplicator;
         this.channels = channels;
+        this.historyRecorder = historyRecorder;
+        this.metrics = metrics;
     }
 
     public void notify(NotificationMessage message) {
@@ -50,9 +57,13 @@ public class NotificationService {
             try {
                 channel.send(message);
                 anySent = true;
+                historyRecorder.record(message, channel.name(), true, null);
+                metrics.recordNotification(channel.name(), true);
                 log.info("notification sent | channel={} eventId={} riskScore={}",
                         channel.name(), message.eventId(), message.riskScore());
             } catch (Exception exception) {
+                historyRecorder.record(message, channel.name(), false, exception.getMessage());
+                metrics.recordNotification(channel.name(), false);
                 log.warn("notification failed | channel={} eventId={} error={}",
                         channel.name(), message.eventId(), exception.getMessage());
             }

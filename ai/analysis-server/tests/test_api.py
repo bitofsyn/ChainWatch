@@ -52,7 +52,7 @@ def test_analyze_returns_camel_case_contract():
     assert body["report"]
     assert body["rawResponse"]
     assert body["provider"] == "mock"
-    assert body["promptVersion"] == "v1"
+    assert body["promptVersion"] == "v2"
 
 
 def test_analyze_missing_summary_returns_422():

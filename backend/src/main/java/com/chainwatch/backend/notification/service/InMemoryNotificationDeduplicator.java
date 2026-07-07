@@ -7,9 +7,15 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+/**
+ * JVM 메모리 기반 dedupe. 단일 인스턴스 개발/테스트용이며,
+ * 다중 인스턴스 운영에서는 dedup-store=redis(RedisNotificationDeduplicator)를 사용한다.
+ */
 @Component
+@ConditionalOnProperty(prefix = "chainwatch.notification", name = "dedup-store", havingValue = "memory", matchIfMissing = true)
 public class InMemoryNotificationDeduplicator implements NotificationDeduplicator {
 
     private final Map<String, Instant> sentAt = new ConcurrentHashMap<>();

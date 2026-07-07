@@ -7,6 +7,7 @@ public record NotificationProperties(
         boolean enabled,
         int minRiskScore,
         long dedupTtlMinutes,
+        String dedupStore,
         String slackWebhookUrl,
         String discordWebhookUrl
 ) {

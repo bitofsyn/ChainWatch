@@ -11,6 +11,7 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { path: "/", label: "관제 현황" },
   { path: "/events", label: "이상거래" },
+  { path: "/agents", label: "Agent 콘솔" },
   { path: "/rules", label: "탐지 기준" },
   { path: "/admin", label: "관리자" }
 ];

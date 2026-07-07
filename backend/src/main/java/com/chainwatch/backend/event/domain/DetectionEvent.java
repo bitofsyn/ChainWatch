@@ -10,12 +10,31 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
+/**
+ * (transaction_id, event_type) 유니크 제약은 동시성/재처리/멀티 인스턴스 환경에서
+ * 애플리케이션 레벨 exists 체크가 놓치는 중복 저장을 DB 레벨에서 차단한다.
+ */
 @Entity
-@Table(name = "detection_events")
+@Table(
+        name = "detection_events",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_detection_events_transaction_event_type",
+                columnNames = {"transaction_id", "event_type"}
+        ),
+        indexes = {
+                @Index(name = "idx_detection_events_detected_at", columnList = "detected_at"),
+                @Index(name = "idx_detection_events_risk_level", columnList = "risk_level"),
+                @Index(name = "idx_detection_events_wallet_address", columnList = "wallet_address"),
+                @Index(name = "idx_detection_events_status", columnList = "status"),
+                @Index(name = "idx_detection_events_event_type", columnList = "event_type")
+        }
+)
 public class DetectionEvent {
 
     @Id

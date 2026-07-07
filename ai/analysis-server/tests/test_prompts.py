@@ -35,4 +35,17 @@ def test_prompt_handles_missing_optional_fields():
 
 
 def test_prompt_version_defined():
-    assert PROMPT_VERSION == "v1"
+    assert PROMPT_VERSION == "v2"
+
+
+def test_prompt_contains_injection_guard():
+    prompt = build_analysis_prompt(make_request())
+    assert "<event_data>" in prompt
+    assert "</event_data>" in prompt
+    assert "신뢰할 수 없는 데이터" in prompt
+
+
+def test_prompt_requires_structured_sections():
+    prompt = build_analysis_prompt(make_request())
+    for section in ["## 개요", "## 위험 해석", "## 오탐 가능성", "## 신뢰도", "## 권장 대응", "## 추가 확인 사항"]:
+        assert section in prompt
