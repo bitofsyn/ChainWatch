@@ -48,6 +48,8 @@ chainwatch:
     jwt-expiration-minutes: 60
     admin-username: ${CHAINWATCH_ADMIN_USERNAME:admin}
     admin-password: ${CHAINWATCH_ADMIN_PASSWORD:{noop}chainwatch}
+    analyst-username: ${CHAINWATCH_ANALYST_USERNAME:analyst}
+    analyst-password: ${CHAINWATCH_ANALYST_PASSWORD:{noop}chainwatch}
   ethereum:
     network: ethereum-mainnet
     chain-id: "1"
@@ -84,6 +86,7 @@ chainwatch:
     start-block: 0        # 0 이하면 최신 블록부터 수집
     max-blocks-per-poll: 5
     reorg-rewind-depth: 6  # parentHash 불일치(reorg) 감지 시 되감을 블록 수
+    confirmation-depth: 12 # head - blockNumber + 1이 이 값 이상이면 확정(confirmed). rewind 깊이보다 크게 유지
     retry:
       max-attempts: 4
       initial-delay-ms: 500

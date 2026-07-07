@@ -1,6 +1,7 @@
 package com.chainwatch.backend.event.repository;
 
 import com.chainwatch.backend.event.domain.DetectionEvent;
+import com.chainwatch.backend.event.domain.EventStatus;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import jakarta.persistence.criteria.Predicate;
@@ -18,6 +19,7 @@ public final class DetectionEventSpecifications {
     public static Specification<DetectionEvent> search(
             EventType eventType,
             RiskLevel riskLevel,
+            EventStatus status,
             String wallet,
             Instant from,
             Instant to
@@ -29,6 +31,17 @@ public final class DetectionEventSpecifications {
             }
             if (riskLevel != null) {
                 predicates.add(cb.equal(root.get("riskLevel"), riskLevel));
+            }
+            if (status != null) {
+                // status 컬럼은 nullable이고 null은 NEW로 간주하므로 NEW 필터는 null도 포함한다.
+                if (status == EventStatus.NEW) {
+                    predicates.add(cb.or(
+                            root.get("status").isNull(),
+                            cb.equal(root.get("status"), EventStatus.NEW)
+                    ));
+                } else {
+                    predicates.add(cb.equal(root.get("status"), status));
+                }
             }
             if (wallet != null && !wallet.isBlank()) {
                 predicates.add(cb.equal(cb.lower(root.get("walletAddress")), wallet.toLowerCase()));

@@ -505,6 +505,7 @@ public class AgentOpsService {
             case ACKNOWLEDGED -> "접수";
             case INVESTIGATING -> "조사 진행";
             case RESOLVED -> "해결 완료";
+            case FALSE_POSITIVE -> "오탐 종결";
         };
     }
 

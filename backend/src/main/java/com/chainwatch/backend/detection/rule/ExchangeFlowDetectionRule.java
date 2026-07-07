@@ -6,13 +6,18 @@ import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ExchangeFlowDetectionRule implements DetectionRule {
+
+    static final String RULE_NAME = "exchange-flow";
+    static final String RULE_VERSION = "1.0";
 
     private final DetectionProperties detectionProperties;
 
@@ -41,13 +46,23 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
         String walletAddress = toExchange ? transaction.getToAddress() : transaction.getFromAddress();
         int riskScore = toExchange ? 88 : 78;
 
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("thresholdEth", threshold);
+        evidence.put("observedAmountEth", transaction.getAmount());
+        evidence.put("direction", toExchange ? "INBOUND" : "OUTBOUND");
+        evidence.put("matchedExchangeAddress", toExchange ? transaction.getToAddress() : transaction.getFromAddress());
+        evidence.put("counterpartyAddress", toExchange ? transaction.getFromAddress() : transaction.getToAddress());
+
         return Optional.of(new DetectionCommand(
                 EventType.EXCHANGE_FLOW,
                 RiskLevel.HIGH,
                 riskScore,
                 "Exchange flow detected: " + transaction.getAmount() + " ETH moved " + direction,
                 walletAddress,
-                transaction
+                transaction,
+                RULE_NAME,
+                RULE_VERSION,
+                evidence
         ));
     }
 

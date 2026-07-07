@@ -3,6 +3,7 @@ package com.chainwatch.backend.collector.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,7 +53,7 @@ class BlockCollectionServiceTest {
     void setUp() {
         CollectorProperties properties = new CollectorProperties(
                 ProviderType.RPC, CollectionMode.POLLING, true,
-                15_000, 0, 5, 6, null, null, null);
+                15_000, 0, 5, 6, 12, null, null, null);
         service = new BlockCollectionService(
                 blockchainClient, properties, collectorStateRepository,
                 blockProcessor, rawEventPublisher,
@@ -143,9 +144,51 @@ class BlockCollectionServiceTest {
 
         assertThat(collected).isZero();
         assertThat(state.getLastCollectedBlock()).isEqualTo(93L); // 100 - 1 - rewindDepth(6)
-        verify(collectorStateRepository).save(state);
+        verify(collectorStateRepository, atLeastOnce()).save(state);
         verify(blockProcessor, never()).process(any());
         verify(blockchainClient, never()).fetchBlock(101L);
+    }
+
+    @Test
+    void recordsObservedChainHeadWhenCollecting() {
+        CollectorState state = new CollectorState("ethereum-main-collector", 9L, Instant.now());
+        state.updateLastCollectedBlock(9L, "0xhash9");
+        when(blockchainClient.fetchLatestBlockNumber()).thenReturn(12L);
+        when(collectorStateRepository.findById(any())).thenReturn(Optional.of(state));
+        when(blockchainClient.fetchBlock(anyLong())).thenAnswer(invocation -> block(invocation.getArgument(0)));
+        when(blockProcessor.process(any())).thenReturn(List.of());
+
+        service.collectUpToLatest();
+
+        assertThat(state.getLastKnownChainHead()).isEqualTo(12L);
+        verify(collectorStateRepository).save(state);
+    }
+
+    @Test
+    void observedChainHeadNeverRegresses() {
+        CollectorState state = new CollectorState("ethereum-main-collector", 95L, Instant.now());
+        state.observeChainHead(100L);
+        when(collectorStateRepository.findById(any())).thenReturn(Optional.of(state));
+
+        service.collectUpTo(90L); // 이미 수집된 지점보다 낮은 target(지연 도착 head)
+
+        assertThat(state.getLastKnownChainHead()).isEqualTo(100L);
+    }
+
+    @Test
+    void reorgRewindKeepsObservedChainHead() {
+        CollectorState state = new CollectorState("ethereum-main-collector", 99L, Instant.now());
+        state.updateLastCollectedBlock(99L, "0xcanonical99");
+        when(collectorStateRepository.findById(any())).thenReturn(Optional.of(state));
+        BlockDto reorgedBlock = new BlockDto(100L, "0xhash100", "0xuncle99", Instant.EPOCH, "0xminer",
+                BigInteger.ZERO, BigInteger.ZERO, NETWORK, List.of());
+        when(blockchainClient.fetchBlock(100L)).thenReturn(reorgedBlock);
+
+        service.collectUpTo(101L);
+
+        // rewind는 수집 진행도만 되돌리고, head 관측치는 유지되어 rewind 구간이 "미확정"으로 판정된다.
+        assertThat(state.getLastCollectedBlock()).isEqualTo(93L);
+        assertThat(state.getLastKnownChainHead()).isEqualTo(101L);
     }
 
     /** parentHash가 직전 블록 해시와 연결되도록 생성해 연속성 검증을 통과시킨다. */
