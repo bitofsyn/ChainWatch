@@ -8,6 +8,7 @@ import { SearchFilterBar } from "../components/SearchFilterBar";
 import { Pagination } from "../components/Pagination";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
+import { ChainBadge } from "../components/ChainBadge";
 import { DataState } from "../components/DataState";
 
 const PAGE_SIZE = 20;
@@ -136,6 +137,7 @@ export function EventsPage() {
                     점수
                   </th>
                   <th scope="col">상태</th>
+                  <th scope="col">체인</th>
                   <th scope="col">유형</th>
                   <th scope="col">요약</th>
                   <th scope="col">지갑</th>
@@ -157,6 +159,9 @@ export function EventsPage() {
                     <td className="num strong-num">{row.riskScore}</td>
                     <td>
                       <StatusBadge status={row.status} />
+                    </td>
+                    <td>
+                      <ChainBadge network={row.network} />
                     </td>
                     <td>
                       <a className="row-link" href={`#/events/${row.id}`}>

@@ -11,6 +11,7 @@ function event(overrides: Partial<DetectionEventItem>): DetectionEventItem {
     summary: "",
     walletAddress: "0xabc",
     txHash: null,
+    network: "ethereum-mainnet",
     detectedAt: "2026-07-05T00:00:00Z",
     status: "NEW" as const,
     ...overrides
@@ -39,6 +40,15 @@ describe("buildEventsQuery", () => {
 
   it("skips empty status filter", () => {
     expect(buildEventsQuery({ status: "" }, 20)).toBe("size=20");
+  });
+
+  it("includes network filter", () => {
+    expect(buildEventsQuery({ network: "polygon-mainnet" }, 20)).toBe("network=polygon-mainnet&size=20");
+  });
+
+  it("unassigned takes precedence over assignee", () => {
+    expect(buildEventsQuery({ unassigned: true, assignee: "alice" }, 20)).toBe("unassigned=true&size=20");
+    expect(buildEventsQuery({ assignee: "alice" }, 20)).toBe("assignee=alice&size=20");
   });
 
   it("converts from/to datetime-local values to ISO instants", () => {

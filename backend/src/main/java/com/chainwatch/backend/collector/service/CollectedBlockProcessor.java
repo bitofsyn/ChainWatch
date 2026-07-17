@@ -81,7 +81,8 @@ public class CollectedBlockProcessor {
                 GasFees.estimateFeeEth(transaction.gasPriceWei(), transaction.maxFeePerGasWei(), transaction.gas()),
                 transaction.blockNumber(),
                 transaction.timestamp(),
-                transaction.contractAddress()
+                transaction.contractAddress(),
+                transaction.network()
         );
     }
 
