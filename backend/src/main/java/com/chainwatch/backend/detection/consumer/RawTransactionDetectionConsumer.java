@@ -64,7 +64,8 @@ public class RawTransactionDetectionConsumer {
                 GasFees.estimateFeeEth(event.gasPriceWei(), event.maxFeePerGasWei(), event.gas()),
                 event.blockNumber(),
                 event.timestamp(),
-                event.contractAddress()
+                event.contractAddress(),
+                event.network()
         );
     }
 }

@@ -65,6 +65,10 @@ public class DetectionEvent {
     @JoinColumn(name = "transaction_id")
     private Transaction transaction;
 
+    /** 이벤트가 발생한 체인. 연결된 트랜잭션에서 파생하며, 레거시 행(null)은 기본 체인으로 간주한다. */
+    @Column(length = 50)
+    private String network;
+
     /** 기존 데이터 마이그레이션 없이 컬럼을 추가하기 위해 nullable로 두고, null은 NEW로 간주한다. */
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
@@ -123,6 +127,8 @@ public class DetectionEvent {
         this.walletAddress = walletAddress;
         this.detectedAt = detectedAt;
         this.transaction = transaction;
+        // 이벤트의 체인은 관측된 트랜잭션에서 파생한다(연결이 없으면 기본 체인).
+        this.network = transaction != null ? transaction.getNetwork() : Transaction.DEFAULT_NETWORK;
     }
 
     public Long getId() {
@@ -155,6 +161,11 @@ public class DetectionEvent {
 
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    /** 레거시 행(null)은 기본 체인으로 간주한다. */
+    public String getNetwork() {
+        return network == null || network.isBlank() ? Transaction.DEFAULT_NETWORK : network;
     }
 
     public EventStatus getStatus() {

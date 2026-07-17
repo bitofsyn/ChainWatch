@@ -97,6 +97,47 @@ class DetectionEventControllerTest {
                 .andExpect(jsonPath("$.content[0].assignee").doesNotExist());
     }
 
+    @Test
+    void eventInheritsNetworkFromTransactionAndIsExposed() throws Exception {
+        seedEventOnNetwork("0xhash-polygon", "polygon-mainnet");
+
+        mockMvc.perform(get("/api/events").param("wallet", "0xfrom"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].network").value("polygon-mainnet"));
+    }
+
+    @Test
+    void networkFilterMatchesCaseInsensitively() throws Exception {
+        seedEventOnNetwork("0xhash-eth", "ethereum-mainnet");
+        seedEventOnNetwork("0xhash-poly", "polygon-mainnet");
+
+        mockMvc.perform(get("/api/events").param("network", "POLYGON-MAINNET"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].network").value("polygon-mainnet"));
+    }
+
+    @Test
+    void defaultNetworkFilterIncludesLegacyNullRows() throws Exception {
+        // 레거시 경로(8-arg 생성자)는 network를 기본 체인으로 채운다
+        seedEvent("0xhash-legacy");
+        seedEventOnNetwork("0xhash-poly2", "polygon-mainnet");
+
+        mockMvc.perform(get("/api/events").param("network", "ethereum-mainnet"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].network").value("ethereum-mainnet"));
+    }
+
+    private DetectionEvent seedEventOnNetwork(String txHash, String network) {
+        Transaction transaction = transactionRepository.save(new Transaction(
+                txHash, "0xfrom", "0xto", new BigDecimal("1.5"), new BigDecimal("0.01"),
+                100L, Instant.now(), null, network));
+        return detectionEventRepository.save(new DetectionEvent(
+                EventType.LARGE_TRANSFER, RiskLevel.HIGH, 90,
+                "Large transfer detected", "0xfrom", Instant.now(), transaction));
+    }
+
     private DetectionEvent seedEventWithAssignee(String txHash, String assignee) {
         DetectionEvent event = seedEvent(txHash);
         event.applyStatusChange(

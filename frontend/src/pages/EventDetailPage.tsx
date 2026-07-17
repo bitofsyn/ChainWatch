@@ -29,6 +29,7 @@ import { ConfirmationBadge } from "../components/ConfirmationBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
+import { ChainBadge } from "../components/ChainBadge";
 import { DataState } from "../components/DataState";
 
 interface EventDetailPageProps {
@@ -148,6 +149,12 @@ function SummaryStrip({ event }: { event: DetectionEventDetail }) {
       <div className="summary-cell">
         <span>유형</span>
         <div className="summary-value">{formatEventType(event.eventType)}</div>
+      </div>
+      <div className="summary-cell">
+        <span>체인</span>
+        <div className="summary-value">
+          <ChainBadge network={event.network} />
+        </div>
       </div>
       <div className="summary-cell">
         <span>담당자</span>

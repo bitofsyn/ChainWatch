@@ -15,6 +15,7 @@ public record TransactionResponse(
         Long blockNumber,
         Instant timestamp,
         String contractAddress,
+        String network,
         Long confirmations,
         Boolean confirmed
 ) {
@@ -34,6 +35,7 @@ public record TransactionResponse(
                 transaction.getBlockNumber(),
                 transaction.getTimestamp(),
                 transaction.getContractAddress(),
+                transaction.getNetwork(),
                 confirmation.confirmations(),
                 confirmation.confirmed()
         );

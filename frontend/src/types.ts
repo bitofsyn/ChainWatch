@@ -15,6 +15,8 @@ export interface DetectionEventItem {
   summary: string;
   walletAddress: string;
   txHash: string | null;
+  /** 이벤트가 발생한 체인 (예: ethereum-mainnet). 레거시 이벤트도 기본 체인으로 채워진다. */
+  network: string;
   detectedAt: string;
   status: EventLifecycleStatus;
   /* 분석가 workflow 필드 (Wave1 백엔드 계약, 전부 nullable) */

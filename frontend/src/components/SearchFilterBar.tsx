@@ -1,4 +1,11 @@
-import { EVENT_TYPE_LABELS, LIFECYCLE_STATUS_LABELS, LIFECYCLE_STATUS_ORDER, RISK_LEVEL_LABELS } from "../lib/format";
+import {
+  EVENT_TYPE_LABELS,
+  LIFECYCLE_STATUS_LABELS,
+  LIFECYCLE_STATUS_ORDER,
+  NETWORK_LABELS,
+  NETWORK_ORDER,
+  RISK_LEVEL_LABELS
+} from "../lib/format";
 import type { EventFilters } from "../lib/events";
 
 interface SearchFilterBarProps {
@@ -51,6 +58,19 @@ export function SearchFilterBar({ filters, onChange, onSearch }: SearchFilterBar
         {LIFECYCLE_STATUS_ORDER.map((value) => (
           <option key={value} value={value}>
             {LIFECYCLE_STATUS_LABELS[value]}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="체인"
+        value={filters.network ?? ""}
+        onChange={(event) => onChange({ ...filters, network: event.target.value || undefined })}
+      >
+        <option value="">전체 체인</option>
+        {NETWORK_ORDER.map((value) => (
+          <option key={value} value={value}>
+            {NETWORK_LABELS[value]}
           </option>
         ))}
       </select>

@@ -55,6 +55,7 @@ public class DetectionEventController {
             @RequestParam(required = false) String wallet,
             @RequestParam(required = false) String assignee,
             @RequestParam(required = false, defaultValue = "false") boolean unassigned,
+            @RequestParam(required = false) String network,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(defaultValue = "0") int page,
@@ -63,7 +64,7 @@ public class DetectionEventController {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "detectedAt"));
         return detectionEventRepository
-                .search(eventType, riskLevel, status, wallet, assignee, unassigned, from, to, pageable)
+                .search(eventType, riskLevel, status, wallet, assignee, unassigned, network, from, to, pageable)
                 .map(DetectionEventResponse::from);
     }
 

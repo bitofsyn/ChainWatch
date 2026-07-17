@@ -23,6 +23,7 @@ public final class DetectionEventSpecifications {
             String wallet,
             String assignee,
             boolean unassignedOnly,
+            String network,
             Instant from,
             Instant to
     ) {
@@ -33,6 +34,17 @@ public final class DetectionEventSpecifications {
             }
             if (riskLevel != null) {
                 predicates.add(cb.equal(root.get("riskLevel"), riskLevel));
+            }
+            if (network != null && !network.isBlank()) {
+                // 레거시 행(network=null)은 기본 체인으로 간주하므로, 기본 체인 필터는 null도 포함한다.
+                if (network.equalsIgnoreCase(com.chainwatch.backend.transaction.domain.Transaction.DEFAULT_NETWORK)) {
+                    predicates.add(cb.or(
+                            root.get("network").isNull(),
+                            cb.equal(cb.lower(root.get("network")), network.toLowerCase())
+                    ));
+                } else {
+                    predicates.add(cb.equal(cb.lower(root.get("network")), network.toLowerCase()));
+                }
             }
             if (status != null) {
                 // status 컬럼은 nullable이고 null은 NEW로 간주하므로 NEW 필터는 null도 포함한다.

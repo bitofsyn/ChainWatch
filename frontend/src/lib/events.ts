@@ -11,6 +11,8 @@ export interface EventFilters {
   assignee?: string;
   /** 미할당 이벤트만 조회. assignee보다 우선한다. */
   unassigned?: boolean;
+  /** 체인 필터 (예: ethereum-mainnet). 기본 체인 선택 시 레거시 null 행도 포함된다. */
+  network?: string;
   /** datetime-local 입력값 (예: 2026-07-07T09:00). 쿼리 시 ISO Instant로 변환된다. */
   from?: string;
   to?: string;
@@ -46,6 +48,9 @@ export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE
     params.set("unassigned", "true");
   } else if (filters.assignee && filters.assignee.trim()) {
     params.set("assignee", filters.assignee.trim());
+  }
+  if (filters.network) {
+    params.set("network", filters.network);
   }
   const from = toIsoInstant(filters.from);
   if (from) {
