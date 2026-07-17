@@ -8,7 +8,8 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   WHALE_ACTIVITY: "관심 지갑 활동",
   EXCHANGE_FLOW: "거래소 입출금",
   RAPID_TRANSFER: "반복 이체",
-  WATCHLIST_MATCH: "watchlist 일치"
+  WATCHLIST_MATCH: "watchlist 일치",
+  FAN_OUT: "자금 분산"
 };
 
 export const RISK_LEVEL_LABELS: Record<string, string> = {
