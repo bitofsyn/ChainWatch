@@ -28,6 +28,8 @@ class DetectionRuleEvidenceTest {
             new BigDecimal("50.0"),
             3,
             10,
+            5,
+            15,
             List.of(WATCHLIST_ADDRESS),
             List.of(EXCHANGE_ADDRESS)
     );
@@ -103,6 +105,34 @@ class DetectionRuleEvidenceTest {
         assertThat(command.evidence()).containsEntry("matchedDirection", "FROM");
         assertThat(command.evidence()).containsEntry("watchlistReason", "configured-watchlist-address");
         assertThat(command.evidence()).containsEntry("counterpartyAddress", "0xother");
+    }
+
+    @Test
+    void fanOutFiresWhenDistinctRecipientsReachThresholdAndRecordsOutDegree() {
+        TransactionRepository transactionRepository = mock(TransactionRepository.class);
+        when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(6L);
+        Transaction transaction = transaction("0xsplitter", "0xr1", BigDecimal.ONE);
+
+        DetectionCommand command = new FanOutDetectionRule(properties, transactionRepository)
+                .evaluate(transaction).orElseThrow();
+
+        assertThat(command.eventType()).isEqualTo(EventType.FAN_OUT);
+        assertThat(command.ruleName()).isEqualTo("fan-out");
+        assertThat(command.evidence()).containsEntry("windowMinutes", 15L);
+        assertThat(command.evidence()).containsEntry("thresholdRecipients", 5);
+        assertThat(command.evidence()).containsEntry("observedDistinctRecipients", 6L);
+        assertThat(command.evidence()).containsEntry("fromAddress", "0xsplitter");
+    }
+
+    @Test
+    void fanOutDoesNotFireBelowRecipientThreshold() {
+        TransactionRepository transactionRepository = mock(TransactionRepository.class);
+        // 같은 상대에게 반복 송금(높은 빈도, 낮은 out-degree)은 fan-out으로 잡히지 않는다
+        when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(2L);
+        Transaction transaction = transaction("0xrepeat", "0xsame", BigDecimal.ONE);
+
+        assertThat(new FanOutDetectionRule(properties, transactionRepository).evaluate(transaction))
+                .isEmpty();
     }
 
     private Transaction transaction(String from, String to, BigDecimal amount) {

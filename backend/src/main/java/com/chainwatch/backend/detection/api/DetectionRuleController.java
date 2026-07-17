@@ -65,6 +65,17 @@ public class DetectionRuleController {
                         "HIGH",
                         90,
                         watchlistSize > 0
+                ),
+                new DetectionRulesResponse.Rule(
+                        "FAN_OUT",
+                        "자금 분산(fan-out) 그래프 탐지",
+                        "한 지갑이 짧은 시간 창 안에 임계값 이상의 서로 다른 주소로 송금하는 "
+                                + "그래프 out-degree 패턴(peeling chain/스플리팅)을 탐지합니다.",
+                        detectionProperties.fanOutWindowMinutes() + "분 내 서로 다른 수신자 "
+                                + detectionProperties.fanOutThresholdRecipients() + "개 이상",
+                        "HIGH",
+                        78,
+                        detectionProperties.fanOutThresholdRecipients() > 1
                 )
         );
 

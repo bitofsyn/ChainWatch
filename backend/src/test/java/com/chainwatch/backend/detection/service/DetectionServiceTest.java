@@ -45,7 +45,7 @@ class DetectionServiceTest {
     void setUp() {
         DetectionProperties properties = new DetectionProperties(
                 DetectionProperties.DetectionTransport.SYNC,
-                new BigDecimal("100.0"), null, 0, 10, List.of(), List.of());
+                new BigDecimal("100.0"), null, 0, 10, 0, 15, List.of(), List.of());
         detectionService = new DetectionService(
                 List.of(new LargeTransferDetectionRule(properties)),
                 detectionEventRepository,
