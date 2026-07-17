@@ -8,6 +8,16 @@ public record AiAnalysisProperties(
         String provider,
         String model,
         String baseUrl,
-        String analyzePath
+        String analyzePath,
+        Worker worker
 ) {
+
+    /** 자동 분석 워커(백로그 소비) 설정. */
+    public record Worker(
+            boolean enabled,
+            long pollIntervalMs,
+            int batchSize,
+            long stalePendingMinutes
+    ) {
+    }
 }

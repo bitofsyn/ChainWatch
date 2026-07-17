@@ -20,4 +20,9 @@ public interface AiAnalysisReportRepository extends JpaRepository<AiAnalysisRepo
 
     @EntityGraph(attributePaths = "detectionEvent")
     List<AiAnalysisReport> findTop4ByStatusOrderByAnalyzedAtDesc(AnalysisStatus status);
+
+    /** 오래 PENDING에 머문 리포트 조회 (자동 분석 워커의 stale 재제출 대상) */
+    @EntityGraph(attributePaths = "detectionEvent")
+    List<AiAnalysisReport> findTop3ByStatusAndAnalyzedAtBeforeOrderByAnalyzedAtAsc(
+            AnalysisStatus status, Instant threshold);
 }
