@@ -7,7 +7,6 @@ import type {
   AgentTeamStatus,
   SubAgentState
 } from "../types";
-import { buildAgentOpsSnapshot } from "../mocks/agentOps";
 
 async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -17,17 +16,9 @@ async function requestJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/**
- * 백엔드 GET /api/agent-ops/snapshot 을 우선 호출하고,
- * 미배포/미연결 환경에서는 mock 스냅샷으로 폴백한다 (source 필드로 구분).
- */
+/** 백엔드 GET /api/agent-ops/snapshot 조회. 실패 시 호출부에서 에러 배너를 표시한다. */
 export async function fetchAgentOpsSnapshot(): Promise<AgentOpsSnapshot> {
-  try {
-    const snapshot = await requestJson<AgentOpsSnapshot>("/api/agent-ops/snapshot");
-    return { ...snapshot, source: "api" };
-  } catch {
-    return { ...buildAgentOpsSnapshot(), source: "mock" };
-  }
+  return requestJson<AgentOpsSnapshot>("/api/agent-ops/snapshot");
 }
 
 export async function fetchAgentTeam(teamId: string): Promise<AgentTeam | null> {

@@ -361,6 +361,4 @@ export interface AgentOpsSnapshot {
   overview: AgentOpsOverview;
   teams: AgentTeam[];
   handoffs: AgentHandoffEvent[];
-  /** 프론트 데이터 계층에서 채움: 실제 API 응답인지 mock 폴백인지 */
-  source?: "api" | "mock";
 }
