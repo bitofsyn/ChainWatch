@@ -46,45 +46,47 @@ export function OverviewPage() {
     let active = true;
 
     async function load() {
-      try {
-        const [healthData, statsData, trendData, criticalPage, highPage, eventFeedData, transactionFeedData] =
-          await Promise.all([
-            fetchHealth(),
-            fetchEventStats(),
-            fetchEventTrend(24),
-            fetchEvents({ riskLevel: "CRITICAL" }, 5),
-            fetchEvents({ riskLevel: "HIGH" }, 5),
-            fetchRecentEventFeed(6),
-            fetchRecentTransactionFeed(6)
-          ]);
+      // 위젯별로 독립 처리한다. 일부 엔드포인트(예: 통계 추이)가 실패해도
+      // health·KPI 등 나머지 대시보드는 그대로 채우고, 실패한 위젯만 빈 상태로 둔다.
+      const [healthR, statsR, trendR, criticalR, highR, eventFeedR, transactionFeedR] =
+        await Promise.allSettled([
+          fetchHealth(),
+          fetchEventStats(),
+          fetchEventTrend(24),
+          fetchEvents({ riskLevel: "CRITICAL" }, 5),
+          fetchEvents({ riskLevel: "HIGH" }, 5),
+          fetchRecentEventFeed(6),
+          fetchRecentTransactionFeed(6)
+        ]);
 
-        if (!active) {
-          return;
-        }
-
-        const queue = [...criticalPage.content, ...highPage.content]
-          .sort((a, b) => b.riskScore - a.riskScore || b.detectedAt.localeCompare(a.detectedAt))
-          .slice(0, 6);
-
-        startTransition(() => {
-          setHealth(healthData);
-          setStats(statsData);
-          setTrend(trendData);
-          setPriorityEvents(queue);
-          setEventFeed(eventFeedData);
-          setTransactionFeed(transactionFeedData);
-          setError(null);
-          setLoading(false);
-        });
-      } catch {
-        if (!active) {
-          return;
-        }
-        startTransition(() => {
-          setError("백엔드 API에 연결되지 않았습니다. 파이프라인 상태를 확인해주세요.");
-          setLoading(false);
-        });
+      if (!active) {
+        return;
       }
+
+      const valueOf = <T,>(result: PromiseSettledResult<T>): T | null =>
+        result.status === "fulfilled" ? result.value : null;
+
+      const criticalContent = valueOf(criticalR)?.content ?? [];
+      const highContent = valueOf(highR)?.content ?? [];
+      const queue = [...criticalContent, ...highContent]
+        .sort((a, b) => b.riskScore - a.riskScore || b.detectedAt.localeCompare(a.detectedAt))
+        .slice(0, 6);
+
+      // 모든 요청이 실패했을 때만 백엔드 미연결로 간주한다.
+      const allFailed = [healthR, statsR, trendR, criticalR, highR, eventFeedR, transactionFeedR].every(
+        (result) => result.status === "rejected"
+      );
+
+      startTransition(() => {
+        setHealth(valueOf(healthR));
+        setStats(valueOf(statsR));
+        setTrend(valueOf(trendR));
+        setPriorityEvents(queue);
+        setEventFeed(valueOf(eventFeedR) ?? []);
+        setTransactionFeed(valueOf(transactionFeedR) ?? []);
+        setError(allFailed ? "백엔드 API에 연결되지 않았습니다. 파이프라인 상태를 확인해주세요." : null);
+        setLoading(false);
+      });
     }
 
     load();
