@@ -47,12 +47,14 @@ Phase 기준 남은 작업. 완료 항목은 [CHANGELOG.md](CHANGELOG.md)로 이
 - [ ] 담당자별 처리 SLA·부하 대시보드 (미처리 건수/평균 처리시간)
 - [ ] 상태 전이 감사 이력을 이벤트 상세 타임라인으로 노출 (audit_logs의 EVENT_STATUS_CHANGE 활용)
 
-### 멀티체인 지원 (설계 필요)
-- [ ] `chain` 차원 도입 — Transaction/DetectionEvent에 chainId, 수집기 provider 추상화(현재 ethereum-mainnet 하드코딩)
-- [ ] 대상 체인 결정(Solana는 비-EVM이라 별도 수집기, Polygon/Arbitrum은 EVM 재사용 가능) 및 프론트 체인 필터
+### 멀티체인 지원
+- [x] `network` 차원 도입 — Transaction/DetectionEvent에 network 컬럼(하위호환), API 노출·필터, 프론트 체인 배지·필터
+- [ ] 수집기 멀티체인화 — EVM 체인(Polygon/Arbitrum)용 병렬 수집기 인스턴스, 체인별 RPC/키 config
+- [ ] 비-EVM 체인(Solana 등) 별도 수집기 어댑터
 - 선결 과제: 체인별 RPC/키 관리, 탐지 룰의 체인 독립성 검토
 
-### 탐지 로직 고도화 (설계 필요)
-- [ ] 그래프 분석 — 지갑 간 자금 흐름 그래프로 peeling chain/믹서 패턴 탐지
+### 탐지 로직 고도화
+- [x] 그래프 분석 1차 — FAN_OUT 룰(트랜잭션 그래프 out-degree 기반 자금 분산/peeling chain 탐지), evidence에 관측 out-degree 기록
+- [ ] 그래프 분석 확장 — fan-in(consolidation), multi-hop 흐름 추적, 믹서 클러스터 탐지
 - [ ] ML 이상탐지 — 룰 기반 점수에 학습 모델 보강(라벨 데이터·피처 파이프라인·오프라인 학습 인프라 필요)
 - 선결 과제: 학습 데이터 확보 전략, 룰 엔진과 ML 점수 결합 방식

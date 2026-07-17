@@ -112,5 +112,8 @@ chainwatch:
     exchange-flow-threshold-eth: 50.0
     rapid-transfer-threshold-count: 3
     rapid-transfer-window-minutes: 10
+    # 자금 분산(FAN_OUT) 그래프 룰: 창 내 서로 다른 수신 주소 수 임계값
+    fan-out-threshold-recipients: 5
+    fan-out-window-minutes: 15
     watchlist-addresses: []
     exchange-addresses: []

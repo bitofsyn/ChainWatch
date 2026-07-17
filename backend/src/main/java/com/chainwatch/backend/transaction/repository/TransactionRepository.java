@@ -32,6 +32,24 @@ public interface TransactionRepository
             @Param("thresholdTime") Instant thresholdTime
     );
 
+    /**
+     * 특정 발신 지갑이 최근 시간창 동안 자금을 보낸 서로 다른 수신 주소의 수(out-degree).
+     * 자금 분산(peeling chain/스플리팅) 그래프 패턴 탐지에 사용한다.
+     * 컨트랙트 생성 등 수신자 미상 트랜잭션은 집계에서 제외한다.
+     */
+    @Query("""
+            select count(distinct lower(t.toAddress))
+            from Transaction t
+            where lower(t.fromAddress) = lower(:fromAddress)
+              and t.timestamp >= :thresholdTime
+              and t.toAddress is not null
+              and t.toAddress <> 'CONTRACT_CREATION'
+            """)
+    long countDistinctRecipientsFromAddress(
+            @Param("fromAddress") String fromAddress,
+            @Param("thresholdTime") Instant thresholdTime
+    );
+
     default Page<Transaction> search(
             String wallet,
             Long blockNumber,

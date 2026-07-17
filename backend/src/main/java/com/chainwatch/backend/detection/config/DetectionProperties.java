@@ -11,6 +11,8 @@ public record DetectionProperties(
         BigDecimal exchangeFlowThresholdEth,
         int rapidTransferThresholdCount,
         long rapidTransferWindowMinutes,
+        int fanOutThresholdRecipients,
+        long fanOutWindowMinutes,
         List<String> watchlistAddresses,
         List<String> exchangeAddresses
 ) {

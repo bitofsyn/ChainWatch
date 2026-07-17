@@ -49,7 +49,7 @@ class CollectedBlockProcessorTest {
 
     private CollectedBlockProcessor processorWithMode(DetectionProperties.DetectionTransport mode) {
         DetectionProperties detectionProperties = new DetectionProperties(
-                mode, null, null, 0, 0, List.of(), List.of());
+                mode, null, null, 0, 0, 0, 0, List.of(), List.of());
         return new CollectedBlockProcessor(
                 transactionRepository, collectorStateRepository, detectionService, detectionProperties);
     }
