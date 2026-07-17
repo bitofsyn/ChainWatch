@@ -46,6 +46,7 @@ chainwatch:
     jwt-enabled: ${CHAINWATCH_JWT_ENABLED:false}
     jwt-secret: ${CHAINWATCH_JWT_SECRET:chainwatch-local-dev-secret-key-change-in-production-0123456789}
     jwt-expiration-minutes: 60
+    refresh-expiration-days: ${CHAINWATCH_REFRESH_EXPIRATION_DAYS:14}
     admin-username: ${CHAINWATCH_ADMIN_USERNAME:admin}
     admin-password: ${CHAINWATCH_ADMIN_PASSWORD:{noop}chainwatch}
     analyst-username: ${CHAINWATCH_ANALYST_USERNAME:analyst}

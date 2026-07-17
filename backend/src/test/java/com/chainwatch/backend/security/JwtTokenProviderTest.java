@@ -12,7 +12,7 @@ class JwtTokenProviderTest {
 
     private JwtTokenProvider provider(long expirationMinutes) {
         SecurityProperties properties = new SecurityProperties(
-                true, SECRET, expirationMinutes, "admin", "{noop}password", "analyst", "{noop}password");
+                true, SECRET, expirationMinutes, 14, "admin", "{noop}password", "analyst", "{noop}password");
         return new JwtTokenProvider(properties);
     }
 
@@ -40,7 +40,7 @@ class JwtTokenProviderTest {
         JwtTokenProvider provider = provider(60);
         JwtTokenProvider otherProvider = new JwtTokenProvider(new SecurityProperties(
                 true, "another-secret-key-that-is-long-enough-for-hmac-sha-0123456789",
-                60, "admin", "{noop}password", "analyst", "{noop}password"));
+                60, 14, "admin", "{noop}password", "analyst", "{noop}password"));
 
         String token = otherProvider.createToken("admin", List.of("ROLE_ADMIN"));
 

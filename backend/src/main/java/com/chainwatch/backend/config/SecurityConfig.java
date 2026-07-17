@@ -34,8 +34,10 @@ public class SecurityConfig {
     static final String ROLE_ADMIN = "ADMIN";
     static final String ROLE_ANALYST = "ANALYST";
 
+    /** 무인증 공개 경로. /api/auth 하위라도 /me·/logout·/password는 인증 체인을 태운다. */
     private static final String[] PUBLIC_PATHS = {
-            "/api/auth/**",
+            "/api/auth/login",
+            "/api/auth/refresh",
             "/error",
             "/actuator/health",
             "/actuator/metrics/**",
@@ -50,9 +52,10 @@ public class SecurityConfig {
             "/api/collector/blocks/**"
     };
 
-    /** 감사 로그 열람은 ADMIN 전용 (감사 대상이 감사 기록을 조회하는 것을 막는다). */
+    /** ADMIN 전용 경로: 감사 로그 열람, 사용자 계정 관리 전체. */
     private static final String[] ADMIN_READ_PATHS = {
-            "/api/audit-logs/**"
+            "/api/audit-logs/**",
+            "/api/users/**"
     };
 
     @Bean
@@ -109,6 +112,9 @@ public class SecurityConfig {
                             .requestMatchers("/api/**").permitAll()
                             .anyRequest().authenticated()
                     )
+                    // 접근 제어는 하지 않지만, 토큰이 오면 인증 컨텍스트는 채운다.
+                    // (/api/auth/me 동작, 감사 로그 actor 실명 기록, 프론트 역할 표시용)
+                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .httpBasic(Customizer.withDefaults());
         }
 

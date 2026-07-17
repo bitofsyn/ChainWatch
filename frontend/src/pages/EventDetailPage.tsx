@@ -26,7 +26,7 @@ import { buildStatusPatchBody, requiredReasonField, validateStatusChange } from 
 import { formatConfidence, formatEscalation, resolveAiReportView } from "../lib/aiReport";
 import { resolveRuleEvidence } from "../lib/ruleEvidence";
 import { ConfirmationBadge } from "../components/ConfirmationBadge";
-import { isAuthenticated } from "../lib/auth";
+import { useAuth } from "../contexts/AuthContext";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { DataState } from "../components/DataState";
@@ -362,7 +362,7 @@ function AiAnalysisSection({
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const view = resolveAiReportView(event.aiReport);
-  const authed = isAuthenticated();
+  const authed = useAuth().user != null;
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -581,7 +581,7 @@ function OperatorActionSection({
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const authed = isAuthenticated();
+  const authed = useAuth().user != null;
   const reasonField = requiredReasonField(targetStatus);
 
   const handleSubmit = async (formEvent: FormEvent) => {
@@ -639,7 +639,7 @@ function OperatorActionSection({
           unauthorized
           unauthorizedMessage={`현재 상태: ${formatLifecycleStatus(event.status)}. 상태 변경·담당자 지정은 분석가/관리자 로그인 후 가능합니다.`}
         />
-        <a className="ghost-button" href="#/admin">
+        <a className="ghost-button" href={`#/login?next=${encodeURIComponent(`/events/${event.id}`)}`}>
           로그인 하러 가기
         </a>
       </article>

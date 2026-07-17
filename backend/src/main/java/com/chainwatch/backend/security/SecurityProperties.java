@@ -7,6 +7,7 @@ public record SecurityProperties(
         boolean jwtEnabled,
         String jwtSecret,
         long jwtExpirationMinutes,
+        long refreshExpirationDays,
         String adminUsername,
         String adminPassword,
         String analystUsername,

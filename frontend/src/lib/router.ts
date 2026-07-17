@@ -41,12 +41,27 @@ export function matchAgentTeamDetail(route: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies" | "audit";
+export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies" | "audit" | "users";
 
 export function matchAdminSection(route: string): AdminSection | null {
   if (route === "/admin") {
     return "dashboard";
   }
-  const match = route.match(/^\/admin\/(pipeline|analysis|policies|audit)$/);
+  const match = route.match(/^\/admin\/(pipeline|analysis|policies|audit|users)$/);
   return match ? (match[1] as AdminSection) : null;
+}
+
+/** #/login?next=%2Fadmin 형태에서 로그인 후 복귀 경로를 얻는다. */
+export function loginNextPath(route: string): string {
+  const match = route.match(/^\/login(?:\?next=(.+))?$/);
+  if (!match) {
+    return "/";
+  }
+  const next = match[1] ? decodeURIComponent(match[1]) : "/";
+  // 외부 URL 주입 방지: 해시 라우트 내부 경로만 허용
+  return next.startsWith("/") ? next : "/";
+}
+
+export function isLoginRoute(route: string): boolean {
+  return route === "/login" || route.startsWith("/login?");
 }
