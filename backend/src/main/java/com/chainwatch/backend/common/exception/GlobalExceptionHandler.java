@@ -1,6 +1,8 @@
 package com.chainwatch.backend.common.exception;
 
+import com.chainwatch.backend.auth.exception.AuthenticationRequiredException;
 import com.chainwatch.backend.auth.exception.InvalidCredentialsException;
+import com.chainwatch.backend.auth.exception.InvalidRefreshTokenException;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.analysis.exception.AiAnalysisException;
 import com.chainwatch.backend.feed.exception.FeedCacheException;
@@ -57,6 +59,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentialsException(InvalidCredentialsException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiErrorResponse.of("INVALID_CREDENTIALS", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRefreshTokenException(InvalidRefreshTokenException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of("INVALID_REFRESH_TOKEN", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AuthenticationRequiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationRequiredException(AuthenticationRequiredException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of("UNAUTHORIZED", exception.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflictException(ConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of("CONFLICT", exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

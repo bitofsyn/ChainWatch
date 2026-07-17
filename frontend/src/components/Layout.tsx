@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { Theme } from "../hooks/useTheme";
+import { useAuth } from "../contexts/AuthContext";
+import { navigate } from "../lib/router";
 
 interface LayoutProps {
   route: string;
@@ -23,7 +25,19 @@ function isActive(route: string, path: string): boolean {
   return route === path || route.startsWith(`${path}/`);
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "관리자",
+  ANALYST: "분석가"
+};
+
 export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
+  const { user, logout } = useAuth();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/");
+  }
+
   return (
     <div className="app-shell">
       <header className="top-nav">
@@ -43,6 +57,21 @@ export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
             </a>
           ))}
         </nav>
+        {user ? (
+          <div className="nav-user">
+            <span className="nav-user-name" title={user.username}>
+              {user.displayName || user.username}
+              <small>{ROLE_LABELS[user.role] ?? user.role}</small>
+            </span>
+            <button type="button" className="ghost-button" onClick={handleLogout}>
+              로그아웃
+            </button>
+          </div>
+        ) : (
+          <a className="ghost-button" href={`#/login?next=${encodeURIComponent(route)}`}>
+            로그인
+          </a>
+        )}
         <button
           type="button"
           className="ghost-button theme-toggle"
