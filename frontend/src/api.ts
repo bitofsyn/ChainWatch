@@ -13,12 +13,16 @@ import type {
   HealthResponse,
   LoginResult,
   PipelineStatus,
+  Role,
   TransactionItem,
   TransactionPage,
+  User,
+  UserAccountItem,
+  UserCreateResult,
   WalletSummary
 } from "./types";
 import { buildEventsQuery, type EventFilters, type EventTrend } from "./lib/events";
-import { clearToken, getToken } from "./lib/auth";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./lib/auth";
 
 export class ApiError extends Error {
   constructor(public status: number, public serverMessage: string | null = null) {
@@ -26,28 +30,86 @@ export class ApiError extends Error {
   }
 }
 
+/** 세션이 완전히 만료됐을 때(리프레시 실패) AuthProvider가 수신하는 이벤트. */
+export const LOGOUT_EVENT = "chainwatch:logout";
+
+/** 동시 401 다발 시 refresh 요청이 한 번만 나가도록 하는 단일 비행 프라미스. */
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        return false;
+      }
+      try {
+        const response = await fetch("/api/auth/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken })
+        });
+        if (!response.ok) {
+          return false;
+        }
+        const body = (await response.json()) as { accessToken: string; refreshToken: string };
+        setTokens(body.accessToken, body.refreshToken);
+        return true;
+      } catch {
+        return false;
+      }
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function parseError(response: Response): Promise<ApiError> {
+  let serverMessage: string | null = null;
+  try {
+    const body = (await response.json()) as { message?: string };
+    serverMessage = typeof body.message === "string" ? body.message : null;
+  } catch {
+    serverMessage = null;
+  }
+  return new ApiError(response.status, serverMessage);
+}
+
 async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  const token = getToken();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  const doFetch = async (): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    const token = getAccessToken();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    return fetch(url, { ...init, headers });
+  };
+
+  let response = await doFetch();
+
+  // 액세스 토큰 만료로 보이는 401은 리프레시 후 1회만 재시도한다.
+  // 인증 엔드포인트 자체(로그인/리프레시)는 재시도 대상에서 제외.
+  const isAuthEndpoint = url.startsWith("/api/auth/login") || url.startsWith("/api/auth/refresh");
+  if (response.status === 401 && !isAuthEndpoint && getRefreshToken()) {
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      response = await doFetch();
+    }
   }
 
-  const response = await fetch(url, { ...init, headers });
   if (!response.ok) {
-    if (response.status === 401) {
-      clearToken();
+    if (response.status === 401 && !isAuthEndpoint) {
+      // 리프레시로도 복구 불가: 세션 종료를 앱 전역에 알린다
+      clearTokens();
+      window.dispatchEvent(new Event(LOGOUT_EVENT));
     }
-    let serverMessage: string | null = null;
-    try {
-      const body = (await response.json()) as { message?: string };
-      serverMessage = typeof body.message === "string" ? body.message : null;
-    } catch {
-      serverMessage = null;
-    }
-    throw new ApiError(response.status, serverMessage);
+    throw await parseError(response);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
 }
 
@@ -136,6 +198,70 @@ export function login(username: string, password: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password })
+  });
+}
+
+/** 현재 세션의 리프레시 토큰을 서버에서 폐기한다(다른 브라우저 세션은 유지). */
+export function logoutSession(refreshToken: string) {
+  return requestJson<void>("/api/auth/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+}
+
+export function fetchMe() {
+  return requestJson<User>("/api/auth/me");
+}
+
+export function changeMyPassword(currentPassword: string, newPassword: string) {
+  return requestJson<void>("/api/auth/password", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+}
+
+/** ── 사용자 관리 (ADMIN 전용) ───────────────── */
+
+export function fetchUsers() {
+  return requestJson<UserAccountItem[]>("/api/users");
+}
+
+export interface UserCreateInput {
+  username: string;
+  role: Role;
+  displayName?: string;
+  initialPassword?: string;
+}
+
+export function createUser(input: UserCreateInput) {
+  return requestJson<UserCreateResult>("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export interface UserUpdateInput {
+  role?: Role;
+  displayName?: string;
+  active?: boolean;
+}
+
+export function updateUser(id: number, input: UserUpdateInput) {
+  return requestJson<UserAccountItem>(`/api/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export function resetUserPassword(id: number, newPassword?: string) {
+  return requestJson<UserCreateResult>(`/api/users/${id}/password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newPassword ? { newPassword } : {})
   });
 }
 

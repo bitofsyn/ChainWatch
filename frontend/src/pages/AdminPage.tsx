@@ -12,7 +12,6 @@ import {
   fetchPipelineStatus,
   fetchRecentEventFeed,
   fetchRecentTransactionFeed,
-  login,
   requestAnalysis
 } from "../api";
 import type { AuditLogFilters } from "../api";
@@ -27,7 +26,7 @@ import type {
   PipelineStatus
 } from "../types";
 import type { AdminSection } from "../lib/router";
-import { clearToken, isAdmin, setToken } from "../lib/auth";
+import { useAuth } from "../contexts/AuthContext";
 import {
   formatDate,
   formatEventType,
@@ -39,13 +38,15 @@ import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { DataState } from "../components/DataState";
 import { Pagination } from "../components/Pagination";
+import { AdminUsersSection } from "./admin/AdminUsersSection";
 
-const SECTION_ITEMS: { section: AdminSection; path: string; label: string }[] = [
+const SECTION_ITEMS: { section: AdminSection; path: string; label: string; adminOnly?: boolean }[] = [
   { section: "dashboard", path: "/admin", label: "운영 대시보드" },
   { section: "pipeline", path: "/admin/pipeline", label: "파이프라인 상태" },
   { section: "analysis", path: "/admin/analysis", label: "재분석" },
   { section: "policies", path: "/admin/policies", label: "탐지·알림 정책" },
-  { section: "audit", path: "/admin/audit", label: "감사 로그" }
+  { section: "audit", path: "/admin/audit", label: "감사 로그", adminOnly: true },
+  { section: "users", path: "/admin/users", label: "사용자 관리", adminOnly: true }
 ];
 
 interface AdminPageProps {
@@ -53,16 +54,11 @@ interface AdminPageProps {
 }
 
 export function AdminPage({ section }: AdminPageProps) {
-  const [authed, setAuthed] = useState(isAdmin());
+  const { isAdmin } = useAuth();
 
-  if (!authed) {
-    return <AdminLogin onLogin={() => setAuthed(true)} />;
-  }
-
-  const handleLogout = () => {
-    clearToken();
-    setAuthed(false);
-  };
+  // 익명 접근은 App의 라우트 가드가 #/login으로 보낸다.
+  // ADMIN 전용 섹션에 ANALYST가 직접 진입하면 각 섹션이 forbidden 패널을 보여준다.
+  const visibleSections = SECTION_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <>
@@ -71,15 +67,10 @@ export function AdminPage({ section }: AdminPageProps) {
           <p className="eyebrow">관리자 콘솔</p>
           <h1>{SECTION_ITEMS.find((item) => item.section === section)?.label}</h1>
         </div>
-        <div className="page-head-actions">
-          <button type="button" className="ghost-button" onClick={handleLogout}>
-            로그아웃
-          </button>
-        </div>
       </section>
 
       <nav className="sub-nav" aria-label="관리자 메뉴">
-        {SECTION_ITEMS.map((item) => (
+        {visibleSections.map((item) => (
           <a
             key={item.section}
             href={`#${item.path}`}
@@ -90,86 +81,18 @@ export function AdminPage({ section }: AdminPageProps) {
         ))}
       </nav>
 
-      {section === "dashboard" ? <AdminDashboard onUnauthorized={handleLogout} /> : null}
+      {section === "dashboard" ? <AdminDashboard /> : null}
       {section === "pipeline" ? <AdminPipeline /> : null}
-      {section === "analysis" ? <AdminReanalysis onUnauthorized={handleLogout} /> : null}
+      {section === "analysis" ? <AdminReanalysis /> : null}
       {section === "policies" ? <AdminPolicies /> : null}
       {section === "audit" ? <AdminAuditLogs /> : null}
+      {section === "users" ? <AdminUsersSection /> : null}
     </>
   );
 }
 
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await login(username, password);
-      setToken(result.accessToken);
-      onLogin();
-    } catch (cause) {
-      const invalid = cause instanceof ApiError && cause.status === 401;
-      setError(
-        invalid
-          ? "아이디 또는 비밀번호가 올바르지 않습니다."
-          : "로그인 요청에 실패했습니다. 백엔드 상태를 확인해주세요."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <>
-      <section className="page-head">
-        <div>
-          <p className="eyebrow">관리자 콘솔</p>
-          <h1>관리자 로그인</h1>
-          <p className="page-lede">
-            수집기 제어, 상태 변경, AI 재분석 등 운영 액션은 관리자 인증 후 사용할 수 있습니다.
-          </p>
-        </div>
-      </section>
-
-      <section className="login-card glass-card">
-        <form className="login-form" onSubmit={handleSubmit}>
-          <label>
-            아이디
-            <input
-              type="text"
-              value={username}
-              autoComplete="username"
-              onChange={(event) => setUsername(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            비밀번호
-            <input
-              type="password"
-              value={password}
-              autoComplete="current-password"
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </label>
-          {error ? <div className="banner error">{error}</div> : null}
-          <button type="submit" className="primary-button" disabled={submitting}>
-            {submitting ? "로그인 중..." : "로그인"}
-          </button>
-        </form>
-      </section>
-    </>
-  );
-}
-
-function AdminDashboard({ onUnauthorized }: { onUnauthorized: () => void }) {
+function AdminDashboard() {
+  const { isAdmin } = useAuth();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [lastCollectedBlock, setLastCollectedBlock] = useState<number | null>(null);
   const [eventFeed, setEventFeed] = useState<FeedEventItem[]>([]);
@@ -216,8 +139,8 @@ function AdminDashboard({ onUnauthorized }: { onUnauthorized: () => void }) {
       setCollectResult(result);
       await loadStatus();
     } catch (cause) {
-      if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) {
-        onUnauthorized();
+      if (cause instanceof ApiError && cause.status === 403) {
+        setCollectError("블록 수집 트리거는 ADMIN 권한 계정만 사용할 수 있습니다.");
         return;
       }
       const serverMessage = cause instanceof ApiError ? cause.serverMessage : null;
@@ -265,6 +188,17 @@ function AdminDashboard({ onUnauthorized }: { onUnauthorized: () => void }) {
       </section>
 
       <section className="grid-panel">
+        {!isAdmin ? (
+          <article className="glass-card">
+            <div className="section-head compact">
+              <div>
+                <p className="section-kicker">수집 제어</p>
+                <h2>블록 수집 트리거</h2>
+              </div>
+            </div>
+            <div className="empty-state">블록 수집 트리거는 ADMIN 권한 계정만 사용할 수 있습니다.</div>
+          </article>
+        ) : (
         <article className="glass-card">
           <div className="section-head compact">
             <div>
@@ -307,6 +241,7 @@ function AdminDashboard({ onUnauthorized }: { onUnauthorized: () => void }) {
             </div>
           ) : null}
         </article>
+        )}
 
         <article className="glass-card">
           <div className="section-head compact">
@@ -428,7 +363,7 @@ function AdminPipeline() {
   );
 }
 
-function AdminReanalysis({ onUnauthorized }: { onUnauthorized: () => void }) {
+function AdminReanalysis() {
   const [events, setEvents] = useState<DetectionEventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -478,8 +413,8 @@ function AdminReanalysis({ onUnauthorized }: { onUnauthorized: () => void }) {
       await requestAnalysis(eventId);
       setResults((current) => ({ ...current, [eventId]: "분석 완료" }));
     } catch (cause) {
-      if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) {
-        onUnauthorized();
+      if (cause instanceof ApiError && cause.status === 403) {
+        setResults((current) => ({ ...current, [eventId]: "권한이 없습니다" }));
         return;
       }
       const serverMessage = cause instanceof ApiError ? cause.serverMessage : null;

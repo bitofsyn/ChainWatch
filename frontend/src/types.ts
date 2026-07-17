@@ -161,10 +161,36 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export type Role = "ADMIN" | "ANALYST";
+
+export interface User {
+  username: string;
+  role: Role;
+  displayName: string | null;
+}
+
 export interface LoginResult {
   accessToken: string;
   tokenType: string;
   expiresInSeconds: number;
+  refreshToken: string;
+  user: User;
+}
+
+export interface UserAccountItem {
+  id: number;
+  username: string;
+  role: Role;
+  displayName: string | null;
+  active: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+/** 사용자 생성/비밀번호 초기화 응답. initialPassword는 서버 생성 시 1회만 내려온다. */
+export interface UserCreateResult {
+  user: UserAccountItem;
+  initialPassword: string | null;
 }
 
 export interface CollectorState {

@@ -1,13 +1,19 @@
+import { useEffect } from "react";
 import { Layout } from "./components/Layout";
+import { useAuth } from "./contexts/AuthContext";
 import { useTheme } from "./hooks/useTheme";
 import {
+  isLoginRoute,
+  loginNextPath,
   matchAdminSection,
   matchAgentTeamDetail,
   matchEventDetail,
   matchTransactionDetail,
   matchWalletDetail,
+  navigate,
   useHashRoute
 } from "./lib/router";
+import { LoginPage } from "./pages/LoginPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { EventsPage } from "./pages/EventsPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
@@ -20,6 +26,9 @@ import { AgentTeamDetailPage } from "./pages/AgentTeamDetailPage";
 import { AgentActivityPage } from "./pages/AgentActivityPage";
 
 function resolvePage(route: string) {
+  if (isLoginRoute(route)) {
+    return <LoginPage nextPath={loginNextPath(route)} />;
+  }
   if (route === "/") {
     return <OverviewPage />;
   }
@@ -71,10 +80,23 @@ function resolvePage(route: string) {
 export default function App() {
   const route = useHashRoute();
   const { theme, toggleTheme } = useTheme();
+  const { user, status } = useAuth();
+
+  // 관리자 영역 가드: 세션 확인이 끝난(ready) 뒤 익명이면 로그인으로 보낸다.
+  const needsAuth = matchAdminSection(route) != null;
+  useEffect(() => {
+    if (needsAuth && status === "ready" && !user) {
+      navigate(`/login?next=${encodeURIComponent(route)}`);
+    }
+  }, [needsAuth, status, user, route]);
 
   return (
     <Layout route={route} theme={theme} onToggleTheme={toggleTheme}>
-      {resolvePage(route)}
+      {needsAuth && status === "loading" ? (
+        <div className="data-state">세션 확인 중…</div>
+      ) : (
+        resolvePage(route)
+      )}
     </Layout>
   );
 }
