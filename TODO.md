@@ -36,6 +36,23 @@ Phase 기준 남은 작업. 완료 항목은 [CHANGELOG.md](CHANGELOG.md)로 이
 - [x] Grafana 대시보드 JSON 프로비저닝(chainwatch-overview), Prometheus 알림 규칙(prometheus-rules.yml)
 
 ## 기타
-- [ ] AI 실 LLM(Claude/Gemini) 연동 검증 (API 키 필요)
-- [ ] 백엔드 `chainwatch.ai.enabled=true` end-to-end 연동 테스트
+- [x] AI 실 LLM(Claude/Gemini) 연동 검증 — Claude 기본 + Gemini 폴백, mock 제외 정직한 실패, 인젝션 스모크 통과
+- [x] 백엔드 `chainwatch.ai.enabled=true` end-to-end 연동 테스트 — 재분석 UI→이벤트 상세 구조화 리포트 렌더 확인
 - [x] `AiAnalysisService`의 동기 `.block()` 호출 비동기화 검토 (전용 executor 기반 `POST /analysis/async` 경로 추가, 동기 API는 하위호환 유지)
+
+## Phase 9 — 장기 기능 확장 (로드맵 3번)
+### 분석가 워크플로 UI
+- [x] 담당자 큐 필터 — API `assignee`(대소문자 무시)/`unassigned` + 작업 큐 퀵필터(전체/내 케이스/미할당) + '나에게 할당'
+- [ ] 케이스 에스컬레이션 — 등급 상향/재배정 전용 액션과 담당자 변경 이력 타임라인
+- [ ] 담당자별 처리 SLA·부하 대시보드 (미처리 건수/평균 처리시간)
+- [ ] 상태 전이 감사 이력을 이벤트 상세 타임라인으로 노출 (audit_logs의 EVENT_STATUS_CHANGE 활용)
+
+### 멀티체인 지원 (설계 필요)
+- [ ] `chain` 차원 도입 — Transaction/DetectionEvent에 chainId, 수집기 provider 추상화(현재 ethereum-mainnet 하드코딩)
+- [ ] 대상 체인 결정(Solana는 비-EVM이라 별도 수집기, Polygon/Arbitrum은 EVM 재사용 가능) 및 프론트 체인 필터
+- 선결 과제: 체인별 RPC/키 관리, 탐지 룰의 체인 독립성 검토
+
+### 탐지 로직 고도화 (설계 필요)
+- [ ] 그래프 분석 — 지갑 간 자금 흐름 그래프로 peeling chain/믹서 패턴 탐지
+- [ ] ML 이상탐지 — 룰 기반 점수에 학습 모델 보강(라벨 데이터·피처 파이프라인·오프라인 학습 인프라 필요)
+- 선결 과제: 학습 데이터 확보 전략, 룰 엔진과 ML 점수 결합 방식
