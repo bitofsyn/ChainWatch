@@ -67,6 +67,26 @@ export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE
   return params.toString();
 }
 
+/**
+ * 해시 라우트 쿼리 문자열을 필터로 복원한다 (딥링크: #/events?riskLevel=HIGH&status=NEW).
+ * buildEventsQuery의 역방향이며, 알 수 없는 파라미터는 무시한다.
+ */
+export function parseEventsQuery(query: string): EventFilters {
+  const params = new URLSearchParams(query);
+  const filters: EventFilters = {};
+  const stringKeys = ["eventType", "riskLevel", "status", "wallet", "assignee", "network"] as const;
+  for (const key of stringKeys) {
+    const value = params.get(key);
+    if (value) {
+      filters[key] = value;
+    }
+  }
+  if (params.get("unassigned") === "true") {
+    filters.unassigned = true;
+  }
+  return filters;
+}
+
 export interface TrendPoint {
   bucketStart: string;
   count: number;

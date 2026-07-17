@@ -69,6 +69,62 @@ public interface DetectionEventRepository
     @Query("select e.detectedAt from DetectionEvent e where e.detectedAt >= :since")
     List<Instant> findDetectedAtSince(@Param("since") Instant since);
 
+    /** 반열림 구간 [from, to) 탐지 건수. 탐지율 KPI(탐지/수집)의 분자에 사용한다. */
+    @Query("select count(e) from DetectionEvent e where e.detectedAt >= :from and e.detectedAt < :to")
+    long countDetectedInWindow(@Param("from") Instant from, @Param("to") Instant to);
+
+    /** 대응 backlog = NEW(레거시 null 포함) + ACKNOWLEDGED. 정의는 ops overview와 통일한다. */
+    @Query("""
+            select count(e)
+            from DetectionEvent e
+            where e.status is null
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED
+            """)
+    long countBacklog();
+
+    /** backlog 중 가장 오래 대기한 이벤트의 탐지 시각. backlog가 없으면 null. */
+    @Query("""
+            select min(e.detectedAt)
+            from DetectionEvent e
+            where e.status is null
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED
+            """)
+    Instant oldestBacklogDetectedAt();
+
+    /** 위험도×처리상태 매트릭스. status null(레거시)은 서비스에서 NEW로 합산한다. */
+    @Query("select e.riskLevel, e.status, count(e) from DetectionEvent e group by e.riskLevel, e.status")
+    List<Object[]> countGroupByRiskLevelAndStatus();
+
+    /** 선택 기간 기준 이벤트 유형 집계 (탐지 유형 Top N). */
+    @Query("""
+            select e.eventType, count(e)
+            from DetectionEvent e
+            where e.detectedAt >= :since
+            group by e.eventType
+            order by count(e) desc
+            """)
+    List<Object[]> countGroupByEventTypeSince(@Param("since") Instant since);
+
+    /**
+     * 시간 버킷별 탐지 건수를 DB에서 집계한다(행 로드 없이 group by).
+     * 결과 행: [bucketEpochSeconds(Number), count(Number)]
+     */
+    @Query(value = """
+            select cast(floor(extract(epoch from e.detected_at) / :bucketSeconds) as bigint) * :bucketSeconds
+                       as bucket_epoch,
+                   count(*) as cnt
+            from detection_events e
+            where e.detected_at >= :since
+            group by bucket_epoch
+            order by bucket_epoch
+            """, nativeQuery = true)
+    List<Object[]> countByTimeBucketSince(
+            @Param("since") Instant since,
+            @Param("bucketSeconds") long bucketSeconds
+    );
+
     @Query("select e.riskLevel, count(e) from DetectionEvent e group by e.riskLevel")
     List<Object[]> countGroupByRiskLevel();
 
