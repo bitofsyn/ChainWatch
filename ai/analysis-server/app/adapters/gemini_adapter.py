@@ -20,7 +20,12 @@ class GeminiAdapter(ModelAdapter):
 
     async def generate(self, prompt: str, system: str | None = None) -> AdapterResult:
         url = f"{self._base_url}/v1beta/models/{self._model}:generateContent"
-        payload: dict = {"contents": [{"parts": [{"text": prompt}]}]}
+        payload: dict = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            # 프롬프트 지시에만 의존하지 않고 API 레벨에서 JSON 출력을 강제한다.
+            # (report_parser의 lenient 파싱은 안전망으로 유지)
+            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+        }
         if system:
             payload["systemInstruction"] = {"parts": [{"text": system}]}
         headers = {"x-goog-api-key": self._api_key}

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Gemini (Google Generative Language API)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-flash-latest"  # 고정 버전 모델은 신규 계정에서 차단될 수 있어 alias 기본
     gemini_base_url: str = "https://generativelanguage.googleapis.com"
 
     # OpenAI-compatible local servers (LM Studio, Hermes)
