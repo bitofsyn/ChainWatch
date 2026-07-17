@@ -581,7 +581,8 @@ function OperatorActionSection({
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const authed = useAuth().user != null;
+  const currentUser = useAuth().user;
+  const authed = currentUser != null;
   const reasonField = requiredReasonField(targetStatus);
 
   const handleSubmit = async (formEvent: FormEvent) => {
@@ -716,7 +717,18 @@ function OperatorActionSection({
 
         <div className="workflow-row">
           <label className="workflow-field">
-            담당자 <em>(비우면 담당자 해제)</em>
+            <span className="workflow-field-head">
+              담당자 <em>(비우면 담당자 해제)</em>
+              {currentUser && assignee.toLowerCase() !== currentUser.username.toLowerCase() ? (
+                <button
+                  type="button"
+                  className="inline-link-button"
+                  onClick={() => setAssignee(currentUser.username)}
+                >
+                  나에게 할당
+                </button>
+              ) : null}
+            </span>
             <input
               type="text"
               value={assignee}
