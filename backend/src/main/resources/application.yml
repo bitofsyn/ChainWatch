@@ -81,6 +81,14 @@ chainwatch:
     model: ${CHAINWATCH_AI_MODEL:}
     base-url: ${CHAINWATCH_AI_BASE_URL:}
     analyze-path: /api/v1/analyze
+    worker:
+      # 미분석 고위험(HIGH/CRITICAL) 이벤트를 오래된 순으로 자동 분석해 백로그를 소비한다.
+      # ai.enabled=true일 때만 동작. 실패(FAILED)는 자동 재시도하지 않는다(수동 재분석).
+      enabled: ${CHAINWATCH_AI_WORKER_ENABLED:true}
+      # 처리율 = batch-size / poll-interval. 프로바이더 쿼터(RPM/RPD)에 맞춰 조절할 것.
+      poll-interval-ms: ${CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS:30000}
+      batch-size: ${CHAINWATCH_AI_WORKER_BATCH_SIZE:3}
+      stale-pending-minutes: 10   # 프로세스 중단 등으로 PENDING에 머문 리포트 재제출 기준
   collector:
     provider: ${CHAINWATCH_COLLECTOR_PROVIDER:rpc}   # rpc | etherscan
     mode: ${CHAINWATCH_COLLECTOR_MODE:polling}       # polling | websocket

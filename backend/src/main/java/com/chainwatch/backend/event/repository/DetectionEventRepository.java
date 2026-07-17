@@ -37,6 +37,17 @@ public interface DetectionEventRepository
             """)
     long countPendingAnalysis(@Param("levels") Collection<RiskLevel> levels);
 
+    /** AI 분석 리포트가 아직 없는 고위험 이벤트를 오래된 순으로 조회 (자동 분석 워커 배치 선정) */
+    @Query("""
+            select e
+            from DetectionEvent e
+            where e.riskLevel in :levels
+              and not exists (select 1 from AiAnalysisReport r where r.detectionEvent = e)
+            order by e.detectedAt asc
+            """)
+    List<DetectionEvent> findPendingAnalysisOldestFirst(
+            @Param("levels") Collection<RiskLevel> levels, Pageable pageable);
+
     /** AI 분석 대기 중 가장 오래된 이벤트의 탐지 시각 */
     @Query("""
             select min(e.detectedAt)
