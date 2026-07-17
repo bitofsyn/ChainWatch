@@ -258,8 +258,8 @@ export function OverviewPage() {
               {eventFeed.length === 0 && !loading ? (
                 <div className="empty-state">최근 탐지 이벤트가 없습니다.</div>
               ) : null}
-              {eventFeed.map((item) => (
-                <a className="note-item linked" key={`event-${item.eventId}`} href={`#/events/${item.eventId}`}>
+              {eventFeed.map((item, index) => (
+                <a className="note-item linked" key={`event-${item.eventId}-${index}`} href={`#/events/${item.eventId}`}>
                   {formatEventType(item.eventType)} 감지, 위험 점수 {item.riskScore}
                   <small>{formatDate(item.detectedAt)}</small>
                 </a>
@@ -269,8 +269,8 @@ export function OverviewPage() {
               {transactionFeed.length === 0 && !loading ? (
                 <div className="empty-state">최근 수집된 트랜잭션이 없습니다.</div>
               ) : null}
-              {transactionFeed.map((item) => (
-                <div className="note-item" key={`tx-${item.txHash}`}>
+              {transactionFeed.map((item, index) => (
+                <div className="note-item" key={`tx-${item.txHash}-${index}`}>
                   블록 {item.blockNumber} · <span className="mono">{item.txHash.slice(0, 14)}...</span>
                   <small>{formatDate(item.timestamp)}</small>
                 </div>
