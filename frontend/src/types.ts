@@ -238,6 +238,66 @@ export interface WalletSummary {
   riskLevelCounts: KeyCount[];
 }
 
+/* ── 운영 Overview (GET /api/ops/overview) ─────── */
+
+export type OpsCollectorHealth = "UP" | "DEGRADED" | "DOWN" | "UNKNOWN";
+
+export interface OpsCollector {
+  /** null = head 미관측(수집이 아직 돌지 않음) */
+  chainHead: number | null;
+  /** null = 수집 이력 없음 */
+  lastCollectedBlock: number | null;
+  /** null = 판정 불가 */
+  lagBlocks: number | null;
+  confirmationDepth: number;
+  status: OpsCollectorHealth;
+}
+
+export interface OpsKpis {
+  transactionsPerMinute: number;
+  /** null = 직전 구간 0건이라 비교 불가 */
+  transactionsDeltaPercent: number | null;
+  /** null = 최근 창 수집 0건(분모 0) */
+  detectionRatePercent: number | null;
+  detectedLast5m: number;
+  /** NEW(레거시 null 포함) + ACKNOWLEDGED */
+  backlogCount: number;
+  /** null = backlog 없음 */
+  oldestBacklogAgeSeconds: number | null;
+  /** null = 측정 불가(카운터 미등록). 값은 백엔드 프로세스 기동 이후 누적 */
+  dltCount: number | null;
+}
+
+export interface OpsSeriesPoint {
+  bucketStart: string;
+  collectedTransactions: number;
+  detectedEvents: number;
+  /** null = 해당 버킷 수집 0건 */
+  detectionRatePercent: number | null;
+}
+
+export interface OpsRiskStatusCell {
+  riskLevel: string;
+  status: string;
+  count: number;
+}
+
+export interface OpsEventTypeCount {
+  key: string;
+  count: number;
+}
+
+export interface OpsOverview {
+  generatedAt: string;
+  range: string;
+  bucket: string;
+  collector: OpsCollector;
+  kpis: OpsKpis;
+  series: OpsSeriesPoint[];
+  riskStatusMatrix: OpsRiskStatusCell[];
+  eventTypes: OpsEventTypeCount[];
+}
+
 export interface PipelineComponent {
   name: string;
   status: "UP" | "DOWN" | "DISABLED";

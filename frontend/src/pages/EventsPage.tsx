@@ -15,10 +15,15 @@ const PAGE_SIZE = 20;
 
 type QueueScope = "all" | "mine" | "unassigned";
 
-export function EventsPage() {
+interface EventsPageProps {
+  /** 딥링크(#/events?riskLevel=...)로 진입할 때의 초기 필터 */
+  initialFilters?: EventFilters;
+}
+
+export function EventsPage({ initialFilters }: EventsPageProps = {}) {
   const { user } = useAuth();
   const [events, setEvents] = useState<DetectionEventItem[]>([]);
-  const [filters, setFilters] = useState<EventFilters>({});
+  const [filters, setFilters] = useState<EventFilters>(initialFilters ?? {});
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);

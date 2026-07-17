@@ -145,7 +145,7 @@ export function WalletDetailPage({ address }: WalletDetailPageProps) {
               <h2>탐지 유형</h2>
             </div>
           </div>
-          <DistributionChart data={typeDistribution} emptyMessage="탐지 이력이 없습니다." />
+          <DistributionChart data={typeDistribution} emptyMessage="탐지 이력이 없습니다." ariaLabel="지갑 이벤트 유형 분포 차트" />
         </article>
 
         <article className="glass-card">
@@ -155,7 +155,7 @@ export function WalletDetailPage({ address }: WalletDetailPageProps) {
               <h2>등급별 이력</h2>
             </div>
           </div>
-          <DistributionChart data={riskDistribution} emptyMessage="탐지 이력이 없습니다." />
+          <DistributionChart data={riskDistribution} emptyMessage="탐지 이력이 없습니다." ariaLabel="지갑 위험도 분포 차트" />
         </article>
 
         <article className="glass-card wide-span">

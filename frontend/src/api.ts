@@ -12,6 +12,7 @@ import type {
   FeedTransactionItem,
   HealthResponse,
   LoginResult,
+  OpsOverview,
   PipelineStatus,
   Role,
   TransactionItem,
@@ -177,8 +178,13 @@ export function fetchWalletSummary(address: string) {
   return requestJson<WalletSummary>(`/api/wallets/${encodeURIComponent(address)}`);
 }
 
-export function fetchPipelineStatus() {
-  return requestJson<PipelineStatus>("/api/ops/pipeline");
+export function fetchPipelineStatus(signal?: AbortSignal) {
+  return requestJson<PipelineStatus>("/api/ops/pipeline", { signal });
+}
+
+/** GET /api/ops/overview — 운영 대시보드 집계(collector lag, KPI, 시계열, 매트릭스) */
+export function fetchOpsOverview(range = "24h", bucket = "1h", signal?: AbortSignal) {
+  return requestJson<OpsOverview>(`/api/ops/overview?range=${range}&bucket=${bucket}`, { signal });
 }
 
 export function fetchDetectionRules() {
