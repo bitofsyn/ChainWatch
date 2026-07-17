@@ -2116,6 +2116,40 @@ a {
   }
 }
 
+/* 체인 배지 (멀티체인) */
+.chain-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chain-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--text-soft);
+}
+
+.chain-ethereum-mainnet .chain-dot {
+  background: #627eea;
+}
+
+.chain-polygon-mainnet .chain-dot {
+  background: #8247e5;
+}
+
+.chain-arbitrum-mainnet .chain-dot {
+  background: #2d9cdb;
+}
+
 /* 담당자 큐 스코프 퀵필터 (전체/내 케이스/미할당) */
 .queue-scope {
   display: flex;
@@ -2126,9 +2160,9 @@ a {
 
 /* ── 필터 바 변형 ───────────────────────────── */
 
-/* 유형·등급·상태·지갑·담당자·기간(from/to)·검색 버튼 8열 */
+/* 유형·등급·상태·체인·지갑·담당자·기간(from/to)·검색 버튼 9열 */
 .filter-bar.with-range {
-  grid-template-columns: 1fr 1fr 1fr 1.5fr 1.2fr 1.1fr 1.1fr auto;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1.4fr 1.2fr 1.1fr 1.1fr auto;
 }
 
 /* ── 반응형 ─────────────────────────────────── */

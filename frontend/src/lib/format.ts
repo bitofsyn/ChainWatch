@@ -34,6 +34,27 @@ export const LIFECYCLE_STATUS_ORDER: EventLifecycleStatus[] = [
   "FALSE_POSITIVE"
 ];
 
+/** 지원 체인 라벨(짧은 표기). 필터 옵션과 배지에 공용으로 쓴다. */
+export const NETWORK_LABELS: Record<string, string> = {
+  "ethereum-mainnet": "Ethereum",
+  "polygon-mainnet": "Polygon",
+  "arbitrum-mainnet": "Arbitrum"
+};
+
+/** 필터 셀렉트에 노출할 체인 목록(현재 수집 대상 + 데이터 모델이 지원하는 체인). */
+export const NETWORK_ORDER: string[] = [
+  "ethereum-mainnet",
+  "polygon-mainnet",
+  "arbitrum-mainnet"
+];
+
+export function formatNetwork(value: string | null | undefined): string {
+  if (!value) {
+    return NETWORK_LABELS["ethereum-mainnet"];
+  }
+  return NETWORK_LABELS[value] ?? value;
+}
+
 export function toStatus(riskScore: number): EventStatus {
   if (riskScore >= CRITICAL_THRESHOLD) {
     return "critical";

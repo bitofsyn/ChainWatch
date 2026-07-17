@@ -113,13 +113,14 @@ public interface DetectionEventRepository
             String wallet,
             String assignee,
             boolean unassignedOnly,
+            String network,
             Instant from,
             Instant to,
             Pageable pageable
     ) {
         return findAll(
                 DetectionEventSpecifications.search(
-                        eventType, riskLevel, status, wallet, assignee, unassignedOnly, from, to),
+                        eventType, riskLevel, status, wallet, assignee, unassignedOnly, network, from, to),
                 pageable);
     }
 }
