@@ -64,6 +64,16 @@ export function SearchFilterBar({ filters, onChange, onSearch }: SearchFilterBar
       />
 
       <input
+        type="search"
+        aria-label="담당자 검색"
+        placeholder={filters.unassigned ? "미할당 필터 적용 중" : "담당자 (username)"}
+        title={filters.unassigned ? "미할당 필터가 적용 중입니다" : undefined}
+        disabled={filters.unassigned}
+        value={filters.assignee ?? ""}
+        onChange={(event) => onChange({ ...filters, assignee: event.target.value || undefined })}
+      />
+
+      <input
         type="datetime-local"
         aria-label="조회 시작 시각"
         title="조회 시작 시각"

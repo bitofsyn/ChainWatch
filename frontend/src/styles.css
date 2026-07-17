@@ -1299,6 +1299,30 @@ a {
   font-size: 0.78rem;
 }
 
+.workflow-field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* 폼 라벨 옆의 텍스트형 퀵 액션 (예: 나에게 할당) */
+.inline-link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inline-link-button:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
 .workflow-field .required-mark,
 .required-mark {
   color: var(--critical);
@@ -2092,11 +2116,19 @@ a {
   }
 }
 
+/* 담당자 큐 스코프 퀵필터 (전체/내 케이스/미할당) */
+.queue-scope {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
 /* ── 필터 바 변형 ───────────────────────────── */
 
-/* 상태 + 기간(from/to) 필터가 포함된 이벤트 필터 바 */
+/* 유형·등급·상태·지갑·담당자·기간(from/to)·검색 버튼 8열 */
 .filter-bar.with-range {
-  grid-template-columns: 1fr 1fr 1fr 1.6fr 1.1fr 1.1fr auto;
+  grid-template-columns: 1fr 1fr 1fr 1.5fr 1.2fr 1.1fr 1.1fr auto;
 }
 
 /* ── 반응형 ─────────────────────────────────── */

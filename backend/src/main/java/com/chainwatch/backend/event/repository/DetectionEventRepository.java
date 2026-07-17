@@ -111,10 +111,15 @@ public interface DetectionEventRepository
             RiskLevel riskLevel,
             EventStatus status,
             String wallet,
+            String assignee,
+            boolean unassignedOnly,
             Instant from,
             Instant to,
             Pageable pageable
     ) {
-        return findAll(DetectionEventSpecifications.search(eventType, riskLevel, status, wallet, from, to), pageable);
+        return findAll(
+                DetectionEventSpecifications.search(
+                        eventType, riskLevel, status, wallet, assignee, unassignedOnly, from, to),
+                pageable);
     }
 }

@@ -21,6 +21,8 @@ public final class DetectionEventSpecifications {
             RiskLevel riskLevel,
             EventStatus status,
             String wallet,
+            String assignee,
+            boolean unassignedOnly,
             Instant from,
             Instant to
     ) {
@@ -45,6 +47,15 @@ public final class DetectionEventSpecifications {
             }
             if (wallet != null && !wallet.isBlank()) {
                 predicates.add(cb.equal(cb.lower(root.get("walletAddress")), wallet.toLowerCase()));
+            }
+            // 미할당 필터가 우선한다. assignee 컬럼은 nullable이며 빈 문자열도 미할당으로 본다.
+            if (unassignedOnly) {
+                predicates.add(cb.or(
+                        root.get("assignee").isNull(),
+                        cb.equal(cb.trim(root.get("assignee")), "")
+                ));
+            } else if (assignee != null && !assignee.isBlank()) {
+                predicates.add(cb.equal(cb.lower(root.get("assignee")), assignee.toLowerCase()));
             }
             if (from != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("detectedAt"), from));
