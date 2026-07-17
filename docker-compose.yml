@@ -126,6 +126,8 @@ services:
       CHAINWATCH_AI_BASE_URL: http://ai-analysis:8000
       # 자동 수집 (.env의 CHAINWATCH_COLLECTOR_ENABLED=true로 활성화, 15초 폴링)
       CHAINWATCH_COLLECTOR_ENABLED: ${CHAINWATCH_COLLECTOR_ENABLED:-false}
+      # 자동 분석 워커 (ai.enabled=true일 때 미분석 고위험 백로그를 자동 소비, 기본 on)
+      CHAINWATCH_AI_WORKER_ENABLED: ${CHAINWATCH_AI_WORKER_ENABLED:-true}
     ports:
       # 호스트 8080은 Jenkins가 점유 중이라 18080으로 노출
       - "127.0.0.1:18080:8080"

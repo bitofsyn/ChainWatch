@@ -158,6 +158,7 @@ public class AgentOpsService {
 
     private Team analysisTeam(Instant now, Instant hourAgo) {
         long backlog = detectionEventRepository.countPendingAnalysis(ANALYSIS_TARGET_LEVELS);
+        long inProgress = aiAnalysisReportRepository.countByStatus(AnalysisStatus.PENDING);
         long completed1h = aiAnalysisReportRepository.countByStatusAndAnalyzedAtAfter(AnalysisStatus.COMPLETED, hourAgo);
         long failed1h = aiAnalysisReportRepository.countByStatusAndAnalyzedAtAfter(AnalysisStatus.FAILED, hourAgo);
         long totalFailed = aiAnalysisReportRepository.countByStatus(AnalysisStatus.FAILED);
@@ -200,7 +201,7 @@ public class AgentOpsService {
                         + " 기반 리스크 해설 리포트를 생성하고 Triage Team으로 핸드오프합니다.",
                 status,
                 statusReason,
-                new QueueMetric(backlog, 0, 0, failed1h, oldestWaitSeconds),
+                new QueueMetric(backlog, inProgress, 0, failed1h, oldestWaitSeconds),
                 successRate,
                 0,
                 completed1h,
@@ -210,8 +211,10 @@ public class AgentOpsService {
                 List.of(
                         new SubAgent("llm-analyst", "llm-analyst",
                                 aiAnalysisProperties.provider() + " 리스크 해설 (" + aiAnalysisProperties.model() + ")",
-                                !aiEnabled ? "error" : backlog > 0 ? "working" : "idle",
-                                backlog > 0 ? "미분석 고위험 이벤트 " + backlog + "건 대기" : null),
+                                !aiEnabled ? "error" : backlog > 0 || inProgress > 0 ? "working" : "idle",
+                                inProgress > 0
+                                        ? "분석 진행 중 " + inProgress + "건 · 대기 " + backlog + "건"
+                                        : backlog > 0 ? "미분석 고위험 이벤트 " + backlog + "건 대기" : null),
                         new SubAgent("report-writer", "report-writer", "리포트 저장·이벤트 연결",
                                 "idle", null)
                 ),
