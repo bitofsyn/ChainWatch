@@ -75,9 +75,11 @@ chainwatch:
     discord-webhook-url: ${CHAINWATCH_DISCORD_WEBHOOK_URL:}
   ai:
     enabled: false
-    provider: fastapi
-    model: claude
-    base-url:
+    # provider/model을 비우면 AI 서버의 기본 체인이 프로바이더를 고르고,
+    # 저장되는 provider/model은 응답에 담긴 실제 사용값을 따른다.
+    provider: ${CHAINWATCH_AI_PROVIDER:}
+    model: ${CHAINWATCH_AI_MODEL:}
+    base-url: ${CHAINWATCH_AI_BASE_URL:}
     analyze-path: /api/v1/analyze
   collector:
     provider: ${CHAINWATCH_COLLECTOR_PROVIDER:rpc}   # rpc | etherscan

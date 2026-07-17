@@ -18,7 +18,8 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
 
     private static final Logger log = LoggerFactory.getLogger(FastApiAiAnalysisClient.class);
 
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
+    /** AI 서버의 프로바이더 폴백(최악 ~90s: claude 45s → gemini 45s)을 수용한다. 호출은 @Async 경로. */
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(120);
 
     private final WebClient webClient;
     private final AiAnalysisProperties properties;
@@ -55,7 +56,13 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
             throw new AiAnalysisException("AI analysis server returned an empty report");
         }
 
-        return new AiAnalysisResult(response.report(), response.rawResponse(), toStructuredJson(response));
+        return new AiAnalysisResult(
+                response.report(),
+                response.rawResponse(),
+                toStructuredJson(response),
+                response.provider(),
+                response.model()
+        );
     }
 
     /** 구조화 필드를 JSON 문자열로 직렬화한다. 비구조화 응답이거나 직렬화 실패 시 null. */
@@ -83,6 +90,8 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
     private record FastApiAiAnalysisResponse(
             String report,
             String rawResponse,
+            String provider,
+            String model,
             Boolean structured,
             String riskSummary,
             List<AiStructuredAnalysis.EvidenceItem> evidence,
