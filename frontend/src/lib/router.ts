@@ -21,6 +21,15 @@ export function navigate(path: string) {
   window.location.hash = path;
 }
 
+/**
+ * 이벤트 목록 라우트 매칭. "/events" 또는 "/events?riskLevel=..." 형태를 허용하고
+ * 쿼리 문자열(없으면 "")을 반환한다. 매트릭스 셀 등에서 필터 딥링크에 쓴다.
+ */
+export function matchEventsList(route: string): string | null {
+  const match = route.match(/^\/events(?:\?(.*))?$/);
+  return match ? (match[1] ?? "") : null;
+}
+
 export function matchEventDetail(route: string): number | null {
   const match = route.match(/^\/events\/(\d+)$/);
   return match ? Number(match[1]) : null;

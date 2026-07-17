@@ -8,11 +8,13 @@ import {
   matchAdminSection,
   matchAgentTeamDetail,
   matchEventDetail,
+  matchEventsList,
   matchTransactionDetail,
   matchWalletDetail,
   navigate,
   useHashRoute
 } from "./lib/router";
+import { parseEventsQuery } from "./lib/events";
 import { LoginPage } from "./pages/LoginPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { EventsPage } from "./pages/EventsPage";
@@ -32,8 +34,10 @@ function resolvePage(route: string) {
   if (route === "/") {
     return <OverviewPage />;
   }
-  if (route === "/events") {
-    return <EventsPage />;
+  const eventsQuery = matchEventsList(route);
+  if (eventsQuery != null) {
+    // 쿼리가 바뀌면 key로 리마운트해 딥링크 필터가 즉시 반영되게 한다.
+    return <EventsPage key={eventsQuery} initialFilters={parseEventsQuery(eventsQuery)} />;
   }
   if (route === "/rules") {
     return <RulesPage />;
