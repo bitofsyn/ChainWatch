@@ -130,12 +130,6 @@ export function AgentConsolePage() {
 
       <AgentOpsSubNav active="board" />
 
-      {snapshot?.source === "mock" ? (
-        <div className="banner warn ops-alert">
-          백엔드 agent-ops API에 연결하지 못해 mock 데이터를 표시 중입니다. (30초마다 재시도)
-        </div>
-      ) : null}
-
       {(overview?.alerts ?? []).map((alert) => (
         <div
           key={alert.id}
