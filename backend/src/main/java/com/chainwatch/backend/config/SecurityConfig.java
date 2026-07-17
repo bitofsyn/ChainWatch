@@ -49,7 +49,8 @@ public class SecurityConfig {
 
     /** 상태를 변경하는 운영자 제어 API. ADMIN 전용. */
     private static final String[] ADMIN_CONTROL_PATHS = {
-            "/api/collector/blocks/**"
+            "/api/collector/blocks/**",
+            "/api/agent-ops/faults/**"
     };
 
     /** ADMIN 전용 경로: 감사 로그 열람, 사용자 계정 관리 전체. */
@@ -94,6 +95,7 @@ public class SecurityConfig {
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(PUBLIC_PATHS).permitAll()
                             .requestMatchers(HttpMethod.POST, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
+                            .requestMatchers(HttpMethod.DELETE, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(ADMIN_READ_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers("/api/**").hasAnyRole(ROLE_ADMIN, ROLE_ANALYST)
                             .anyRequest().authenticated()

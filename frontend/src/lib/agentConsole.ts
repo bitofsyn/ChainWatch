@@ -1,4 +1,5 @@
 import type {
+  AgentFaultStatus,
   AgentHandoffEvent,
   AgentHandoffResult,
   AgentOpsSnapshot,
@@ -8,8 +9,8 @@ import type {
   SubAgentState
 } from "../types";
 
-async function requestJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
   if (!response.ok) {
     throw new Error(`agent-ops API request failed: ${response.status}`);
   }
@@ -29,6 +30,19 @@ export async function fetchAgentTeam(teamId: string): Promise<AgentTeam | null> 
 export async function fetchAgentHandoffs(limit = 50): Promise<AgentHandoffEvent[]> {
   const snapshot = await fetchAgentOpsSnapshot();
   return snapshot.handoffs.slice(0, limit);
+}
+
+/** 팀에 장애 주입 활성화. 활성화 즉시 드릴 실패 샘플이 기록되어 다음 폴링에 반영된다. */
+export async function activateAgentFault(teamId: string): Promise<AgentFaultStatus> {
+  return requestJson<AgentFaultStatus>(`/api/agent-ops/faults/${teamId}`, { method: "POST" });
+}
+
+/** 장애 주입 해제. purge=true면 주입으로 생성된 실패 기록도 함께 정리한다. */
+export async function clearAgentFault(teamId: string, purge = true): Promise<AgentFaultStatus> {
+  return requestJson<AgentFaultStatus>(
+    `/api/agent-ops/faults/${teamId}?purge=${purge}`,
+    { method: "DELETE" }
+  );
 }
 
 export const TEAM_STATUS_LABELS: Record<AgentTeamStatus, string> = {

@@ -1,8 +1,12 @@
 package com.chainwatch.backend.event.api;
 
+import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
+import com.chainwatch.backend.agentops.service.AgentFaultInjector;
+import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
 import com.chainwatch.backend.analysis.service.AiAnalysisService;
 import com.chainwatch.backend.audit.service.AuditLogService;
+import com.chainwatch.backend.common.exception.ConflictException;
 import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.event.domain.DetectionEvent;
@@ -36,15 +40,24 @@ public class DetectionEventController {
     private final DetectionEventRepository detectionEventRepository;
     private final AiAnalysisService aiAnalysisService;
     private final AuditLogService auditLogService;
+    private final AgentFaultInjector faultInjector;
+    private final AgentFailureRecorder failureRecorder;
+    private final AgentProcessingTracker processingTracker;
 
     public DetectionEventController(
             DetectionEventRepository detectionEventRepository,
             AiAnalysisService aiAnalysisService,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            AgentFaultInjector faultInjector,
+            AgentFailureRecorder failureRecorder,
+            AgentProcessingTracker processingTracker
     ) {
         this.detectionEventRepository = detectionEventRepository;
         this.aiAnalysisService = aiAnalysisService;
         this.auditLogService = auditLogService;
+        this.faultInjector = faultInjector;
+        this.failureRecorder = failureRecorder;
+        this.processingTracker = processingTracker;
     }
 
     @GetMapping
@@ -87,7 +100,15 @@ public class DetectionEventController {
     ) {
         DetectionEvent event = detectionEventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + id));
+        // 장애 주입 활성 시 실패를 기록(REQUIRES_NEW라 롤백과 무관하게 남음)하고 전이를 거부한다.
+        if (faultInjector.isActive("triage")) {
+            failureRecorder.record("triage",
+                    "이벤트 #" + id + " 상태 전이 실패",
+                    "장애 주입 활성 — " + event.getStatus() + " → " + request.status() + " 전이 거부", true);
+            throw new ConflictException("장애 주입 활성 — Triage 팀 상태 전이가 강제 실패하도록 설정되어 있습니다.");
+        }
         EventStatus previousStatus = event.getStatus();
+        long startedNanos = System.nanoTime();
         event.applyStatusChange(
                 request.status(),
                 request.assignee(),
@@ -102,6 +123,7 @@ public class DetectionEventController {
                 previousStatus + " -> " + request.status()
                         + (request.assignee() != null ? ", assignee=" + request.assignee() : "")
         );
+        processingTracker.record("triage", System.nanoTime() - startedNanos);
         return DetectionEventResponse.from(event);
     }
 }

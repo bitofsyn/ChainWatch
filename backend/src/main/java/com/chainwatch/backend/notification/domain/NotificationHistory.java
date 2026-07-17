@@ -48,6 +48,10 @@ public class NotificationHistory {
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt;
 
+    /** 웹훅 발송 시도에 걸린 실측 시간(ms). 드릴/구버전 이력은 null. */
+    @Column(name = "duration_ms")
+    private Long durationMs;
+
     protected NotificationHistory() {
     }
 
@@ -60,6 +64,19 @@ public class NotificationHistory {
             String errorMessage,
             Instant sentAt
     ) {
+        this(eventId, eventType, riskScore, channel, success, errorMessage, sentAt, null);
+    }
+
+    public NotificationHistory(
+            Long eventId,
+            String eventType,
+            Integer riskScore,
+            String channel,
+            Boolean success,
+            String errorMessage,
+            Instant sentAt,
+            Long durationMs
+    ) {
         this.eventId = eventId;
         this.eventType = eventType;
         this.riskScore = riskScore;
@@ -67,6 +84,7 @@ public class NotificationHistory {
         this.success = success;
         this.errorMessage = errorMessage;
         this.sentAt = sentAt;
+        this.durationMs = durationMs;
     }
 
     public Long getId() {
@@ -99,5 +117,9 @@ public class NotificationHistory {
 
     public Instant getSentAt() {
         return sentAt;
+    }
+
+    public Long getDurationMs() {
+        return durationMs;
     }
 }

@@ -1,5 +1,8 @@
 package com.chainwatch.backend.detection.service;
 
+import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
+import com.chainwatch.backend.agentops.service.AgentFaultInjector;
+import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.detection.rule.DetectionRule;
@@ -37,19 +40,28 @@ public class DetectionService {
     private final ChainWatchKafkaProducer kafkaProducer;
     private final ChainWatchMetrics metrics;
     private final ObjectMapper objectMapper;
+    private final AgentFaultInjector faultInjector;
+    private final AgentFailureRecorder failureRecorder;
+    private final AgentProcessingTracker processingTracker;
 
     public DetectionService(
             List<DetectionRule> detectionRules,
             DetectionEventRepository detectionEventRepository,
             ChainWatchKafkaProducer kafkaProducer,
             ChainWatchMetrics metrics,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AgentFaultInjector faultInjector,
+            AgentFailureRecorder failureRecorder,
+            AgentProcessingTracker processingTracker
     ) {
         this.detectionRules = detectionRules;
         this.detectionEventRepository = detectionEventRepository;
         this.kafkaProducer = kafkaProducer;
         this.metrics = metrics;
         this.objectMapper = objectMapper;
+        this.faultInjector = faultInjector;
+        this.failureRecorder = failureRecorder;
+        this.processingTracker = processingTracker;
     }
 
     @Transactional
@@ -61,6 +73,13 @@ public class DetectionService {
 
     @Transactional
     public void analyzeTransaction(Transaction transaction) {
+        if (faultInjector.isActive("detection")) {
+            failureRecorder.record("detection",
+                    "트랜잭션 " + shortHash(transaction.getTxHash()) + " 스크리닝 실패",
+                    "장애 주입 활성 — 룰 평가가 강제 실패 처리됨", true);
+            return;
+        }
+        long startedNanos = System.nanoTime();
         for (DetectionRule detectionRule : detectionRules) {
             detectionRule.evaluate(transaction)
                     .filter(command -> !detectionEventRepository.existsByTransactionIdAndEventType(
@@ -77,6 +96,14 @@ public class DetectionService {
                         );
                     });
         }
+        processingTracker.record("detection", System.nanoTime() - startedNanos);
+    }
+
+    private static String shortHash(String txHash) {
+        if (txHash == null) {
+            return "(hash 없음)";
+        }
+        return txHash.length() <= 14 ? txHash : txHash.substring(0, 14) + "…";
     }
 
     private DetectionEvent toDetectionEvent(DetectionCommand command) {

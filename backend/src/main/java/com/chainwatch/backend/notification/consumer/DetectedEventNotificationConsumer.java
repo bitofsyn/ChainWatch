@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "spring.kafka", name = "bootstrap-servers")
 public class DetectedEventNotificationConsumer {
 
-    private static final String GROUP_ID = "chainwatch-notifications";
+    /** Agent 콘솔의 컨슈머 랙 조회에서도 참조하는 그룹 ID. */
+    public static final String GROUP_ID = "chainwatch-notifications";
 
     private final NotificationService notificationService;
 

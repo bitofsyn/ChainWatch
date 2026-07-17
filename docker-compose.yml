@@ -59,8 +59,9 @@ services:
       context: ./ai/analysis-server
     container_name: chainwatch-ai-analysis
     environment:
-      CHAINWATCH_AI_DEFAULT_PROVIDER: ${CHAINWATCH_AI_DEFAULT_PROVIDER:-mock}
-      CHAINWATCH_AI_FALLBACK_CHAIN: ${CHAINWATCH_AI_FALLBACK_CHAIN:-claude,gemini,lmstudio,hermes,mock}
+      # mock 폴백 기본 제거: LLM 전부 실패 시 모의 리포트 대신 FAILED로 기록 (실데이터 원칙)
+      CHAINWATCH_AI_DEFAULT_PROVIDER: ${CHAINWATCH_AI_DEFAULT_PROVIDER:-claude}
+      CHAINWATCH_AI_FALLBACK_CHAIN: ${CHAINWATCH_AI_FALLBACK_CHAIN:-claude,gemini,lmstudio,hermes}
       CHAINWATCH_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CHAINWATCH_AI_GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       CHAINWATCH_AI_GEMINI_MODEL: ${CHAINWATCH_AI_GEMINI_MODEL:-gemini-flash-latest}
