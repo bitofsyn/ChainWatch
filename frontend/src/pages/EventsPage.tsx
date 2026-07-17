@@ -1,6 +1,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { fetchEvents } from "../api";
 import type { DetectionEventItem } from "../types";
+import { useAuth } from "../contexts/AuthContext";
 import { formatDate, formatEventType, shortenAddress } from "../lib/format";
 import type { EventFilters } from "../lib/events";
 import { SearchFilterBar } from "../components/SearchFilterBar";
@@ -11,7 +12,10 @@ import { DataState } from "../components/DataState";
 
 const PAGE_SIZE = 20;
 
+type QueueScope = "all" | "mine" | "unassigned";
+
 export function EventsPage() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<DetectionEventItem[]>([]);
   const [filters, setFilters] = useState<EventFilters>({});
   const [page, setPage] = useState(0);
@@ -49,6 +53,25 @@ export function EventsPage() {
     load(filters, 0);
   };
 
+  const activeScope: QueueScope = filters.unassigned
+    ? "unassigned"
+    : user && filters.assignee?.toLowerCase() === user.username.toLowerCase()
+      ? "mine"
+      : "all";
+
+  // 담당자 스코프 퀵필터. 다른 필터(유형/등급/상태/기간)는 유지하고 담당자 축만 바꾼다.
+  const applyScope = (scope: QueueScope) => {
+    const next: EventFilters = { ...filters, assignee: undefined, unassigned: undefined };
+    if (scope === "mine" && user) {
+      next.assignee = user.username;
+    } else if (scope === "unassigned") {
+      next.unassigned = true;
+    }
+    setFilters(next);
+    setPage(0);
+    load(next, 0);
+  };
+
   return (
     <>
       <section className="page-head">
@@ -56,12 +79,38 @@ export function EventsPage() {
           <p className="eyebrow">이상거래 큐</p>
           <h1>탐지 이벤트 작업 큐</h1>
           <p className="page-lede">
-            상태·유형·위험 등급·지갑 주소·기간으로 필터링해 처리할 이벤트를 선별하세요.
+            상태·유형·위험 등급·지갑 주소·담당자·기간으로 필터링해 처리할 이벤트를 선별하세요.
           </p>
         </div>
       </section>
 
       <section className="panel-card">
+        <div className="queue-scope" role="group" aria-label="담당자 큐 선택">
+          <button
+            type="button"
+            className={`ghost-button ${activeScope === "all" ? "selected" : ""}`}
+            onClick={() => applyScope("all")}
+          >
+            전체 큐
+          </button>
+          {user ? (
+            <button
+              type="button"
+              className={`ghost-button ${activeScope === "mine" ? "selected" : ""}`}
+              onClick={() => applyScope("mine")}
+            >
+              내 케이스
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={`ghost-button ${activeScope === "unassigned" ? "selected" : ""}`}
+            onClick={() => applyScope("unassigned")}
+          >
+            미할당
+          </button>
+        </div>
+
         <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} />
 
         <p className="result-count">

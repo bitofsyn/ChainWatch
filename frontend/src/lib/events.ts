@@ -7,6 +7,10 @@ export interface EventFilters {
   /** 처리 상태 필터 (Wave1: FALSE_POSITIVE 포함, NEW는 레거시 null status 포함) */
   status?: string;
   wallet?: string;
+  /** 담당자(assignee) 정확 일치 필터. unassigned가 true면 무시된다. */
+  assignee?: string;
+  /** 미할당 이벤트만 조회. assignee보다 우선한다. */
+  unassigned?: boolean;
   /** datetime-local 입력값 (예: 2026-07-07T09:00). 쿼리 시 ISO Instant로 변환된다. */
   from?: string;
   to?: string;
@@ -36,6 +40,12 @@ export function buildEventsQuery(filters: EventFilters, size = DEFAULT_PAGE_SIZE
   }
   if (filters.wallet && filters.wallet.trim()) {
     params.set("wallet", filters.wallet.trim());
+  }
+  // 미할당 필터는 담당자 필터보다 우선한다(백엔드와 동일 규칙).
+  if (filters.unassigned) {
+    params.set("unassigned", "true");
+  } else if (filters.assignee && filters.assignee.trim()) {
+    params.set("assignee", filters.assignee.trim());
   }
   const from = toIsoInstant(filters.from);
   if (from) {

@@ -64,6 +64,46 @@ class DetectionEventControllerTest {
                 .andExpect(jsonPath("$.transactionId").value(event.getTransaction().getId()));
     }
 
+    @Test
+    void assigneeFilterMatchesCaseInsensitively() throws Exception {
+        seedEventWithAssignee("0xhash-alice", "Alice");
+        seedEventWithAssignee("0xhash-bob", "bob");
+
+        mockMvc.perform(get("/api/events").param("assignee", "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].assignee").value("Alice"));
+    }
+
+    @Test
+    void unassignedFilterReturnsOnlyEventsWithoutAssignee() throws Exception {
+        seedEventWithAssignee("0xhash-assigned", "carol");
+        seedEvent("0xhash-unassigned");
+
+        mockMvc.perform(get("/api/events").param("unassigned", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].txHash").value("0xhash-unassigned"));
+    }
+
+    @Test
+    void unassignedFilterTakesPrecedenceOverAssignee() throws Exception {
+        seedEventWithAssignee("0xhash-assigned2", "dave");
+        seedEvent("0xhash-unassigned2");
+
+        mockMvc.perform(get("/api/events").param("unassigned", "true").param("assignee", "dave"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].assignee").doesNotExist());
+    }
+
+    private DetectionEvent seedEventWithAssignee(String txHash, String assignee) {
+        DetectionEvent event = seedEvent(txHash);
+        event.applyStatusChange(
+                com.chainwatch.backend.event.domain.EventStatus.INVESTIGATING, assignee, null, null, null);
+        return detectionEventRepository.save(event);
+    }
+
     private DetectionEvent seedEvent(String txHash) {
         Transaction transaction = transactionRepository.save(new Transaction(
                 txHash,
