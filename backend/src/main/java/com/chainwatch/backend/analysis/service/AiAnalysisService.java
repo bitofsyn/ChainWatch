@@ -45,8 +45,16 @@ public class AiAnalysisService {
 
         AiAnalysisResult result = aiAnalysisClient.analyze(toRequest(event));
 
+        // provider/model은 AI 서버가 실제 사용한 값을 우선 기록한다(폴백 발생 시에도 정확).
         return upsertReport(
-                event, AnalysisStatus.COMPLETED, result.report(), result.rawResponse(), result.structuredJson());
+                event,
+                AnalysisStatus.COMPLETED,
+                result.report(),
+                result.rawResponse(),
+                result.structuredJson(),
+                orDefault(result.provider(), properties.provider()),
+                orDefault(result.model(), properties.model())
+        );
     }
 
     /** 비동기 분석 요청 접수 시 PENDING 리포트를 먼저 기록해 진행 상태를 조회 가능하게 한다. */
@@ -55,7 +63,8 @@ public class AiAnalysisService {
         DetectionEvent event = detectionEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
-        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null, null);
+        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null, null,
+                properties.provider(), properties.model());
     }
 
     @Transactional
@@ -64,7 +73,8 @@ public class AiAnalysisService {
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
         String message = "AI 분석 실패: " + (reason != null ? reason : "unknown error");
-        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null, null);
+        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null, null,
+                properties.provider(), properties.model());
     }
 
     private AiAnalysisReport upsertReport(
@@ -72,7 +82,9 @@ public class AiAnalysisService {
             AnalysisStatus status,
             String report,
             String rawResponse,
-            String structuredReport
+            String structuredReport,
+            String provider,
+            String model
     ) {
         // 컬럼 한도 초과 시 잘린 JSON을 저장하는 대신 텍스트 리포트만 유지한다.
         String storedStructuredReport =
@@ -83,8 +95,8 @@ public class AiAnalysisService {
                 .map(existing -> {
                     existing.update(
                             status,
-                            properties.provider(),
-                            properties.model(),
+                            provider,
+                            model,
                             event.getSummary(),
                             report,
                             rawResponse,
@@ -96,14 +108,18 @@ public class AiAnalysisService {
                 .orElseGet(() -> aiAnalysisReportRepository.save(new AiAnalysisReport(
                         event,
                         status,
-                        properties.provider(),
-                        properties.model(),
+                        provider,
+                        model,
                         event.getSummary(),
                         report,
                         rawResponse,
                         storedStructuredReport,
                         analyzedAt
                 )));
+    }
+
+    private static String orDefault(String value, String fallback) {
+        return value != null && !value.isBlank() ? value : fallback;
     }
 
     private String truncate(String value, int maxLength) {

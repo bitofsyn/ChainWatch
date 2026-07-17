@@ -60,8 +60,13 @@ services:
     container_name: chainwatch-ai-analysis
     environment:
       CHAINWATCH_AI_DEFAULT_PROVIDER: ${CHAINWATCH_AI_DEFAULT_PROVIDER:-mock}
+      CHAINWATCH_AI_FALLBACK_CHAIN: ${CHAINWATCH_AI_FALLBACK_CHAIN:-claude,gemini,lmstudio,hermes,mock}
       CHAINWATCH_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CHAINWATCH_AI_GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CHAINWATCH_AI_GEMINI_MODEL: ${CHAINWATCH_AI_GEMINI_MODEL:-gemini-flash-latest}
+      # Opus adaptive thinking 여유(45s), 재시도는 프로바이더 폴백에 위임 → 최악 ~90s (백엔드 타임아웃 120s 내)
+      CHAINWATCH_AI_HTTP_TIMEOUT_SECONDS: "45"
+      CHAINWATCH_AI_RETRY_MAX_ATTEMPTS: "1"
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -116,6 +121,9 @@ services:
       CHAINWATCH_JWT_SECRET:
       CHAINWATCH_ADMIN_USERNAME:
       CHAINWATCH_ADMIN_PASSWORD:
+      # AI 분석 연동 (.env의 CHAINWATCH_AI_ENABLED=true로 활성화)
+      CHAINWATCH_AI_ENABLED: ${CHAINWATCH_AI_ENABLED:-false}
+      CHAINWATCH_AI_BASE_URL: http://ai-analysis:8000
     ports:
       # 호스트 8080은 Jenkins가 점유 중이라 18080으로 노출
       - "127.0.0.1:18080:8080"
