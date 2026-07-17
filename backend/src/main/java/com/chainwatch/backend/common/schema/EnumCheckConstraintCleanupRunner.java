@@ -34,7 +34,8 @@ public class EnumCheckConstraintCleanupRunner implements ApplicationRunner {
             "detection_events_status_check",
             "detection_events_risk_level_check",
             "transactions_network_check",
-            "user_accounts_role_check"
+            "user_accounts_role_check",
+            "ai_analysis_reports_status_check"
     );
 
     private final JdbcTemplate jdbcTemplate;
@@ -67,6 +68,9 @@ public class EnumCheckConstraintCleanupRunner implements ApplicationRunner {
         }
         if (constraint.startsWith("user_accounts_")) {
             return "user_accounts";
+        }
+        if (constraint.startsWith("ai_analysis_reports_")) {
+            return "ai_analysis_reports";
         }
         // 폴백: 마지막 세 토큰(_x_check) 이전까지를 테이블명으로 간주
         return constraint.replace("_check", "").replaceAll("_[^_]+$", "");
