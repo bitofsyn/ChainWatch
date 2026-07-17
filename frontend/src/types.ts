@@ -357,8 +357,17 @@ export interface AgentOpsOverview {
   alerts: AgentOpsAlert[];
 }
 
+export interface AgentFaultStatus {
+  teamId: string;
+  active: boolean;
+  scenario: string;
+  activatedAt: string | null;
+  expiresAt: string | null;
+}
+
 export interface AgentOpsSnapshot {
   overview: AgentOpsOverview;
   teams: AgentTeam[];
   handoffs: AgentHandoffEvent[];
+  faults?: AgentFaultStatus[];
 }

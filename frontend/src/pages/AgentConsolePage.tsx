@@ -1,6 +1,8 @@
-import { startTransition, useEffect, useState } from "react";
-import type { AgentOpsSnapshot, AgentTeam } from "../types";
+import { startTransition, useCallback, useEffect, useState } from "react";
+import type { AgentFaultStatus, AgentOpsSnapshot, AgentTeam } from "../types";
 import {
+  activateAgentFault,
+  clearAgentFault,
   fetchAgentOpsSnapshot,
   formatDurationMs,
   formatWaitSeconds,
@@ -70,47 +72,110 @@ function TeamCard({ team, teams }: { team: AgentTeam; teams: AgentTeam[] }) {
   );
 }
 
+function FaultPanel({
+  teams,
+  faults,
+  onChanged
+}: {
+  teams: AgentTeam[];
+  faults: AgentFaultStatus[];
+  onChanged: () => void;
+}) {
+  const [pendingTeamId, setPendingTeamId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const toggle = async (fault: AgentFaultStatus) => {
+    setPendingTeamId(fault.teamId);
+    setActionError(null);
+    try {
+      if (fault.active) {
+        await clearAgentFault(fault.teamId);
+      } else {
+        await activateAgentFault(fault.teamId);
+      }
+      onChanged();
+    } catch {
+      setActionError("장애 주입 요청에 실패했습니다. 백엔드 연결을 확인하세요.");
+    } finally {
+      setPendingTeamId(null);
+    }
+  };
+
+  return (
+    <section className="glass-card fault-panel">
+      <div className="section-head">
+        <div>
+          <p className="section-kicker">예외 시나리오 테스트</p>
+          <h2>장애 주입 (Fault Injection)</h2>
+        </div>
+        <small className="fault-panel-hint">
+          주입 즉시 실패 샘플이 기록되고, 활성 동안 해당 팀의 실제 처리 경로가 강제 실패합니다.
+          10분 후 자동 해제되며, 해제 시 주입 실패 기록은 정리됩니다.
+        </small>
+      </div>
+      {actionError ? <div className="banner error">{actionError}</div> : null}
+      <div className="table-wrap">
+        {faults.map((fault) => (
+          <div className="fault-row" key={fault.teamId}>
+            <div>
+              <strong>{teamNameOf(teams, fault.teamId)}</strong>
+              <small>{fault.scenario}</small>
+            </div>
+            <span className={`status-pill ${fault.active ? "task-failed" : "task-success"}`}>
+              {fault.active ? "주입 중" : "정상"}
+            </span>
+            <button
+              type="button"
+              className={fault.active ? "ghost-button" : "ghost-button danger"}
+              disabled={pendingTeamId === fault.teamId}
+              onClick={() => void toggle(fault)}
+            >
+              {pendingTeamId === fault.teamId
+                ? "처리 중..."
+                : fault.active
+                  ? "해제 (기록 정리)"
+                  : "장애 주입"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function AgentConsolePage() {
   const [snapshot, setSnapshot] = useState<AgentOpsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    const load = () => {
-      fetchAgentOpsSnapshot()
-        .then((data) => {
-          if (!active) {
-            return;
-          }
-          startTransition(() => {
-            setSnapshot(data);
-            setError(null);
-            setLoading(false);
-          });
-        })
-        .catch(() => {
-          if (!active) {
-            return;
-          }
-          startTransition(() => {
-            setError("Agent 운영 현황을 불러오지 못했습니다.");
-            setLoading(false);
-          });
+  const load = useCallback(() => {
+    fetchAgentOpsSnapshot()
+      .then((data) => {
+        startTransition(() => {
+          setSnapshot(data);
+          setError(null);
+          setLoading(false);
         });
-    };
+      })
+      .catch(() => {
+        startTransition(() => {
+          setError("Agent 운영 현황을 불러오지 못했습니다.");
+          setLoading(false);
+        });
+      });
+  }, []);
 
+  useEffect(() => {
     load();
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(load, 15_000);
     return () => {
-      active = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [load]);
 
   const overview = snapshot?.overview ?? null;
   const teams = snapshot?.teams ?? [];
+  const faults = snapshot?.faults ?? [];
   const bottleneck = teams.find((team) => team.id === overview?.bottleneckTeamId) ?? null;
   const recentHandoffs = (snapshot?.handoffs ?? []).slice(0, 6);
 
@@ -183,6 +248,10 @@ export function AgentConsolePage() {
           <TeamCard key={team.id} team={team} teams={teams} />
         ))}
       </section>
+
+      {faults.length > 0 ? (
+        <FaultPanel teams={teams} faults={faults} onChanged={load} />
+      ) : null}
 
       <section className="glass-card handoff-panel">
         <div className="section-head">

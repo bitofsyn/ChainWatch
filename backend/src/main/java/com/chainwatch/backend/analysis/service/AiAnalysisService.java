@@ -1,11 +1,13 @@
 package com.chainwatch.backend.analysis.service;
 
+import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.analysis.client.AiAnalysisClient;
 import com.chainwatch.backend.analysis.client.AiAnalysisRequest;
 import com.chainwatch.backend.analysis.client.AiAnalysisResult;
 import com.chainwatch.backend.analysis.config.AiAnalysisProperties;
 import com.chainwatch.backend.analysis.domain.AiAnalysisReport;
 import com.chainwatch.backend.analysis.domain.AnalysisStatus;
+import com.chainwatch.backend.analysis.exception.AiAnalysisException;
 import com.chainwatch.backend.analysis.repository.AiAnalysisReportRepository;
 import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
@@ -23,19 +25,22 @@ public class AiAnalysisService {
     private final DetectionEventRepository detectionEventRepository;
     private final AiAnalysisProperties properties;
     private final ChainWatchMetrics metrics;
+    private final AgentFaultInjector faultInjector;
 
     public AiAnalysisService(
             AiAnalysisClient aiAnalysisClient,
             AiAnalysisReportRepository aiAnalysisReportRepository,
             DetectionEventRepository detectionEventRepository,
             AiAnalysisProperties properties,
-            ChainWatchMetrics metrics
+            ChainWatchMetrics metrics,
+            AgentFaultInjector faultInjector
     ) {
         this.aiAnalysisClient = aiAnalysisClient;
         this.aiAnalysisReportRepository = aiAnalysisReportRepository;
         this.detectionEventRepository = detectionEventRepository;
         this.properties = properties;
         this.metrics = metrics;
+        this.faultInjector = faultInjector;
     }
 
     @Transactional
@@ -43,10 +48,17 @@ public class AiAnalysisService {
         DetectionEvent event = detectionEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
+        // 장애 주입 활성 시 실제 실패 경로(호출부 catch → markFailed → FAILED 리포트)를 그대로 태운다.
+        if (faultInjector.isActive("analysis")) {
+            throw new AiAnalysisException("장애 주입 활성 — 시뮬레이션된 AI 분석 실패 (LLM 호출 타임아웃)");
+        }
+
+        long startedNanos = System.nanoTime();
         AiAnalysisResult result = aiAnalysisClient.analyze(toRequest(event));
+        long processingMs = Math.max(1, (System.nanoTime() - startedNanos) / 1_000_000);
 
         // provider/model은 AI 서버가 실제 사용한 값을 우선 기록한다(폴백 발생 시에도 정확).
-        return upsertReport(
+        AiAnalysisReport report = upsertReport(
                 event,
                 AnalysisStatus.COMPLETED,
                 result.report(),
@@ -55,6 +67,8 @@ public class AiAnalysisService {
                 orDefault(result.provider(), properties.provider()),
                 orDefault(result.model(), properties.model())
         );
+        report.recordProcessingMs(processingMs);
+        return report;
     }
 
     /** 비동기 분석 요청 접수 시 PENDING 리포트를 먼저 기록해 진행 상태를 조회 가능하게 한다. */
@@ -63,8 +77,10 @@ public class AiAnalysisService {
         DetectionEvent event = detectionEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
-        return upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null, null,
+        AiAnalysisReport report = upsertReport(event, AnalysisStatus.PENDING, "AI 분석이 진행 중입니다.", null, null,
                 properties.provider(), properties.model());
+        report.recordProcessingMs(null);
+        return report;
     }
 
     @Transactional
@@ -73,8 +89,10 @@ public class AiAnalysisService {
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + eventId));
 
         String message = "AI 분석 실패: " + (reason != null ? reason : "unknown error");
-        return upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null, null,
+        AiAnalysisReport report = upsertReport(event, AnalysisStatus.FAILED, truncate(message, 2000), null, null,
                 properties.provider(), properties.model());
+        report.recordProcessingMs(null);
+        return report;
     }
 
     private AiAnalysisReport upsertReport(

@@ -52,6 +52,10 @@ public class AiAnalysisReport {
     @Column(nullable = false)
     private Instant analyzedAt;
 
+    /** LLM 호출~응답까지 실측한 처리 시간(ms). 실패/구버전 리포트는 null. */
+    @Column(name = "processing_ms")
+    private Long processingMs;
+
     protected AiAnalysisReport() {
     }
 
@@ -128,6 +132,14 @@ public class AiAnalysisReport {
 
     public Instant getAnalyzedAt() {
         return analyzedAt;
+    }
+
+    public Long getProcessingMs() {
+        return processingMs;
+    }
+
+    public void recordProcessingMs(Long processingMs) {
+        this.processingMs = processingMs;
     }
 
     public void update(

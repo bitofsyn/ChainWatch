@@ -2059,6 +2059,51 @@ a {
   font-size: 0.74rem;
 }
 
+.fault-panel {
+  margin-top: 18px;
+}
+
+.fault-panel-hint {
+  max-width: 420px;
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.fault-panel .table-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.fault-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  font-size: 0.84rem;
+}
+
+.fault-row strong {
+  display: block;
+  font-size: 0.84rem;
+}
+
+.fault-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-soft);
+  font-size: 0.74rem;
+}
+
+.ghost-button.danger {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+}
+
 .io-block {
   margin-bottom: 12px;
 }
