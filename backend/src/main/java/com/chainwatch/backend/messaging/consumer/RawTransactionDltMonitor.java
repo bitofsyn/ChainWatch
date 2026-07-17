@@ -1,5 +1,6 @@
 package com.chainwatch.backend.messaging.consumer;
 
+import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
 import com.chainwatch.backend.collector.kafka.RawTransactionEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -22,11 +23,13 @@ public class RawTransactionDltMonitor {
     private static final Logger log = LoggerFactory.getLogger(RawTransactionDltMonitor.class);
 
     private final Counter dltMessages;
+    private final AgentFailureRecorder failureRecorder;
 
-    public RawTransactionDltMonitor(MeterRegistry meterRegistry) {
+    public RawTransactionDltMonitor(MeterRegistry meterRegistry, AgentFailureRecorder failureRecorder) {
         this.dltMessages = Counter.builder("chainwatch.detection.dlt.messages")
                 .description("Raw transaction messages routed to the dead letter topic")
                 .register(meterRegistry);
+        this.failureRecorder = failureRecorder;
     }
 
     @KafkaListener(
@@ -38,6 +41,9 @@ public class RawTransactionDltMonitor {
             @Header(name = KafkaHeaders.DLT_EXCEPTION_MESSAGE, required = false) String exceptionMessage
     ) {
         dltMessages.increment();
+        failureRecorder.record("detection",
+                "트랜잭션 " + event.txHash() + " DLT 격리",
+                "재시도 소진으로 dead letter topic 이동: " + exceptionMessage, false);
         log.error("[ERROR] Raw transaction {} (block {}) moved to DLT: {}",
                 event.txHash(), event.blockNumber(), exceptionMessage);
     }

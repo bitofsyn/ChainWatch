@@ -55,29 +55,34 @@ export function AgentTeamDetailPage({ teamId }: AgentTeamDetailPageProps) {
     let active = true;
     setLoading(true);
 
-    fetchAgentOpsSnapshot()
-      .then((data) => {
-        if (!active) {
-          return;
-        }
-        startTransition(() => {
-          setSnapshot(data);
-          setError(null);
-          setLoading(false);
+    const load = () => {
+      fetchAgentOpsSnapshot()
+        .then((data) => {
+          if (!active) {
+            return;
+          }
+          startTransition(() => {
+            setSnapshot(data);
+            setError(null);
+            setLoading(false);
+          });
+        })
+        .catch(() => {
+          if (!active) {
+            return;
+          }
+          startTransition(() => {
+            setError("팀 상세 정보를 불러오지 못했습니다.");
+            setLoading(false);
+          });
         });
-      })
-      .catch(() => {
-        if (!active) {
-          return;
-        }
-        startTransition(() => {
-          setError("팀 상세 정보를 불러오지 못했습니다.");
-          setLoading(false);
-        });
-      });
+    };
 
+    load();
+    const timer = setInterval(load, 15_000);
     return () => {
       active = false;
+      clearInterval(timer);
     };
   }, [teamId]);
 

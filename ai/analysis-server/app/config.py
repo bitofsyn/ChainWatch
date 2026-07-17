@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.constants import PROVIDER_CLAUDE, PROVIDER_GEMINI, PROVIDER_HERMES, PROVIDER_LMSTUDIO, PROVIDER_MOCK
+from app.constants import PROVIDER_CLAUDE, PROVIDER_GEMINI, PROVIDER_HERMES, PROVIDER_LMSTUDIO
 
 
 class Settings(BaseSettings):
@@ -13,8 +13,10 @@ class Settings(BaseSettings):
     app_name: str = "chainwatch-ai-analysis-server"
 
     default_provider: str = PROVIDER_CLAUDE
+    # mock은 기본 폴백 체인에서 제외한다: 실제 LLM이 모두 실패하면 모의 리포트를 지어내는 대신
+    # 분석 실패(FAILED)로 정직하게 기록되게 한다. 테스트/명시적 요청(provider=mock)만 mock 사용.
     fallback_chain: str = ",".join(
-        (PROVIDER_CLAUDE, PROVIDER_GEMINI, PROVIDER_LMSTUDIO, PROVIDER_HERMES, PROVIDER_MOCK)
+        (PROVIDER_CLAUDE, PROVIDER_GEMINI, PROVIDER_LMSTUDIO, PROVIDER_HERMES)
     )
     retry_max_attempts: int = 2
     retry_backoff_seconds: float = 0.5

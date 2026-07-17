@@ -9,7 +9,8 @@ import java.util.List;
 public record AgentOpsSnapshotResponse(
         Overview overview,
         List<Team> teams,
-        List<Handoff> handoffs
+        List<Handoff> handoffs,
+        List<AgentFaultStatusResponse> faults
 ) {
 
     public record Overview(

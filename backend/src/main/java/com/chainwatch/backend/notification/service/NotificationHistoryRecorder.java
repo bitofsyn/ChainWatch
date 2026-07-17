@@ -25,6 +25,16 @@ public class NotificationHistoryRecorder {
     }
 
     public void record(NotificationMessage message, String channel, boolean success, String errorMessage) {
+        record(message, channel, success, errorMessage, null);
+    }
+
+    public void record(
+            NotificationMessage message,
+            String channel,
+            boolean success,
+            String errorMessage,
+            Long durationMs
+    ) {
         try {
             repository.save(new NotificationHistory(
                     message.eventId(),
@@ -33,7 +43,8 @@ public class NotificationHistoryRecorder {
                     channel,
                     success,
                     truncate(errorMessage),
-                    Instant.now()
+                    Instant.now(),
+                    durationMs
             ));
         } catch (Exception exception) {
             log.warn("failed to record notification history | eventId={} channel={} error={}",

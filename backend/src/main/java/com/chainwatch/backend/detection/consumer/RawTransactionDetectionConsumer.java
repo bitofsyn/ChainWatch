@@ -27,6 +27,9 @@ public class RawTransactionDetectionConsumer {
     private static final Logger log = LoggerFactory.getLogger(RawTransactionDetectionConsumer.class);
     private static final String CONTRACT_CREATION_ADDRESS = "CONTRACT_CREATION";
 
+    /** Agent 콘솔의 컨슈머 랙 조회에서도 참조하는 그룹 ID. */
+    public static final String GROUP_ID = "chainwatch-detection";
+
     private final TransactionRepository transactionRepository;
     private final DetectionService detectionService;
 
@@ -40,7 +43,7 @@ public class RawTransactionDetectionConsumer {
 
     @KafkaListener(
             topics = "${chainwatch.kafka.topics.raw-transactions}",
-            groupId = "chainwatch-detection",
+            groupId = GROUP_ID,
             containerFactory = "rawTransactionKafkaListenerContainerFactory"
     )
     @Transactional
