@@ -9,6 +9,7 @@ import {
   matchAgentTeamDetail,
   matchEventDetail,
   matchEventsList,
+  matchOverview,
   matchTransactionDetail,
   matchWalletDetail,
   navigate,
@@ -31,8 +32,8 @@ function resolvePage(route: string) {
   if (isLoginRoute(route)) {
     return <LoginPage nextPath={loginNextPath(route)} />;
   }
-  if (route === "/") {
-    return <OverviewPage />;
+  if (matchOverview(route) != null) {
+    return <OverviewPage route={route} />;
   }
   const eventsQuery = matchEventsList(route);
   if (eventsQuery != null) {

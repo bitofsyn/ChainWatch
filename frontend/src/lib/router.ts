@@ -21,6 +21,35 @@ export function navigate(path: string) {
   window.location.hash = path;
 }
 
+/** Overview 라우트("/", "/?range=6h") 매칭. 쿼리 문자열(없으면 "")을 반환한다. */
+export function matchOverview(route: string): string | null {
+  const match = route.match(/^\/(?:\?(.*))?$/);
+  return match ? (match[1] ?? "") : null;
+}
+
+const OVERVIEW_RANGES = ["1h", "6h", "24h"] as const;
+export type OverviewRange = (typeof OVERVIEW_RANGES)[number];
+
+/**
+ * Overview의 선택 range를 URL에 보존한다: 새로고침/공유/뒤로가기에서 유지.
+ * 알 수 없는 값은 null(호출부에서 기본값 적용).
+ */
+export function parseOverviewRange(route: string): OverviewRange | null {
+  const query = matchOverview(route);
+  if (query == null) {
+    return null;
+  }
+  const value = new URLSearchParams(query).get("range");
+  return (OVERVIEW_RANGES as readonly string[]).includes(value ?? "")
+    ? (value as OverviewRange)
+    : null;
+}
+
+/** range 선택을 담은 Overview 경로. 기본값(24h)은 쿼리 없이 유지한다. */
+export function overviewPath(range: OverviewRange): string {
+  return range === "24h" ? "/" : `/?range=${range}`;
+}
+
 /**
  * 이벤트 목록 라우트 매칭. "/events" 또는 "/events?riskLevel=..." 형태를 허용하고
  * 쿼리 문자열(없으면 "")을 반환한다. 매트릭스 셀 등에서 필터 딥링크에 쓴다.
