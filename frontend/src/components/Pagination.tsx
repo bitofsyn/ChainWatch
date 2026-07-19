@@ -1,3 +1,5 @@
+import { formatNumber } from "../lib/opsOverview";
+
 interface PaginationProps {
   page: number;
   totalPages: number;
@@ -20,7 +22,7 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
         이전
       </button>
       <span className="pagination-status">
-        {page + 1} / {totalPages}
+        {formatNumber(page + 1)} / {formatNumber(totalPages)}
       </span>
       <button
         type="button"
