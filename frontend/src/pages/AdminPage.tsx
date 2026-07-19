@@ -20,6 +20,7 @@ import type {
   AuditLogItem,
   CollectorResult,
   DetectionEventItem,
+  DetectionPolicyPatch,
   DetectionRules,
   DetectionThresholds,
   FeedEventItem,
