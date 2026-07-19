@@ -3,6 +3,7 @@ import { fetchEvents } from "../api";
 import type { DetectionEventItem } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { formatDate, formatEventType, shortenAddress } from "../lib/format";
+import { formatNumber } from "../lib/opsOverview";
 import type { EventFilters } from "../lib/events";
 import { SearchFilterBar } from "../components/SearchFilterBar";
 import { Pagination } from "../components/Pagination";
@@ -120,7 +121,7 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
         <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} />
 
         <p className="result-count">
-          총 <strong>{totalElements}</strong>건
+          총 <strong>{formatNumber(totalElements)}</strong>건
         </p>
 
         <DataState

@@ -1102,7 +1102,8 @@ a {
 }
 
 .mono {
-  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
   font-size: 0.83rem;
 }
 
@@ -1356,7 +1357,8 @@ a {
 }
 
 .workflow-field input,
-.workflow-field textarea {
+.workflow-field textarea,
+.workflow-field select {
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
@@ -1368,8 +1370,13 @@ a {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.workflow-field select {
+  cursor: pointer;
+}
+
 .workflow-field input:focus,
-.workflow-field textarea:focus {
+.workflow-field textarea:focus,
+.workflow-field select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
   outline: none;
@@ -2250,6 +2257,24 @@ a {
   color: var(--text);
   font: inherit;
   font-size: 0.84rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.data-table select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.data-table select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none;
+}
+
+.data-table select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: var(--surface);
 }
 
 @media (max-width: 960px) {
