@@ -1,6 +1,7 @@
 package com.chainwatch.backend.detection.rule;
 
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionAddressListsProvider;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -19,20 +20,25 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
     static final String RULE_NAME = "exchange-flow";
     static final String RULE_VERSION = "1.0";
 
-    private final DetectionProperties detectionProperties;
+    private final DetectionAddressListsProvider addressLists;
+    private final DetectionThresholdsProvider thresholds;
 
-    public ExchangeFlowDetectionRule(DetectionProperties detectionProperties) {
-        this.detectionProperties = detectionProperties;
+    public ExchangeFlowDetectionRule(
+            DetectionAddressListsProvider addressLists,
+            DetectionThresholdsProvider thresholds
+    ) {
+        this.addressLists = addressLists;
+        this.thresholds = thresholds;
     }
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        BigDecimal threshold = detectionProperties.exchangeFlowThresholdEth();
+        BigDecimal threshold = thresholds.current().exchangeFlowThresholdEth();
         if (threshold == null || transaction.getAmount().compareTo(threshold) < 0) {
             return Optional.empty();
         }
 
-        List<String> exchangeAddresses = normalizeAddresses(detectionProperties.exchangeAddresses());
+        List<String> exchangeAddresses = normalizeAddresses(addressLists.currentAddresses().exchangeAddresses());
         String from = normalize(transaction.getFromAddress());
         String to = normalize(transaction.getToAddress());
         boolean fromExchange = exchangeAddresses.contains(from);

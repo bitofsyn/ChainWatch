@@ -1,6 +1,6 @@
 package com.chainwatch.backend.detection.rule;
 
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -17,15 +17,15 @@ public class LargeTransferDetectionRule implements DetectionRule {
     static final String RULE_NAME = "large-transfer";
     static final String RULE_VERSION = "1.0";
 
-    private final DetectionProperties detectionProperties;
+    private final DetectionThresholdsProvider thresholds;
 
-    public LargeTransferDetectionRule(DetectionProperties detectionProperties) {
-        this.detectionProperties = detectionProperties;
+    public LargeTransferDetectionRule(DetectionThresholdsProvider thresholds) {
+        this.thresholds = thresholds;
     }
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        BigDecimal threshold = detectionProperties.largeTransferThresholdEth();
+        BigDecimal threshold = thresholds.current().largeTransferThresholdEth();
         if (threshold == null || transaction.getAmount().compareTo(threshold) < 0) {
             return Optional.empty();
         }

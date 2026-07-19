@@ -1,6 +1,7 @@
 package com.chainwatch.backend.detection.rule;
 
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholds;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -27,14 +28,14 @@ public class FanOutDetectionRule implements DetectionRule {
     static final String RULE_NAME = "fan-out";
     static final String RULE_VERSION = "1.0";
 
-    private final DetectionProperties detectionProperties;
+    private final DetectionThresholdsProvider thresholds;
     private final TransactionRepository transactionRepository;
 
     public FanOutDetectionRule(
-            DetectionProperties detectionProperties,
+            DetectionThresholdsProvider thresholds,
             TransactionRepository transactionRepository
     ) {
-        this.detectionProperties = detectionProperties;
+        this.thresholds = thresholds;
         this.transactionRepository = transactionRepository;
     }
 
@@ -46,25 +47,26 @@ public class FanOutDetectionRule implements DetectionRule {
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        if (detectionProperties.fanOutThresholdRecipients() <= 1) {
+        DetectionThresholds current = thresholds.current();
+        if (current.fanOutThresholdRecipients() <= 1) {
             return Optional.empty();
         }
 
         Instant windowStart = transaction.getTimestamp()
-                .minus(detectionProperties.fanOutWindowMinutes(), ChronoUnit.MINUTES);
+                .minus(current.fanOutWindowMinutes(), ChronoUnit.MINUTES);
 
         long distinctRecipients = transactionRepository.countDistinctRecipientsFromAddress(
                 transaction.getFromAddress(),
                 windowStart
         );
 
-        if (distinctRecipients < detectionProperties.fanOutThresholdRecipients()) {
+        if (distinctRecipients < current.fanOutThresholdRecipients()) {
             return Optional.empty();
         }
 
         Map<String, Object> evidence = new LinkedHashMap<>();
-        evidence.put("windowMinutes", detectionProperties.fanOutWindowMinutes());
-        evidence.put("thresholdRecipients", detectionProperties.fanOutThresholdRecipients());
+        evidence.put("windowMinutes", current.fanOutWindowMinutes());
+        evidence.put("thresholdRecipients", current.fanOutThresholdRecipients());
         evidence.put("observedDistinctRecipients", distinctRecipients);
         evidence.put("windowStart", windowStart.toString());
         evidence.put("fromAddress", transaction.getFromAddress());
@@ -75,7 +77,7 @@ public class FanOutDetectionRule implements DetectionRule {
                 78,
                 "Fan-out pattern detected: " + transaction.getFromAddress()
                         + " sent to " + distinctRecipients + " distinct addresses within "
-                        + detectionProperties.fanOutWindowMinutes() + " minutes",
+                        + current.fanOutWindowMinutes() + " minutes",
                 transaction.getFromAddress(),
                 transaction,
                 RULE_NAME,

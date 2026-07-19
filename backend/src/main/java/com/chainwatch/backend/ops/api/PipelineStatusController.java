@@ -4,6 +4,8 @@ import com.chainwatch.backend.analysis.config.AiAnalysisProperties;
 import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
 import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholds;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.notification.config.NotificationProperties;
 import com.chainwatch.backend.ops.api.PipelineStatusResponse.ComponentStatus;
@@ -33,6 +35,7 @@ public class PipelineStatusController {
     private final BlockCollectionService blockCollectionService;
     private final CollectorProperties collectorProperties;
     private final DetectionProperties detectionProperties;
+    private final DetectionThresholdsProvider detectionThresholds;
     private final AiAnalysisProperties aiAnalysisProperties;
     private final NotificationProperties notificationProperties;
     private final WebClient.Builder webClientBuilder;
@@ -44,6 +47,7 @@ public class PipelineStatusController {
             BlockCollectionService blockCollectionService,
             CollectorProperties collectorProperties,
             DetectionProperties detectionProperties,
+            DetectionThresholdsProvider detectionThresholds,
             AiAnalysisProperties aiAnalysisProperties,
             NotificationProperties notificationProperties,
             WebClient.Builder webClientBuilder
@@ -54,6 +58,7 @@ public class PipelineStatusController {
         this.blockCollectionService = blockCollectionService;
         this.collectorProperties = collectorProperties;
         this.detectionProperties = detectionProperties;
+        this.detectionThresholds = detectionThresholds;
         this.aiAnalysisProperties = aiAnalysisProperties;
         this.notificationProperties = notificationProperties;
         this.webClientBuilder = webClientBuilder;
@@ -144,13 +149,14 @@ public class PipelineStatusController {
     }
 
     private ComponentStatus describeDetection() {
+        DetectionThresholds current = detectionThresholds.current();
         String detail = String.format(
                 "mode=%s, 대규모 이체 %s ETH↑, 거래소 플로우 %s ETH↑, 반복 이체 %d회/%d분",
                 detectionProperties.mode(),
-                detectionProperties.largeTransferThresholdEth(),
-                detectionProperties.exchangeFlowThresholdEth(),
-                detectionProperties.rapidTransferThresholdCount(),
-                detectionProperties.rapidTransferWindowMinutes()
+                current.largeTransferThresholdEth(),
+                current.exchangeFlowThresholdEth(),
+                current.rapidTransferThresholdCount(),
+                current.rapidTransferWindowMinutes()
         );
         return ComponentStatus.up("detection", detail);
     }

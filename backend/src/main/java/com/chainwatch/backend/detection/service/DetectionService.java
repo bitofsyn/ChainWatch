@@ -4,7 +4,7 @@ import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
 import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.detection.rule.DetectionRule;
 import com.chainwatch.backend.event.domain.DetectionEvent;
@@ -38,7 +38,7 @@ public class DetectionService {
     private static final Logger log = LoggerFactory.getLogger(DetectionService.class);
 
     private final List<DetectionRule> detectionRules;
-    private final DetectionProperties detectionProperties;
+    private final DetectionThresholdsProvider thresholds;
     private final DetectionEventRepository detectionEventRepository;
     private final ChainWatchKafkaProducer kafkaProducer;
     private final ChainWatchMetrics metrics;
@@ -49,7 +49,7 @@ public class DetectionService {
 
     public DetectionService(
             List<DetectionRule> detectionRules,
-            DetectionProperties detectionProperties,
+            DetectionThresholdsProvider thresholds,
             DetectionEventRepository detectionEventRepository,
             ChainWatchKafkaProducer kafkaProducer,
             ChainWatchMetrics metrics,
@@ -59,7 +59,7 @@ public class DetectionService {
             AgentProcessingTracker processingTracker
     ) {
         this.detectionRules = detectionRules;
-        this.detectionProperties = detectionProperties;
+        this.thresholds = thresholds;
         this.detectionEventRepository = detectionEventRepository;
         this.kafkaProducer = kafkaProducer;
         this.metrics = metrics;
@@ -116,11 +116,11 @@ public class DetectionService {
      */
     private boolean isInCooldown(DetectionRule detectionRule, Transaction transaction) {
         EventType cooldownType = detectionRule.cooldownEventType();
-        if (cooldownType == null || detectionProperties.ruleCooldownMinutes() <= 0) {
+        if (cooldownType == null || thresholds.current().ruleCooldownMinutes() <= 0) {
             return false;
         }
         Instant cutoff = Instant.now()
-                .minus(detectionProperties.ruleCooldownMinutes(), java.time.temporal.ChronoUnit.MINUTES);
+                .minus(thresholds.current().ruleCooldownMinutes(), java.time.temporal.ChronoUnit.MINUTES);
         return detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
                 transaction.getFromAddress(), cooldownType, cutoff);
     }
