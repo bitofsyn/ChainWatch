@@ -107,6 +107,10 @@ public class AiAnalysisService {
         // 컬럼 한도 초과 시 잘린 JSON을 저장하는 대신 텍스트 리포트만 유지한다.
         String storedStructuredReport =
                 (structuredReport != null && structuredReport.length() > 8000) ? null : structuredReport;
+        // LLM 응답 길이는 통제 밖이므로 텍스트 필드는 컬럼 한도로 잘라 저장 실패를 막는다.
+        String storedPromptSummary = truncate(event.getSummary(), 1000);
+        String storedReport = report != null ? truncate(report, 2000) : null;
+        String storedRawResponse = rawResponse != null ? truncate(rawResponse, 4000) : null;
         metrics.recordAiAnalysis(status.name());
         Instant analyzedAt = Instant.now();
         return aiAnalysisReportRepository.findByDetectionEventId(event.getId())
@@ -115,9 +119,9 @@ public class AiAnalysisService {
                             status,
                             provider,
                             model,
-                            event.getSummary(),
-                            report,
-                            rawResponse,
+                            storedPromptSummary,
+                            storedReport,
+                            storedRawResponse,
                             storedStructuredReport,
                             analyzedAt
                     );
@@ -128,9 +132,9 @@ public class AiAnalysisService {
                         status,
                         provider,
                         model,
-                        event.getSummary(),
-                        report,
-                        rawResponse,
+                        storedPromptSummary,
+                        storedReport,
+                        storedRawResponse,
                         storedStructuredReport,
                         analyzedAt
                 )));
