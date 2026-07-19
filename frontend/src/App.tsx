@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Layout } from "./components/Layout";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./contexts/AuthContext";
 import { useTheme } from "./hooks/useTheme";
 import {
@@ -100,7 +101,7 @@ export default function App() {
       {needsAuth && status === "loading" ? (
         <div className="data-state">세션 확인 중…</div>
       ) : (
-        resolvePage(route)
+        <ErrorBoundary resetKey={route}>{resolvePage(route)}</ErrorBoundary>
       )}
     </Layout>
   );
