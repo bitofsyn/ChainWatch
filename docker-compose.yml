@@ -132,6 +132,9 @@ services:
       CHAINWATCH_DETECTION_MODE: ${CHAINWATCH_DETECTION_MODE:-kafka}
       # 자동 분석 워커 (ai.enabled=true일 때 미분석 고위험 백로그를 자동 소비, 기본 on)
       CHAINWATCH_AI_WORKER_ENABLED: ${CHAINWATCH_AI_WORKER_ENABLED:-true}
+      # 워커 처리율 = batch-size / poll-interval. 프로바이더 쿼터(RPM/RPD)에 맞춰 .env에서 조절
+      CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS: ${CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS:-30000}
+      CHAINWATCH_AI_WORKER_BATCH_SIZE: ${CHAINWATCH_AI_WORKER_BATCH_SIZE:-3}
     ports:
       # 호스트 8080은 Jenkins가 점유 중이라 18080으로 노출
       - "127.0.0.1:18080:8080"

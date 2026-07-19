@@ -24,6 +24,7 @@ import {
 } from "../lib/format";
 import { buildStatusPatchBody, requiredReasonField, validateStatusChange } from "../lib/workflow";
 import { formatConfidence, formatEscalation, resolveAiReportView } from "../lib/aiReport";
+import type { AiReportView } from "../lib/aiReport";
 import { resolveRuleEvidence } from "../lib/ruleEvidence";
 import { ConfirmationBadge } from "../components/ConfirmationBadge";
 import { useAuth } from "../contexts/AuthContext";
@@ -368,8 +369,34 @@ function AiAnalysisSection({
 }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const view = resolveAiReportView(event.aiReport);
+  // 요청 중에는 패널 전체를 진행 중 상태로 전환해 응답 도착 즉시 리포트가 그 자리에 표시된다.
+  const view: AiReportView = analyzing ? { kind: "pending" } : resolveAiReportView(event.aiReport);
   const authed = useAuth().user != null;
+  const reportStatus = event.aiReport?.status;
+
+  // 백로그 워커 등이 걸어둔 PENDING/IN_PROGRESS 리포트는 완료 시점에 자동 반영한다(수동 새로고침 불필요).
+  useEffect(() => {
+    if (analyzing || (reportStatus !== "PENDING" && reportStatus !== "IN_PROGRESS")) {
+      return;
+    }
+    let active = true;
+    const timer = setInterval(async () => {
+      try {
+        const detail = await fetchEventDetail(event.id);
+        const next = detail.aiReport;
+        if (!active || !next || next.status === "PENDING" || next.status === "IN_PROGRESS") {
+          return;
+        }
+        onReportChange((current) => (current ? { ...current, aiReport: next } : current));
+      } catch {
+        // 일시적 조회 실패는 다음 주기에 재시도
+      }
+    }, 3000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [event.id, reportStatus, analyzing, onReportChange]);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -407,7 +434,7 @@ function AiAnalysisSection({
 
       {analysisError ? <div className="banner error">{analysisError}</div> : null}
 
-      {event.aiReport ? (
+      {event.aiReport && !analyzing ? (
         <div className="report-meta">
           <span className={`status-pill analysis-${event.aiReport.status.toLowerCase()}`}>
             {ANALYSIS_STATUS_LABELS[event.aiReport.status] ?? event.aiReport.status}
@@ -434,7 +461,7 @@ function AiAnalysisSection({
       ) : null}
 
       {view.kind === "pending" ? (
-        <DataState loading loadingMessage="AI 분석이 진행 중입니다. 잠시 후 다시 확인해주세요." />
+        <DataState loading loadingMessage="AI 분석이 진행 중입니다. 완료되면 결과가 자동으로 표시됩니다." />
       ) : null}
 
       {view.kind === "failed" ? (
