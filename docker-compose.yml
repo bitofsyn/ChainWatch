@@ -127,6 +127,9 @@ services:
       CHAINWATCH_AI_BASE_URL: http://ai-analysis:8000
       # 자동 수집 (.env의 CHAINWATCH_COLLECTOR_ENABLED=true로 활성화, 15초 폴링)
       CHAINWATCH_COLLECTOR_ENABLED: ${CHAINWATCH_COLLECTOR_ENABLED:-false}
+      # 탐지 트리거: kafka = raw-transactions consumer가 비동기 탐지 수행.
+      # 수집 루프에서 인라인 탐지를 분리해 catch-up 처리량을 높인다 (2026-07-19).
+      CHAINWATCH_DETECTION_MODE: ${CHAINWATCH_DETECTION_MODE:-kafka}
       # 자동 분석 워커 (ai.enabled=true일 때 미분석 고위험 백로그를 자동 소비, 기본 on)
       CHAINWATCH_AI_WORKER_ENABLED: ${CHAINWATCH_AI_WORKER_ENABLED:-true}
     ports:
