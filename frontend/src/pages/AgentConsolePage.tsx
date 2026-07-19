@@ -1,5 +1,5 @@
-import { startTransition, useCallback, useEffect, useState } from "react";
-import type { AgentFaultStatus, AgentOpsSnapshot, AgentTeam } from "../types";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import type { AgentFaultStatus, AgentOpsAlert, AgentOpsSnapshot, AgentTeam } from "../types";
 import {
   activateAgentFault,
   clearAgentFault,
@@ -11,6 +11,7 @@ import {
   teamNameOf
 } from "../lib/agentConsole";
 import { formatDate } from "../lib/format";
+import { formatNumber } from "../lib/opsOverview";
 import { TeamStatusBadge } from "../components/TeamStatusBadge";
 import { AgentOpsSubNav } from "../components/AgentOpsSubNav";
 
@@ -30,22 +31,22 @@ function TeamCard({ team, teams }: { team: AgentTeam; teams: AgentTeam[] }) {
       <div className="queue-metrics">
         <div>
           <span>대기 큐</span>
-          <strong>{team.queue.queued}</strong>
+          <strong>{formatNumber(team.queue.queued)}</strong>
         </div>
         <div>
           <span>처리 중</span>
-          <strong>{team.queue.inProgress}</strong>
+          <strong>{formatNumber(team.queue.inProgress)}</strong>
         </div>
         <div>
           <span>재시도</span>
           <strong className={team.queue.retrying > 0 ? "text-high" : ""}>
-            {team.queue.retrying}
+            {formatNumber(team.queue.retrying)}
           </strong>
         </div>
         <div>
           <span>1시간 실패</span>
           <strong className={team.queue.failedLastHour > 0 ? "text-critical" : ""}>
-            {team.queue.failedLastHour}
+            {formatNumber(team.queue.failedLastHour)}
           </strong>
         </div>
       </div>
@@ -65,7 +66,7 @@ function TeamCard({ team, teams }: { team: AgentTeam; teams: AgentTeam[] }) {
 
       <div className="team-foot">
         <span>평균 처리 {formatDurationMs(team.avgProcessingMs)}</span>
-        <span>시간당 {team.throughputPerHour}건</span>
+        <span>시간당 {formatNumber(team.throughputPerHour)}건</span>
         <span>최근 핸드오프 → {teamNameOf(teams, team.lastHandoffTo)}</span>
       </div>
     </a>
@@ -143,6 +144,64 @@ function FaultPanel({
   );
 }
 
+function OpsAlerts({ alerts }: { alerts: AgentOpsAlert[] }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const sorted = useMemo(
+    () =>
+      [...alerts].sort((a, b) => {
+        if (a.severity !== b.severity) {
+          return a.severity === "critical" ? -1 : 1;
+        }
+        return b.raisedAt.localeCompare(a.raisedAt);
+      }),
+    [alerts]
+  );
+
+  if (sorted.length === 0) {
+    return null;
+  }
+
+  const criticalCount = sorted.filter((alert) => alert.severity === "critical").length;
+  const warnCount = sorted.length - criticalCount;
+
+  return (
+    <section className="ops-alerts">
+      <button
+        type="button"
+        className="ops-alerts-head"
+        aria-expanded={!collapsed}
+        onClick={() => setCollapsed((prev) => !prev)}
+      >
+        <span className="ops-alerts-title">
+          주의 알람 <strong>{sorted.length}</strong>건
+        </span>
+        <span className="ops-alerts-counts">
+          {criticalCount > 0 ? <span className="ops-alerts-tag critical">긴급 {criticalCount}</span> : null}
+          {warnCount > 0 ? <span className="ops-alerts-tag warn">주의 {warnCount}</span> : null}
+        </span>
+        <span className="ops-alerts-toggle" aria-hidden="true">
+          {collapsed ? "펼치기 ▾" : "접기 ▴"}
+        </span>
+      </button>
+      {collapsed ? null : (
+        <div className="ops-alerts-scroll" role="list">
+          {sorted.map((alert) => (
+            <div
+              key={alert.id}
+              role="listitem"
+              className={`banner ops-alert ${alert.severity === "critical" ? "error" : "warn"}`}
+            >
+              <strong>{alert.severity === "critical" ? "긴급" : "주의"}</strong> {alert.message}
+              <small> · {formatDate(alert.raisedAt)}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AgentConsolePage() {
   const [snapshot, setSnapshot] = useState<AgentOpsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,15 +254,7 @@ export function AgentConsolePage() {
 
       <AgentOpsSubNav active="board" />
 
-      {(overview?.alerts ?? []).map((alert) => (
-        <div
-          key={alert.id}
-          className={`banner ops-alert ${alert.severity === "critical" ? "error" : "warn"}`}
-        >
-          <strong>{alert.severity === "critical" ? "긴급" : "주의"}</strong> {alert.message}
-          <small> · {formatDate(alert.raisedAt)}</small>
-        </div>
-      ))}
+      <OpsAlerts alerts={overview?.alerts ?? []} />
 
       <section className="kpi-grid">
         <article className="metric-card">
@@ -213,7 +264,7 @@ export function AgentConsolePage() {
         </article>
         <article className="metric-card">
           <span>전체 처리량</span>
-          <strong>{loading ? "-" : overview?.throughputPerHour ?? 0}</strong>
+          <strong>{loading ? "-" : formatNumber(overview?.throughputPerHour ?? 0)}</strong>
           <small>건/시간 (팀 합산)</small>
         </article>
         <article className="metric-card">
@@ -224,7 +275,7 @@ export function AgentConsolePage() {
         <article className="metric-card">
           <span>실패 / 재시도</span>
           <strong className={overview && overview.failed1h > 0 ? "text-critical" : ""}>
-            {loading ? "-" : `${overview?.failed1h ?? 0} / ${overview?.retried1h ?? 0}`}
+            {loading ? "-" : `${formatNumber(overview?.failed1h ?? 0)} / ${formatNumber(overview?.retried1h ?? 0)}`}
           </strong>
           <small>최근 1시간</small>
         </article>
@@ -235,7 +286,7 @@ export function AgentConsolePage() {
           </strong>
           <small>
             {bottleneck
-              ? `대기 ${bottleneck.queue.queued}건 · 최장 ${formatWaitSeconds(bottleneck.queue.oldestWaitingSeconds)}`
+              ? `대기 ${formatNumber(bottleneck.queue.queued)}건 · 최장 ${formatWaitSeconds(bottleneck.queue.oldestWaitingSeconds)}`
               : "대기 적체 없음"}
           </small>
         </article>

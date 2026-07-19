@@ -1713,8 +1713,71 @@ a {
 
 /* ── Agent 콘솔 ─────────────────────────────── */
 
+.ops-alerts {
+  margin: 12px 0 22px;
+}
+
+.ops-alerts-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--high) 6%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--high) 22%, transparent);
+  border-radius: var(--radius-md);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ops-alerts-title strong {
+  font-size: 1.05rem;
+}
+
+.ops-alerts-counts {
+  display: flex;
+  gap: 6px;
+}
+
+.ops-alerts-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ops-alerts-tag.critical {
+  background: color-mix(in srgb, var(--critical) 14%, transparent);
+  color: var(--critical);
+}
+
+.ops-alerts-tag.warn {
+  background: color-mix(in srgb, var(--high) 14%, transparent);
+  color: var(--high);
+}
+
+.ops-alerts-toggle {
+  margin-left: auto;
+  font-size: 0.82rem;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.ops-alerts-scroll {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .ops-alert {
-  margin: 0 0 12px;
+  margin: 0;
 }
 
 .ops-alert strong {
