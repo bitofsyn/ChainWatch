@@ -37,6 +37,8 @@ export function useSeriesTransition(
       last == null ||
       last.queryKey !== queryKey ||
       reducedMotion ||
+      // 숨김 탭에서는 rAF가 멈춰 morph가 시작값에 동결되므로 즉시 최종 상태로 스냅한다.
+      (typeof document !== "undefined" && document.visibilityState === "hidden") ||
       !sharesBuckets(displayRef.current, series)
     ) {
       snap();
@@ -46,7 +48,11 @@ export function useSeriesTransition(
     const from = displayRef.current;
     let frame: number | null = null;
     let start: number | null = null;
+    let settled = false;
     const step = (timestamp: number) => {
+      if (settled) {
+        return;
+      }
       if (start == null) {
         start = timestamp;
       }
@@ -57,14 +63,24 @@ export function useSeriesTransition(
       if (t < 1) {
         frame = requestAnimationFrame(step);
       } else {
+        settled = true;
         frame = null;
       }
     };
     frame = requestAnimationFrame(step);
+    // rAF가 오지 않는 환경(탭 전환·임베디드 브라우저)에서도 최종 상태 도달을 보장한다.
+    const settleTimer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        snap();
+      }
+    }, MORPH_DURATION_MS + 150);
     return () => {
+      settled = true;
       if (frame != null) {
         cancelAnimationFrame(frame);
       }
+      clearTimeout(settleTimer);
     };
   }, [series, queryKey, reducedMotion]);
 
