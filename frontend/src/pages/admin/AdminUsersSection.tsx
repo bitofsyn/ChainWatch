@@ -178,7 +178,11 @@ export function AdminUsersSection() {
         </div>
         <form className="workflow-row user-create-form" onSubmit={handleCreate}>
           <label className="workflow-field">
-            아이디 <span className="required-mark">*</span>
+            <span className="workflow-field-head">
+              <span>
+                아이디 <span className="required-mark">*</span>
+              </span>
+            </span>
             <input
               type="text"
               value={newUsername}
@@ -191,7 +195,7 @@ export function AdminUsersSection() {
             />
           </label>
           <label className="workflow-field">
-            표시 이름
+            <span className="workflow-field-head">표시 이름</span>
             <input
               type="text"
               value={newDisplayName}
@@ -201,7 +205,7 @@ export function AdminUsersSection() {
             />
           </label>
           <label className="workflow-field">
-            역할
+            <span className="workflow-field-head">역할</span>
             <select value={newRole} onChange={(event) => setNewRole(event.target.value as Role)}>
               <option value="ANALYST">분석가 (ANALYST)</option>
               <option value="ADMIN">관리자 (ADMIN)</option>

@@ -37,6 +37,7 @@ import {
   RISK_LEVEL_LABELS,
   shortenAddress
 } from "../lib/format";
+import { formatNumber } from "../lib/opsOverview";
 import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { DataState } from "../components/DataState";
@@ -576,7 +577,7 @@ function AdminAuditLogs() {
 
         {!forbidden && !loading && !error ? (
           <p className="result-count">
-            총 <strong>{totalElements}</strong>건
+            총 <strong>{formatNumber(totalElements)}</strong>건
           </p>
         ) : null}
 
