@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -19,6 +20,7 @@ import {
   parseBucketMs,
   type LinePoint
 } from "../lib/chartGeometry";
+import { useMeasuredWidth } from "../hooks/useMeasuredWidth";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
 import { useSeriesTransition } from "../hooks/useSeriesTransition";
 import { ChartLegend, SERIES_ORDER, type SeriesKey } from "./ChartLegend";
@@ -41,9 +43,12 @@ interface TimeSeriesChartProps {
   updating?: boolean;
 }
 
-const WIDTH = 720;
-const HEIGHT = 240;
-const FRAME = { width: WIDTH, height: HEIGHT, padLeft: 46, padRight: 44, padTop: 18, padBottom: 30 };
+/* 폭은 컨테이너 실측(1:1 px) — 고정 viewBox 확대로 축 글자가 화면 폭에 따라
+   뻥튀기되지 않게 한다. 높이는 관제 밀도를 위해 고정. */
+const FALLBACK_WIDTH = 720;
+const MIN_WIDTH = 320;
+const HEIGHT = 260;
+const PADS = { padLeft: 46, padRight: 44, padTop: 18, padBottom: 30 };
 
 const timeFormat = new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" });
 const dateTimeFormat = new Intl.DateTimeFormat("ko-KR", {
@@ -98,6 +103,17 @@ export function TimeSeriesChart({
   const [hidden, setHidden] = useState<ReadonlySet<SeriesKey>>(new Set());
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const { ref: measureRef, width: measuredWidth } = useMeasuredWidth(FALLBACK_WIDTH);
+  // containerRef(외부 클릭 판정)와 폭 측정을 하나의 callback ref로 묶는다.
+  const setContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node;
+      measureRef(node);
+    },
+    [measureRef]
+  );
+  const width = Math.max(MIN_WIDTH, measuredWidth);
+  const frame = useMemo(() => ({ width, height: HEIGHT, ...PADS }), [width]);
   /** anomaly marker 최초 발견 1회 강조용 (pulse 반복 금지) */
   const seenAnomaliesRef = useRef<Set<string>>(new Set());
   /** 최초 로드 여부: 막대 grow 애니메이션은 최초 로드와 실제 신규 bucket에만 (range 변경은 crossfade만) */
@@ -116,8 +132,8 @@ export function TimeSeriesChart({
       collectedTransactions: hidden.has("collected") ? 0 : point.collectedTransactions,
       detectedEvents: hidden.has("detected") ? 0 : point.detectedEvents
     }));
-    return computeScales(forScale, FRAME);
-  }, [series, hidden]);
+    return computeScales(forScale, frame);
+  }, [series, hidden, frame]);
 
   const bucketMs = parseBucketMs(bucket);
   const nowMs = generatedAt ? new Date(generatedAt).getTime() : Date.now();
@@ -149,7 +165,7 @@ export function TimeSeriesChart({
   }
 
   const { maxCount, maxRate, slot, x, yCount, yRate } = scales;
-  const baseline = HEIGHT - FRAME.padBottom;
+  const baseline = HEIGHT - frame.padBottom;
 
   const toSvgX = (clientX: number): number | null => {
     const svg = svgRef.current;
@@ -160,12 +176,12 @@ export function TimeSeriesChart({
     if (rect.width === 0) {
       return null;
     }
-    return ((clientX - rect.left) / rect.width) * WIDTH;
+    return ((clientX - rect.left) / rect.width) * width;
   };
 
   const pointFromEvent = (event: ReactPointerEvent): number | null => {
     const svgX = toSvgX(event.clientX);
-    return svgX == null ? null : nearestBucketIndex(svgX, series.length, FRAME);
+    return svgX == null ? null : nearestBucketIndex(svgX, series.length, frame);
   };
 
   const onPointerMove = (event: ReactPointerEvent) => {
@@ -250,7 +266,9 @@ export function TimeSeriesChart({
       : { x: x(index) + slot / 2, y: yRate(point.detectionRatePercent) }
   );
 
-  const labelEvery = Math.max(1, Math.ceil(series.length / 6));
+  // 라벨 밀도는 실제 렌더 폭 기준(라벨당 ~110px)으로 조절한다.
+  const maxLabels = Math.max(3, Math.floor(scales.innerWidth / 110));
+  const labelEvery = Math.max(1, Math.ceil(series.length / maxLabels));
 
   const anomalyIndex =
     anomaly != null ? series.findIndex((point) => point.bucketStart === anomaly.bucketStart) : -1;
@@ -264,7 +282,7 @@ export function TimeSeriesChart({
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerRef}
       className="ts-chart"
       role="group"
       tabIndex={0}
@@ -273,7 +291,7 @@ export function TimeSeriesChart({
     >
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         aria-hidden="true"
         style={{ touchAction: "pan-y" }}
         onMouseLeave={() => setHoverIndex(null)}
@@ -293,10 +311,10 @@ export function TimeSeriesChart({
         </defs>
 
         {/* 축 단위 라벨 */}
-        <text x={FRAME.padLeft - 6} y={10} textAnchor="end" className="ts-axis-text unit">
+        <text x={frame.padLeft - 6} y={10} textAnchor="end" className="ts-axis-text unit">
           건수
         </text>
-        <text x={WIDTH - FRAME.padRight + 6} y={10} textAnchor="start" className="ts-axis-text rate unit">
+        <text x={width - frame.padRight + 6} y={10} textAnchor="start" className="ts-axis-text rate unit">
           %
         </text>
 
@@ -306,8 +324,8 @@ export function TimeSeriesChart({
           const y = yCount(value);
           return (
             <g key={ratio}>
-              <line x1={FRAME.padLeft} x2={WIDTH - FRAME.padRight} y1={y} y2={y} className="ts-gridline" />
-              <text x={FRAME.padLeft - 6} y={y + 3.5} textAnchor="end" className="ts-axis-text">
+              <line x1={frame.padLeft} x2={width - frame.padRight} y1={y} y2={y} className="ts-gridline" />
+              <text x={frame.padLeft - 6} y={y + 3.5} textAnchor="end" className="ts-axis-text">
                 {formatCompact(value)}
               </text>
             </g>
@@ -318,7 +336,7 @@ export function TimeSeriesChart({
           ? [0, 1].map((ratio) => (
               <text
                 key={`rate-${ratio}`}
-                x={WIDTH - FRAME.padRight + 6}
+                x={width - frame.padRight + 6}
                 y={yRate(maxRate * ratio) + 3.5}
                 textAnchor="start"
                 className="ts-axis-text rate"
@@ -398,7 +416,7 @@ export function TimeSeriesChart({
               className={`ts-anomaly kind-${anomaly.kind} ${
                 anomalyIsNew && !reducedMotion ? "enter" : ""
               }`}
-              transform={`translate(${x(anomalyIndex) + slot / 2}, ${FRAME.padTop - 6})`}
+              transform={`translate(${x(anomalyIndex) + slot / 2}, ${frame.padTop - 6})`}
             >
               {anomaly.kind === "catch-up" ? (
                 <path d="M0,-4 L4,2 L-4,2 Z M0,2 L4,8 L-4,8 Z" />
@@ -417,7 +435,7 @@ export function TimeSeriesChart({
           <line
             x1={x(activeIndex) + slot / 2}
             x2={x(activeIndex) + slot / 2}
-            y1={FRAME.padTop}
+            y1={frame.padTop}
             y2={baseline}
             className={`ts-cursor ${selectedIndex === activeIndex ? "pinned" : ""}`}
           />
@@ -442,7 +460,7 @@ export function TimeSeriesChart({
         {bucketPartial(series[series.length - 1], bucketMs, nowMs) ? (
           <text
             x={x(series.length - 1) + slot / 2}
-            y={FRAME.padTop - 6}
+            y={frame.padTop - 6}
             textAnchor="middle"
             className="ts-axis-text partial-label"
           >
