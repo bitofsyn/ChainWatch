@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useOverviewData, RANGE_BUCKETS, type OpsRange } from "../hooks/useOverviewData";
 import {
   ageFrom,
@@ -17,8 +16,13 @@ import {
   LAG_WARN_BLOCKS,
   LAG_DANGER_BLOCKS
 } from "../lib/opsOverview";
+import type { ValueChange } from "../lib/overviewDiff";
+import { KPI_SEMANTICS } from "../lib/overviewDiff";
+import { navigate, overviewPath, parseOverviewRange } from "../lib/router";
 import { formatDate, formatEventType, RISK_LEVEL_LABELS, shortenAddress } from "../lib/format";
 import { MetricCard } from "../components/MetricCard";
+import { AnimatedMetricValue } from "../components/AnimatedMetricValue";
+import { LiveStatusCluster } from "../components/LiveStatusCluster";
 import { TimeSeriesChart } from "../components/TimeSeriesChart";
 import { PipelineHealthStrip } from "../components/PipelineHealthStrip";
 import { RiskStatusMatrix } from "../components/RiskStatusMatrix";
@@ -33,14 +37,47 @@ const RANGE_OPTIONS: { value: OpsRange; label: string }[] = [
   { value: "24h", label: "24시간" }
 ];
 
-const updatedFormat = new Intl.DateTimeFormat("ko-KR", {
+const generatedFormat = new Intl.DateTimeFormat("ko-KR", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit"
 });
 
-export function OverviewPage() {
-  const [range, setRange] = useState<OpsRange>("24h");
+/* ── delta chip 포맷터: 단위를 생략하지 않는다 ── */
+
+function signOf(delta: number): string {
+  return delta > 0 ? "+" : "−";
+}
+
+function chipBlocks(change: ValueChange): string | null {
+  return change.delta == null ? null : `${signOf(change.delta)}${formatNumber(Math.abs(Math.round(change.delta)))}블록`;
+}
+
+function chipPerMinute(change: ValueChange): string | null {
+  return change.delta == null ? null : `${signOf(change.delta)}${Math.abs(change.delta).toFixed(1)}건/분`;
+}
+
+function chipPercentPoint(change: ValueChange): string | null {
+  return change.delta == null ? null : `${signOf(change.delta)}${Math.abs(change.delta).toFixed(1)}%p`;
+}
+
+function chipCount(change: ValueChange): string | null {
+  return change.delta == null ? null : `${signOf(change.delta)}${formatNumber(Math.abs(Math.round(change.delta)))}건`;
+}
+
+interface OverviewPageProps {
+  /** 현재 해시 라우트 ("/", "/?range=6h"). range를 URL에 보존한다. */
+  route: string;
+}
+
+export function OverviewPage({ route }: OverviewPageProps) {
+  // 선택 range는 URL query에 보존한다: 새로고침/공유/브라우저 뒤로가기에서 유지된다.
+  const range = parseOverviewRange(route) ?? "24h";
+  const setRange = (next: OpsRange) => {
+    if (next !== range) {
+      navigate(overviewPath(next));
+    }
+  };
   const data = useOverviewData(range);
   const { overview, pipeline } = data;
 
@@ -49,6 +86,7 @@ export function OverviewPage() {
     overview?.collector ?? null,
     overview?.kpis ?? null
   );
+  // insight와 차트 anomaly marker는 같은 계산 결과를 공유한다(single source of truth).
   const insight = overview ? throughputInsight(overview.series) : null;
 
   const typeDistribution = (overview?.eventTypes ?? []).map((item) => ({
@@ -59,6 +97,14 @@ export function OverviewPage() {
 
   const collector = overview?.collector ?? null;
   const kpis = overview?.kpis ?? null;
+  const changes = data.kpiChanges;
+
+  // range 변경 조회가 진행 중이면 기존 차트 위에 작은 overlay만 띄운다.
+  const rangeUpdating = overview != null && overview.range !== range;
+
+  const newCriticalCount = (data.queue ?? []).filter(
+    (row) => row.riskLevel === "CRITICAL" && data.newQueueIds.has(String(row.id))
+  ).length;
 
   return (
     <>
@@ -72,21 +118,28 @@ export function OverviewPage() {
           <span className={`ops-overall level-${status.level}`}>
             전체 상태: <strong>{status.label}</strong>
           </span>
-          <span className="ops-updated">
-            {data.lastUpdated
-              ? `마지막 갱신 ${updatedFormat.format(data.lastUpdated)}`
-              : "갱신 이력 없음"}
-            {data.refreshing ? <em className="ops-refreshing"> · 갱신 중</em> : null}
-          </span>
-          <span className="ops-auto-note">30초 자동 갱신</span>
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={data.refresh}
-            disabled={data.refreshing}
-          >
-            새로고침
-          </button>
+          {newCriticalCount > 0 ? (
+            <span className="ops-critical-badge" role="status">
+              신규 CRITICAL {newCriticalCount}건
+            </span>
+          ) : null}
+          <LiveStatusCluster
+            hasData={data.lastSuccessAt != null}
+            refreshing={data.refreshing}
+            resyncing={data.resyncing}
+            paused={data.paused}
+            allFailed={data.allFailed}
+            anyError={
+              data.overviewError ||
+              data.pipelineError ||
+              data.statsError ||
+              data.queueError ||
+              data.feedError
+            }
+            lastSuccessAt={data.lastSuccessAt}
+            nextRefreshAt={data.nextRefreshAt}
+            onRefresh={data.refresh}
+          />
         </div>
         {data.allFailed ? (
           <div className="banner error" role="alert">
@@ -99,7 +152,13 @@ export function OverviewPage() {
       <section className="ops-kpi-grid" aria-label="핵심 운영 지표">
         <MetricCard
           label="Collector Lag"
-          value={collector?.lagBlocks != null ? `${formatNumber(collector.lagBlocks)} 블록` : "—"}
+          value={
+            <AnimatedMetricValue
+              value={collector?.lagBlocks ?? null}
+              format={(value) => (value == null ? "—" : `${formatNumber(Math.round(value))} 블록`)}
+              change={changes?.lagBlocks ?? null}
+            />
+          }
           sub={
             collector
               ? collector.lastCollectedBlock != null
@@ -110,11 +169,20 @@ export function OverviewPage() {
                 : "불러오는 중"
           }
           level={collector ? collectorLevel(collector.status) : undefined}
+          change={changes?.lagBlocks ?? null}
+          semantic={KPI_SEMANTICS.lagBlocks}
+          formatChipDelta={chipBlocks}
           help={`chain head − 마지막 수집 블록. ${LAG_WARN_BLOCKS}블록 이하 정상, ${LAG_DANGER_BLOCKS}블록 이하 주의, 초과 시 위험. head는 수집 사이클의 관측값입니다.`}
         />
         <MetricCard
           label="처리량"
-          value={kpis ? `${kpis.transactionsPerMinute.toFixed(1)}건/분` : "—"}
+          value={
+            <AnimatedMetricValue
+              value={kpis?.transactionsPerMinute ?? null}
+              format={(value) => (value == null ? "—" : `${value.toFixed(1)}건/분`)}
+              change={changes?.transactionsPerMinute ?? null}
+            />
+          }
           sub={
             kpis
               ? `직전 5분 대비 ${formatDelta(kpis.transactionsDeltaPercent)}`
@@ -122,11 +190,20 @@ export function OverviewPage() {
                 ? "지표 조회 실패"
                 : "불러오는 중"
           }
+          change={changes?.transactionsPerMinute ?? null}
+          semantic={KPI_SEMANTICS.transactionsPerMinute}
+          formatChipDelta={chipPerMinute}
           help="최근 5분 수집 트랜잭션 수 ÷ 5. 증감률은 직전 5분 구간과 비교하며 직전 구간이 0건이면 —로 표시합니다."
         />
         <MetricCard
           label="탐지율"
-          value={kpis ? formatPercent(kpis.detectionRatePercent) : "—"}
+          value={
+            <AnimatedMetricValue
+              value={kpis?.detectionRatePercent ?? null}
+              format={(value) => formatPercent(value)}
+              change={changes?.detectionRatePercent ?? null}
+            />
+          }
           sub={
             kpis
               ? kpis.detectionRatePercent == null
@@ -136,11 +213,20 @@ export function OverviewPage() {
                 ? "지표 조회 실패"
                 : "불러오는 중"
           }
+          change={changes?.detectionRatePercent ?? null}
+          semantic={KPI_SEMANTICS.detectionRatePercent}
+          formatChipDelta={chipPercentPoint}
           help="최근 5분 탐지 이벤트 ÷ 수집 트랜잭션. 수집이 0건이면 0%로 속이지 않고 —로 표시합니다."
         />
         <MetricCard
           label="대응 Backlog"
-          value={kpis ? `${formatNumber(kpis.backlogCount)}건` : "—"}
+          value={
+            <AnimatedMetricValue
+              value={kpis?.backlogCount ?? null}
+              format={(value) => (value == null ? "—" : `${formatNumber(Math.round(value))}건`)}
+              change={changes?.backlogCount ?? null}
+            />
+          }
           sub={
             kpis
               ? kpis.oldestBacklogAgeSeconds != null
@@ -151,6 +237,9 @@ export function OverviewPage() {
                 : "불러오는 중"
           }
           level={kpis ? backlogLevel(kpis.backlogCount, kpis.oldestBacklogAgeSeconds) : undefined}
+          change={changes?.backlogCount ?? null}
+          semantic={KPI_SEMANTICS.backlogCount}
+          formatChipDelta={chipCount}
           help={`NEW + ACKNOWLEDGED 상태 이벤트 수. ${BACKLOG_WARN}건 초과 또는 30분 초과 대기 시 주의, ${BACKLOG_DANGER}건 초과 또는 2시간 초과 대기 시 위험.`}
         />
       </section>
@@ -189,14 +278,24 @@ export function OverviewPage() {
           <>
             {data.overviewError ? (
               <p className="stale-note" role="status">
-                최신 조회에 실패해 마지막 성공 데이터를 표시 중입니다.
+                <span className="stale-badge">STALE</span> 최신 조회에 실패해{" "}
+                {generatedFormat.format(new Date(overview.generatedAt))} 집계 데이터를 표시 중입니다.
               </p>
             ) : null}
             <TimeSeriesChart
               series={overview.series}
               bucket={RANGE_BUCKETS[range]}
               ariaLabel={`최근 ${RANGE_OPTIONS.find((o) => o.value === range)?.label} 수집·탐지 시계열`}
+              queryKey={`${overview.range}/${overview.bucket}`}
+              generatedAt={overview.generatedAt}
+              anomaly={insight}
+              newBuckets={data.newBuckets}
+              updating={rangeUpdating}
             />
+            <p className="chart-meta">
+              서버 집계 {generatedFormat.format(new Date(overview.generatedAt))} 기준 · 시간대는
+              브라우저 로컬 기준
+            </p>
             {insight ? (
               <p className="insight-note" role="note">
                 <strong>{formatDate(insight.bucketStart)} 구간</strong> — {SURGE_MESSAGES[insight.kind]}
@@ -306,7 +405,10 @@ export function OverviewPage() {
               </thead>
               <tbody>
                 {data.queue.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={data.newQueueIds.has(String(row.id)) ? "row-new" : ""}
+                  >
                     <td>
                       <RiskBadge riskLevel={row.riskLevel} riskScore={row.riskScore} />
                     </td>
@@ -416,10 +518,12 @@ export function OverviewPage() {
               {data.eventFeed != null && data.eventFeed.length === 0 ? (
                 <div className="empty-state">최근 탐지 이벤트가 없습니다.</div>
               ) : null}
-              {(data.eventFeed ?? []).map((item, index) => (
+              {(data.eventFeed ?? []).map((item) => (
                 <a
-                  className="note-item linked"
-                  key={`event-${item.eventId}-${index}`}
+                  className={`note-item linked ${
+                    data.newEventFeedIds.has(String(item.eventId)) ? "row-new" : ""
+                  }`}
+                  key={`event-${item.eventId}`}
                   href={`#/events/${item.eventId}`}
                 >
                   {formatEventType(item.eventType)} 감지, 위험 점수 {item.riskScore}
@@ -431,8 +535,13 @@ export function OverviewPage() {
               {data.transactionFeed != null && data.transactionFeed.length === 0 ? (
                 <div className="empty-state">최근 수집된 트랜잭션이 없습니다.</div>
               ) : null}
-              {(data.transactionFeed ?? []).map((item, index) => (
-                <div className="note-item" key={`tx-${item.txHash}-${index}`}>
+              {(data.transactionFeed ?? []).map((item) => (
+                <div
+                  className={`note-item ${
+                    data.newTransactionKeys.has(item.txHash) ? "row-new" : ""
+                  }`}
+                  key={`tx-${item.txHash}`}
+                >
                   블록 {formatNumber(item.blockNumber)} ·{" "}
                   <span className="mono">{item.txHash.slice(0, 14)}...</span>
                   <small>{formatDate(item.timestamp)}</small>
