@@ -510,6 +510,15 @@ a {
   color: var(--critical);
 }
 
+.data-state.error strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.data-state.error .badge-group {
+  margin-top: 10px;
+}
+
 .data-state.unauthorized {
   border-color: color-mix(in srgb, var(--high) 35%, transparent);
 }
