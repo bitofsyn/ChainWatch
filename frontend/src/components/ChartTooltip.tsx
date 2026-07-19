@@ -27,30 +27,43 @@ const tooltipTimeFormat = new Intl.DateTimeFormat("ko-KR", {
  * 시리즈 순서는 범례와 동일하다(수집 → 탐지 → 탐지율).
  */
 export function ChartTooltip({ point, index, seriesLength, hidden, partial, pinned }: ChartTooltipProps) {
+  const rows: { key: SeriesKey; label: string; value: string }[] = [];
+  if (!hidden.has("collected")) {
+    rows.push({
+      key: "collected",
+      label: "수집",
+      value: `${formatCompact(Math.round(point.collectedTransactions))}건`
+    });
+  }
+  if (!hidden.has("detected")) {
+    rows.push({
+      key: "detected",
+      label: "탐지",
+      value: `${formatCompact(Math.round(point.detectedEvents))}건`
+    });
+  }
+  if (!hidden.has("rate")) {
+    rows.push({ key: "rate", label: "탐지율", value: formatPercent(point.detectionRatePercent) });
+  }
+
   return (
     <div
       className={`ts-tooltip ${pinned ? "pinned" : ""}`}
       style={{ left: `${clampTooltipPercent(index, seriesLength)}%` }}
     >
-      <strong>
+      <strong className="ts-tooltip-title">
         {tooltipTimeFormat.format(new Date(point.bucketStart))}
         {partial ? <em className="ts-partial-badge">집계 중</em> : null}
       </strong>
-      {!hidden.has("collected") ? (
-        <span>
-          수집 <b>{formatCompact(Math.round(point.collectedTransactions))}건</b>
-        </span>
-      ) : null}
-      {!hidden.has("detected") ? (
-        <span>
-          탐지 <b>{formatCompact(Math.round(point.detectedEvents))}건</b>
-        </span>
-      ) : null}
-      {!hidden.has("rate") ? (
-        <span>
-          탐지율 <b>{formatPercent(point.detectionRatePercent)}</b>
-        </span>
-      ) : null}
+      <div className="ts-tooltip-rows">
+        {rows.map((row) => (
+          <span key={row.key} className="ts-tooltip-row">
+            <i className={`ts-tip-dot ${row.key}`} aria-hidden="true" />
+            <span className="ts-tooltip-label">{row.label}</span>
+            <b className="ts-tooltip-value">{row.value}</b>
+          </span>
+        ))}
+      </div>
       {pinned ? <small className="ts-tooltip-hint">Esc로 해제</small> : null}
     </div>
   );
