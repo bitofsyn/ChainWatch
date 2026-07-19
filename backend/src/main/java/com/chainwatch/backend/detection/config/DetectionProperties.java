@@ -13,6 +13,12 @@ public record DetectionProperties(
         long rapidTransferWindowMinutes,
         int fanOutThresholdRecipients,
         long fanOutWindowMinutes,
+        /**
+         * 지갑 단위 재발화 억제 창(분). 같은 지갑·같은 패턴 룰(RAPID_TRANSFER/FAN_OUT)의 이벤트가
+         * 이 시간 안에 이미 있으면 룰 평가를 건너뛴다(트랜잭션마다 중복 발화 방지 + 집계 쿼리 절감).
+         * 0 이하면 비활성.
+         */
+        long ruleCooldownMinutes,
         List<String> watchlistAddresses,
         List<String> exchangeAddresses
 ) {

@@ -5,6 +5,12 @@ spring:
     client:
       connect-timeout: 5s   # 아웃바운드 RestClient(웹훅 등) 연결 타임아웃
       read-timeout: 10s      # 응답이 없는 원격이 호출 스레드를 무한 점유하지 않도록 제한
+  task:
+    scheduling:
+      # 기본 1스레드에서는 collector catch-up 사이클(블록당 수 초 × max-blocks-per-poll)이
+      # 스케줄러를 독점해 AI 워커·이벤트 만료 잡이 굶는다. 수집과 경량 잡을 분리할 여유를 둔다.
+      pool:
+        size: 3
   kafka:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -73,6 +79,12 @@ chainwatch:
     dedup-store: ${CHAINWATCH_NOTIFICATION_DEDUP_STORE:redis}   # redis | memory (redis: 다중 인스턴스 안전, 장애 시 fail-open)
     slack-webhook-url: ${CHAINWATCH_SLACK_WEBHOOK_URL:}
     discord-webhook-url: ${CHAINWATCH_DISCORD_WEBHOOK_URL:}
+  events:
+    expiry:
+      # 저위험(MEDIUM/LOW) NEW 이벤트를 보존 기간 경과 시 RESOLVED+사유로 자동 종결한다.
+      # CRITICAL/HIGH는 대상이 아니다(대응 backlog KPI, 사람이 처리). interval-ms는 잡 주기.
+      enabled: ${CHAINWATCH_EVENT_EXPIRY_ENABLED:true}
+      max-age-days: ${CHAINWATCH_EVENT_EXPIRY_MAX_AGE_DAYS:3}
   ai:
     enabled: false
     # provider/model을 비우면 AI 서버의 기본 체인이 프로바이더를 고르고,
@@ -95,7 +107,9 @@ chainwatch:
     enabled: ${CHAINWATCH_COLLECTOR_ENABLED:false}
     poll-interval-ms: 15000
     start-block: 0        # 0 이하면 최신 블록부터 수집
-    max-blocks-per-poll: 5
+    # catch-up 속도 상한(사이클당 블록). 메인넷 12s/블록 대비 처리량 여유를 두어
+    # 중단 후 재기동 시 lag를 실질적으로 줄일 수 있게 한다(5는 체인 속도를 간신히 상회했음).
+    max-blocks-per-poll: 20
     reorg-rewind-depth: 6  # parentHash 불일치(reorg) 감지 시 되감을 블록 수
     confirmation-depth: 12 # head - blockNumber + 1이 이 값 이상이면 확정(confirmed). rewind 깊이보다 크게 유지
     retry:
@@ -118,10 +132,15 @@ chainwatch:
     mode: ${CHAINWATCH_DETECTION_MODE:sync}   # sync | kafka (kafka: raw-transactions consumer가 탐지 수행)
     large-transfer-threshold-eth: 100.0
     exchange-flow-threshold-eth: 50.0
-    rapid-transfer-threshold-count: 3
+    # 메인넷 실데이터 기준 임계값. 3건/10분·5주소/15분은 거래소·봇 지갑이 상시 발화해
+    # 하루 수만 건이 쌓였다(2026-07-19 backlog 7만 건 원인). 패턴 룰은 cooldown과 함께 조정한다.
+    rapid-transfer-threshold-count: 10
     rapid-transfer-window-minutes: 10
     # 자금 분산(FAN_OUT) 그래프 룰: 창 내 서로 다른 수신 주소 수 임계값
-    fan-out-threshold-recipients: 5
+    fan-out-threshold-recipients: 15
     fan-out-window-minutes: 15
+    # 지갑 단위 재발화 억제(분): 같은 지갑·같은 패턴 룰(RAPID/FAN_OUT) 이벤트가 이 시간 안에
+    # 있으면 재평가 생략 — 트랜잭션당 1건씩 발화하는 폭증을 막는다. 0 이하면 비활성.
+    rule-cooldown-minutes: 30
     watchlist-addresses: []
     exchange-addresses: []

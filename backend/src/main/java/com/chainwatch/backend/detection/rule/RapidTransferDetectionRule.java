@@ -31,6 +31,12 @@ public class RapidTransferDetectionRule implements DetectionRule {
     }
 
     @Override
+    public EventType cooldownEventType() {
+        // walletAddress = fromAddress 계약 (DetectionRule.cooldownEventType 문서 참조)
+        return EventType.RAPID_TRANSFER;
+    }
+
+    @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
         if (detectionProperties.rapidTransferThresholdCount() <= 1) {
             return Optional.empty();

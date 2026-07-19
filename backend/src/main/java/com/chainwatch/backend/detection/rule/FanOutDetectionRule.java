@@ -39,6 +39,12 @@ public class FanOutDetectionRule implements DetectionRule {
     }
 
     @Override
+    public EventType cooldownEventType() {
+        // walletAddress = fromAddress 계약 (DetectionRule.cooldownEventType 문서 참조)
+        return EventType.FAN_OUT;
+    }
+
+    @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
         if (detectionProperties.fanOutThresholdRecipients() <= 1) {
             return Optional.empty();
