@@ -10,9 +10,9 @@ import type { OpsSeriesPoint } from "../types";
 import type { SurgeInsight, SurgeKind } from "../lib/opsOverview";
 import { formatCompact, formatPercent } from "../lib/opsOverview";
 import {
+  bucketPartial,
   computeScales,
   gappedLinePath,
-  isPartialBucket,
   linePath,
   nearestBucketIndex,
   parseBucketMs,
@@ -319,8 +319,7 @@ export function TimeSeriesChart({
                 const barWidth = Math.max(slot * 0.55, 1.5);
                 const barX = x(index) + (slot - barWidth) / 2;
                 const barY = yCount(point.collectedTransactions);
-                const partial = index === series.length - 1 &&
-                  isPartialBucket(point.bucketStart, bucketMs, nowMs);
+                const partial = bucketPartial(point, bucketMs, nowMs);
                 const entering =
                   !reducedMotion &&
                   (isInitialRender || (newBuckets?.has(point.bucketStart) ?? false));
@@ -406,7 +405,7 @@ export function TimeSeriesChart({
         )}
 
         {/* 마지막 미완료 버킷 표시 */}
-        {isPartialBucket(series[series.length - 1].bucketStart, bucketMs, nowMs) ? (
+        {bucketPartial(series[series.length - 1], bucketMs, nowMs) ? (
           <text
             x={x(series.length - 1) + slot / 2}
             y={FRAME.padTop - 6}
@@ -424,10 +423,7 @@ export function TimeSeriesChart({
           index={activeIndex}
           seriesLength={series.length}
           hidden={hidden}
-          partial={
-            activeIndex === series.length - 1 &&
-            isPartialBucket(series[activeIndex].bucketStart, bucketMs, nowMs)
-          }
+          partial={bucketPartial(series[activeIndex], bucketMs, nowMs)}
           pinned={selectedIndex === activeIndex}
         />
       ) : null}
