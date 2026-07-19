@@ -6,7 +6,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.chainwatch.backend.detection.config.DetectionAddressLists;
+import com.chainwatch.backend.detection.config.DetectionAddressListsProvider;
 import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholds;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.transaction.domain.Transaction;
@@ -35,11 +39,16 @@ class DetectionRuleEvidenceTest {
             List.of(EXCHANGE_ADDRESS)
     );
 
+    private final DetectionThresholdsProvider thresholds = () -> DetectionThresholds.fromProperties(properties);
+
+    private final DetectionAddressListsProvider addressLists =
+            () -> DetectionAddressLists.fromProperties(properties);
+
     @Test
     void largeTransferRecordsThresholdAndObservedAmount() {
         Transaction transaction = transaction("0xfrom", "0xto", new BigDecimal("250"));
 
-        DetectionCommand command = new LargeTransferDetectionRule(properties)
+        DetectionCommand command = new LargeTransferDetectionRule(thresholds)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.ruleName()).isEqualTo("large-transfer");
@@ -56,7 +65,7 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countRecentTransfersFromAddress(anyString(), any())).thenReturn(5L);
         Transaction transaction = transaction("0xburst", "0xto", BigDecimal.ONE);
 
-        DetectionCommand command = new RapidTransferDetectionRule(properties, transactionRepository)
+        DetectionCommand command = new RapidTransferDetectionRule(thresholds, transactionRepository)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.ruleName()).isEqualTo("rapid-transfer");
@@ -71,7 +80,7 @@ class DetectionRuleEvidenceTest {
     void exchangeFlowRecordsDirectionAndMatchedExchangeAddress() {
         Transaction inbound = transaction("0xuser", EXCHANGE_ADDRESS, new BigDecimal("80"));
 
-        DetectionCommand command = new ExchangeFlowDetectionRule(properties)
+        DetectionCommand command = new ExchangeFlowDetectionRule(addressLists, thresholds)
                 .evaluate(inbound).orElseThrow();
 
         assertThat(command.eventType()).isEqualTo(EventType.EXCHANGE_FLOW);
@@ -86,7 +95,7 @@ class DetectionRuleEvidenceTest {
     void exchangeFlowOutboundDirectionIsRecorded() {
         Transaction outbound = transaction(EXCHANGE_ADDRESS, "0xuser", new BigDecimal("80"));
 
-        DetectionCommand command = new ExchangeFlowDetectionRule(properties)
+        DetectionCommand command = new ExchangeFlowDetectionRule(addressLists, thresholds)
                 .evaluate(outbound).orElseThrow();
 
         assertThat(command.evidence()).containsEntry("direction", "OUTBOUND");
@@ -98,7 +107,7 @@ class DetectionRuleEvidenceTest {
     void watchlistActivityRecordsMatchedAddressDirectionAndReason() {
         Transaction transaction = transaction(WATCHLIST_ADDRESS, "0xother", BigDecimal.ONE);
 
-        DetectionCommand command = new WatchlistActivityDetectionRule(properties)
+        DetectionCommand command = new WatchlistActivityDetectionRule(addressLists)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.ruleName()).isEqualTo("watchlist-activity");
@@ -114,7 +123,7 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(6L);
         Transaction transaction = transaction("0xsplitter", "0xr1", BigDecimal.ONE);
 
-        DetectionCommand command = new FanOutDetectionRule(properties, transactionRepository)
+        DetectionCommand command = new FanOutDetectionRule(thresholds, transactionRepository)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.eventType()).isEqualTo(EventType.FAN_OUT);
@@ -132,7 +141,7 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(2L);
         Transaction transaction = transaction("0xrepeat", "0xsame", BigDecimal.ONE);
 
-        assertThat(new FanOutDetectionRule(properties, transactionRepository).evaluate(transaction))
+        assertThat(new FanOutDetectionRule(thresholds, transactionRepository).evaluate(transaction))
                 .isEmpty();
     }
 

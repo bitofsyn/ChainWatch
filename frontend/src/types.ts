@@ -321,10 +321,32 @@ export interface DetectionRule {
   active: boolean;
 }
 
+export interface DetectionThresholds {
+  largeTransferThresholdEth: number;
+  exchangeFlowThresholdEth: number;
+  rapidTransferThresholdCount: number;
+  rapidTransferWindowMinutes: number;
+  fanOutThresholdRecipients: number;
+  fanOutWindowMinutes: number;
+  ruleCooldownMinutes: number;
+}
+
 export interface DetectionRules {
   mode: string;
   rules: DetectionRule[];
+  thresholds: DetectionThresholds;
+  watchlistAddresses: string[];
+  exchangeAddresses: string[];
+  /** 마지막 관리자 변경자. null이면 application.yml 기본값 적용 중 */
+  thresholdsUpdatedBy: string | null;
+  thresholdsUpdatedAt: string | null;
 }
+
+/** PATCH /api/detection/rules/thresholds 요청 — null/누락 필드는 유지, 빈 배열은 목록 비우기 */
+export type DetectionPolicyPatch = Partial<DetectionThresholds> & {
+  watchlistAddresses?: string[];
+  exchangeAddresses?: string[];
+};
 
 /* ── AI Agent 팀 운영 콘솔 ─────────────────────── */
 

@@ -11,6 +11,8 @@ import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
 import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholds;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.rule.LargeTransferDetectionRule;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.domain.EventType;
@@ -52,9 +54,10 @@ class DetectionServiceTest {
         DetectionProperties properties = new DetectionProperties(
                 DetectionProperties.DetectionTransport.SYNC,
                 new BigDecimal("100.0"), null, 0, 10, 0, 15, 0, List.of(), List.of());
+        DetectionThresholdsProvider thresholds = () -> DetectionThresholds.fromProperties(properties);
         detectionService = new DetectionService(
-                List.of(new LargeTransferDetectionRule(properties)),
-                properties,
+                List.of(new LargeTransferDetectionRule(thresholds)),
+                thresholds,
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
@@ -135,12 +138,13 @@ class DetectionServiceTest {
         DetectionProperties cooldownProperties = new DetectionProperties(
                 DetectionProperties.DetectionTransport.SYNC,
                 new BigDecimal("100.0"), null, 3, 10, 0, 15, 30, List.of(), List.of());
+        DetectionThresholdsProvider cooldownThresholds = () -> DetectionThresholds.fromProperties(cooldownProperties);
         com.chainwatch.backend.transaction.repository.TransactionRepository transactionRepository =
                 org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
         DetectionService service = new DetectionService(
                 List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
-                        cooldownProperties, transactionRepository)),
-                cooldownProperties,
+                        cooldownThresholds, transactionRepository)),
+                cooldownThresholds,
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
@@ -167,12 +171,13 @@ class DetectionServiceTest {
         DetectionProperties cooldownProperties = new DetectionProperties(
                 DetectionProperties.DetectionTransport.SYNC,
                 new BigDecimal("100.0"), null, 3, 10, 0, 15, 30, List.of(), List.of());
+        DetectionThresholdsProvider cooldownThresholds = () -> DetectionThresholds.fromProperties(cooldownProperties);
         com.chainwatch.backend.transaction.repository.TransactionRepository transactionRepository =
                 org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
         DetectionService service = new DetectionService(
                 List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
-                        cooldownProperties, transactionRepository)),
-                cooldownProperties,
+                        cooldownThresholds, transactionRepository)),
+                cooldownThresholds,
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),

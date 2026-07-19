@@ -1,6 +1,7 @@
 package com.chainwatch.backend.detection.rule;
 
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionThresholds;
+import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -19,14 +20,14 @@ public class RapidTransferDetectionRule implements DetectionRule {
     static final String RULE_NAME = "rapid-transfer";
     static final String RULE_VERSION = "1.0";
 
-    private final DetectionProperties detectionProperties;
+    private final DetectionThresholdsProvider thresholds;
     private final TransactionRepository transactionRepository;
 
     public RapidTransferDetectionRule(
-            DetectionProperties detectionProperties,
+            DetectionThresholdsProvider thresholds,
             TransactionRepository transactionRepository
     ) {
-        this.detectionProperties = detectionProperties;
+        this.thresholds = thresholds;
         this.transactionRepository = transactionRepository;
     }
 
@@ -38,25 +39,26 @@ public class RapidTransferDetectionRule implements DetectionRule {
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        if (detectionProperties.rapidTransferThresholdCount() <= 1) {
+        DetectionThresholds current = thresholds.current();
+        if (current.rapidTransferThresholdCount() <= 1) {
             return Optional.empty();
         }
 
         Instant thresholdTime = transaction.getTimestamp()
-                .minus(detectionProperties.rapidTransferWindowMinutes(), ChronoUnit.MINUTES);
+                .minus(current.rapidTransferWindowMinutes(), ChronoUnit.MINUTES);
 
         long recentTransferCount = transactionRepository.countRecentTransfersFromAddress(
                 transaction.getFromAddress(),
                 thresholdTime
         );
 
-        if (recentTransferCount < detectionProperties.rapidTransferThresholdCount()) {
+        if (recentTransferCount < current.rapidTransferThresholdCount()) {
             return Optional.empty();
         }
 
         Map<String, Object> evidence = new LinkedHashMap<>();
-        evidence.put("windowMinutes", detectionProperties.rapidTransferWindowMinutes());
-        evidence.put("thresholdCount", detectionProperties.rapidTransferThresholdCount());
+        evidence.put("windowMinutes", current.rapidTransferWindowMinutes());
+        evidence.put("thresholdCount", current.rapidTransferThresholdCount());
         evidence.put("observedTransferCount", recentTransferCount);
         evidence.put("windowStart", thresholdTime.toString());
         evidence.put("fromAddress", transaction.getFromAddress());
@@ -67,7 +69,7 @@ public class RapidTransferDetectionRule implements DetectionRule {
                 72,
                 "Rapid transfer pattern detected: " + recentTransferCount
                         + " transfers from " + transaction.getFromAddress()
-                        + " within " + detectionProperties.rapidTransferWindowMinutes() + " minutes",
+                        + " within " + current.rapidTransferWindowMinutes() + " minutes",
                 transaction.getFromAddress(),
                 transaction,
                 RULE_NAME,

@@ -6,6 +6,7 @@ import type {
   DetectionEventItem,
   DetectionEventPage,
   DetectionRules,
+  DetectionPolicyPatch,
   EventStats,
   EventStatusUpdateRequest,
   FeedEventItem,
@@ -189,6 +190,15 @@ export function fetchOpsOverview(range = "24h", bucket = "1h", signal?: AbortSig
 
 export function fetchDetectionRules() {
   return requestJson<DetectionRules>("/api/detection/rules");
+}
+
+/** PATCH /api/detection/rules/thresholds — 탐지 threshold·주소 목록 런타임 수정 (ADMIN, 부분 수정) */
+export function updateDetectionThresholds(patch: DetectionPolicyPatch) {
+  return requestJson<DetectionRules>("/api/detection/rules/thresholds", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch)
+  });
 }
 
 export function fetchRecentEventFeed(limit = 5) {
