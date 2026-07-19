@@ -44,3 +44,39 @@
 - **비동기 분석 폴링 없음**: `POST /analysis`(동기)만 사용. PENDING 상태 자동 갱신(폴링/SSE)은 미구현 — 수동 새로고침 필요.
 - **오버뷰 운영 지표**: collector lag, Kafka/DLT, AI 큐 등 파이프라인 지표가 오버뷰 첫 화면에 아직 없다(관리자 파이프라인 탭에만 존재). ops 지표 API가 공개 범위로 정리되면 오버뷰 상단에 편입할 가치가 있다.
 - **컴포넌트 렌더 테스트 부재**: jsdom/@testing-library 미도입 정책으로 로직(순수 함수) 테스트만 확장했다. 렌더 수준 회귀 방지가 필요해지면 도입 논의 필요.
+
+## 3. 실시간 모션·시계열 UX 고도화 (2026-07-18)
+
+`docs/REALTIME_MOTION_UX_CLAUDE_CODE_PROMPT.md` 기반 구현. 외부 라이브러리 추가 없음(SVG + rAF).
+
+### 3.1 공용 Motion System
+
+- `styles.css` `:root`에 motion token 정의: `--motion-instant/fast/base/slow`(80/140/220/360ms), `--ease-standard/emphasized/exit`. 신규 모션은 전부 이 토큰만 사용.
+- `hooks/usePrefersReducedMotion.ts`: JS 기반 애니메이션(count-up, 시리즈 morph, ripple, 진입 클래스)도 사용자 모션 설정을 따르도록 논리적으로 비활성화. CSS 쪽은 기존 전역 reduce 블록 + 신규 애니메이션 `animation: none` 명시.
+
+### 3.2 실시간 상태 모델
+
+- `lib/liveStatus.ts`(순수 함수): LIVE / UPDATING(복귀 동기화 구분) / STALE(부분 실패 또는 90초 초과) / PAUSED(탭 비활성) / OFFLINE(전체 실패) 판정. `navigator.onLine`은 OFFLINE 상태의 보조 힌트로만 사용.
+- `components/LiveStatusCluster.tsx`: 상태 점+텍스트+마지막 성공 시각, countdown은 독립 컴포넌트로 격리(매초 전체 rerender 금지). LIVE 점은 상시 pulse하지 않고 데이터 도착 순간 1회 ripple. aria-live는 상태 종류 변경 시에만 갱신.
+- `useOverviewData`: setInterval → setTimeout 체인으로 변경해 `nextRefreshAt`이 항상 실제 예정 시각(수동 새로고침 후에도 정직한 countdown).
+
+### 3.3 데이터 diff 모델
+
+- `lib/overviewDiff.ts`(순수 함수 + 테스트): `ValueChange`(previous/current/delta/deltaPercent/direction/changedAt). 최초 로드·null 전환은 변화로 취급하지 않음. range 변경은 query transition으로 diff 생략(overview 응답의 range/bucket 에코 비교).
+- KPI별 semantic direction: lag/탐지율/backlog = higher-worse(상승 주의), 처리량 = neutral.
+- 신규 항목: 이전 성공 응답의 `event.id`/`txHash` 집합과 비교(`findNewKeys`), 시계열 신규 bucket은 `newBucketKeys`.
+
+### 3.4 시계열 차트 계약·가정 (문서화된 추측)
+
+- **partial bucket**: API에 완료 플래그가 없어 `bucketStart + bucket길이 > 서버 generatedAt`으로 결정론적 판별(`lib/chartGeometry.ts isPartialBucket`). 백엔드가 명시 플래그를 제공하면 대체할 것.
+- **null vs 0**: `detectionRatePercent == null`(수집 0건)은 선을 잇지 않고 gap(`gappedLinePath`). 수집/탐지 count는 계약상 non-null이라 0은 측정된 0으로 그린다.
+- polling 갱신은 bucket key 기준 값 보간 morph(320ms, `useSeriesTransition`) — 문자열 path 보간 금지. bucket 집합이 겹치지 않으면 즉시 교체. range 변경은 plot `<g key={queryKey}>` remount + 180ms crossfade.
+- anomaly marker는 `throughputInsight`와 동일 결과 객체를 공유(단일 source), 유형별 모양 상이, 최초 발견 1회만 진입 애니메이션.
+- 키보드: 차트 전체가 단일 focusable composite(수십 개 tabbable rect 제거). ←/→/Home/End 이동, Esc/외부 클릭 해제, 선택은 bucket key로 저장해 시계열 이동에도 유지. 스크린리더용 숨김 데이터 테이블 제공.
+
+### 3.5 한계·후속
+
+- 컴포넌트 렌더 테스트: 기존 jsdom/@testing-library 미도입 정책 유지 — 상태·판정 로직을 순수 함수로 내려 unit 테스트로 대체(diff 27, geometry 26, liveStatus 9 등 114 tests).
+- 조사 큐 재정렬 배치 반영("새 이벤트 N건" 버튼)은 큐가 최대 8행이라 미도입. 행 수가 늘면 재검토.
+- reduced-motion 브라우저 에뮬레이션 검증은 수동 필요(로직 분기는 unit 테스트로 검증).
+- SSE/WebSocket 미도입 — 30초 polling을 UI에 명시(프로토콜 변경은 별도 단계).

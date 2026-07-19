@@ -3,9 +3,32 @@ import {
   matchAdminSection,
   matchAgentTeamDetail,
   matchEventDetail,
+  matchOverview,
   matchTransactionDetail,
-  matchWalletDetail
+  matchWalletDetail,
+  overviewPath,
+  parseOverviewRange
 } from "./router";
+
+describe("Overview range URL 보존", () => {
+  it("Overview 라우트와 쿼리를 매칭한다", () => {
+    expect(matchOverview("/")).toBe("");
+    expect(matchOverview("/?range=6h")).toBe("range=6h");
+    expect(matchOverview("/events")).toBeNull();
+  });
+
+  it("URL의 range를 파싱하고 알 수 없는 값은 null", () => {
+    expect(parseOverviewRange("/?range=1h")).toBe("1h");
+    expect(parseOverviewRange("/?range=6h")).toBe("6h");
+    expect(parseOverviewRange("/")).toBeNull();
+    expect(parseOverviewRange("/?range=99h")).toBeNull();
+  });
+
+  it("기본값 24h는 쿼리 없는 경로로 유지한다", () => {
+    expect(overviewPath("24h")).toBe("/");
+    expect(overviewPath("1h")).toBe("/?range=1h");
+  });
+});
 
 describe("matchEventDetail", () => {
   it("matches numeric event detail routes", () => {
