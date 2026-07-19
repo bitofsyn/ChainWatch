@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
 import org.springframework.beans.factory.ObjectProvider;
@@ -171,7 +172,7 @@ public class AgentOpsService {
             statusReason = "자동 수집 비활성 — 수동 트리거로만 동작 (chainwatch.collector.enabled=false)";
         } else if (failed1h > 0) {
             status = "degraded";
-            statusReason = "최근 1시간 스크리닝 실패 " + failed1h + "건";
+            statusReason = "최근 1시간 스크리닝 실패 " + num(failed1h) + "건";
         } else {
             status = "healthy";
             statusReason = null;
@@ -216,8 +217,8 @@ public class AgentOpsService {
                 List.of(
                         new SlaTarget("블록 수집 연속성", "수집 이력 존재",
                                 lastBlock >= 0 ? "마지막 블록 " + lastBlock : "수집 이력 없음", lastBlock >= 0),
-                        new SlaTarget("시간당 수집 트랜잭션", "> 0건", transactions1h + "건", transactions1h > 0),
-                        new SlaTarget("시간당 탐지 이벤트", "집계", events1h + "건", true),
+                        new SlaTarget("시간당 수집 트랜잭션", "> 0건", num(transactions1h) + "건", transactions1h > 0),
+                        new SlaTarget("시간당 탐지 이벤트", "집계", num(events1h) + "건", true),
                         new SlaTarget("1시간 성공률", "≥ 97%", successRate + "%", successRate >= 97)
                 ),
                 now
@@ -258,8 +259,8 @@ public class AgentOpsService {
         } else if (backlog >= ANALYSIS_BACKLOG_WARN || failed1h > completed1h && failed1h > 0) {
             status = "degraded";
             statusReason = backlog >= ANALYSIS_BACKLOG_WARN
-                    ? "미분석 고위험 이벤트 " + backlog + "건 적체"
-                    : "최근 1시간 분석 실패(" + failed1h + "건)가 성공(" + completed1h + "건)보다 많음";
+                    ? "미분석 고위험 이벤트 " + num(backlog) + "건 적체"
+                    : "최근 1시간 분석 실패(" + num(failed1h) + "건)가 성공(" + num(completed1h) + "건)보다 많음";
         } else {
             status = "healthy";
             statusReason = null;
@@ -297,18 +298,18 @@ public class AgentOpsService {
                                 !aiEnabled || faultActive ? "error" : backlog > 0 || inProgress > 0 ? "working" : "idle",
                                 faultActive ? "장애 주입 활성 — 분석 강제 실패"
                                         : inProgress > 0
-                                                ? "분석 진행 중 " + inProgress + "건 · 대기 " + backlog + "건"
-                                                : backlog > 0 ? "미분석 고위험 이벤트 " + backlog + "건 대기" : null),
+                                                ? "분석 진행 중 " + num(inProgress) + "건 · 대기 " + num(backlog) + "건"
+                                                : backlog > 0 ? "미분석 고위험 이벤트 " + num(backlog) + "건 대기" : null),
                         new SubAgent("report-writer", "report-writer", "리포트 저장·이벤트 연결",
                                 "idle", null)
                 ),
                 recentTasks,
                 recentFailures,
                 List.of(
-                        new SlaTarget("미분석 백로그", "< " + ANALYSIS_BACKLOG_WARN + "건", backlog + "건",
+                        new SlaTarget("미분석 백로그", "< " + ANALYSIS_BACKLOG_WARN + "건", num(backlog) + "건",
                                 backlog < ANALYSIS_BACKLOG_WARN),
                         new SlaTarget("1시간 성공률", "≥ 97%", successRate + "%", successRate >= 97),
-                        new SlaTarget("누적 분석 실패", "집계", totalFailed + "건", true)
+                        new SlaTarget("누적 분석 실패", "집계", num(totalFailed) + "건", true)
                 ),
                 now
         );
@@ -352,10 +353,10 @@ public class AgentOpsService {
             statusReason = "장애 주입 활성 — 이벤트 상태 전이가 강제 실패 처리되는 중";
         } else if (backlogged) {
             status = "degraded";
-            statusReason = "미처리(NEW) 이벤트 " + newCount + "건 적체 — 접수 처리 필요";
+            statusReason = "미처리(NEW) 이벤트 " + num(newCount) + "건 적체 — 접수 처리 필요";
         } else if (failed1h > 0) {
             status = "degraded";
-            statusReason = "최근 1시간 상태 전이 실패 " + failed1h + "건";
+            statusReason = "최근 1시간 상태 전이 실패 " + num(failed1h) + "건";
         } else {
             status = "healthy";
             statusReason = null;
@@ -378,18 +379,18 @@ public class AgentOpsService {
                 List.of(
                         new SubAgent("risk-grader", "risk-grader", "등급·우선순위 확정",
                                 newCount > 0 ? "working" : "idle",
-                                newCount > 0 ? "미처리 이벤트 " + newCount + "건 검토 대기" : null),
+                                newCount > 0 ? "미처리 이벤트 " + num(newCount) + "건 검토 대기" : null),
                         new SubAgent("status-tracker", "status-tracker", "lifecycle 상태 전이",
                                 faultActive ? "error" : inProgress > 0 ? "working" : "idle",
                                 faultActive ? "장애 주입 활성 — 전이 강제 실패"
-                                        : inProgress > 0 ? "조사 진행 중 " + inProgress + "건" : null)
+                                        : inProgress > 0 ? "조사 진행 중 " + num(inProgress) + "건" : null)
                 ),
                 recentTasks,
                 recentFailures("triage"),
                 List.of(
-                        new SlaTarget("미처리(NEW) 이벤트", "< " + TRIAGE_BACKLOG_WARN + "건", newCount + "건", !backlogged),
+                        new SlaTarget("미처리(NEW) 이벤트", "< " + TRIAGE_BACKLOG_WARN + "건", num(newCount) + "건", !backlogged),
                         new SlaTarget("1시간 성공률", "≥ 97%", successRate + "%", successRate >= 97),
-                        new SlaTarget("해결 누적", "집계", resolved + "건", true)
+                        new SlaTarget("해결 누적", "집계", num(resolved) + "건", true)
                 ),
                 now
         );
@@ -423,7 +424,7 @@ public class AgentOpsService {
             statusReason = "알림 비활성 (chainwatch.notification.enabled=false)";
         } else if (failed1h > 0) {
             status = "degraded";
-            statusReason = "최근 1시간 발송 실패 " + failed1h + "건";
+            statusReason = "최근 1시간 발송 실패 " + num(failed1h) + "건";
         } else {
             status = "healthy";
             statusReason = null;
@@ -495,7 +496,7 @@ public class AgentOpsService {
             statusReason = "장애 주입 활성 — 에스컬레이션 처리가 강제 실패 처리되는 중";
         } else if (failed1h > 0) {
             status = "degraded";
-            statusReason = "최근 1시간 에스컬레이션 처리 실패 " + failed1h + "건";
+            statusReason = "최근 1시간 에스컬레이션 처리 실패 " + num(failed1h) + "건";
         } else {
             status = "healthy";
             statusReason = null;
@@ -528,7 +529,7 @@ public class AgentOpsService {
                 List.of(
                         new SlaTarget("수집 파이프라인", "블록 이력 존재",
                                 lastBlock >= 0 ? "마지막 블록 " + lastBlock : "수집 이력 없음", lastBlock >= 0),
-                        new SlaTarget("1시간 에스컬레이션 실패", "0건", failed1h + "건", failed1h == 0)
+                        new SlaTarget("1시간 에스컬레이션 실패", "0건", num(failed1h) + "건", failed1h == 0)
                 ),
                 now
         );
@@ -579,7 +580,7 @@ public class AgentOpsService {
             }
             if (team.queue().failedLastHour() > 0) {
                 alerts.add(new Alert("alert-" + team.id() + "-failures", "warning",
-                        team.name() + " 최근 1시간 실패 " + team.queue().failedLastHour() + "건", team.id(), now));
+                        team.name() + " 최근 1시간 실패 " + num(team.queue().failedLastHour()) + "건", team.id(), now));
             }
         }
         return alerts;
@@ -732,6 +733,11 @@ public class AgentOpsService {
             case RESOLVED -> "해결 완료";
             case FALSE_POSITIVE -> "오탐 종결";
         };
+    }
+
+    /** 카운트 지표를 천 단위 구분 기호로 포맷한다(예: 1369514 → 1,369,514). 블록 번호·ID 등 식별자에는 쓰지 않는다. */
+    private static String num(long value) {
+        return String.format(Locale.KOREA, "%,d", value);
     }
 
     private static String truncate(String value) {
