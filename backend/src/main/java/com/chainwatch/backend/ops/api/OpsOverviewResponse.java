@@ -40,7 +40,7 @@ public record OpsOverviewResponse(
             Double transactionsDeltaPercent,  // null = 직전 구간 0건이라 비교 불가
             Double detectionRatePercent,      // null = 최근 창 수집 0건(분모 0)
             long detectedLast5m,
-            long backlogCount,                // NEW(레거시 null 포함) + ACKNOWLEDGED
+            long backlogCount,                // CRITICAL/HIGH의 NEW(레거시 null 포함) + ACKNOWLEDGED
             Long oldestBacklogAgeSeconds,     // null = backlog 없음
             Long dltCount                     // null = 측정 불가(카운터 미등록). 값은 프로세스 기동 이후 누적
     ) {

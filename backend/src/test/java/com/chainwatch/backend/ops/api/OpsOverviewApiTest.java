@@ -2,6 +2,7 @@ package com.chainwatch.backend.ops.api;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -105,6 +106,9 @@ class OpsOverviewApiTest {
                 now.minus(Duration.ofHours(4)));
         resolved.changeStatus(EventStatus.RESOLVED);
         detectionEventRepository.save(resolved);
+        // 저위험(MEDIUM) NEW는 대응 backlog에서 제외된다 — 30시간 대기지만 backlog 최장 대기에도 안 잡힘.
+        // (24h 범위 밖이라 시계열·유형 집계에는 영향 없음, 매트릭스는 전체 기간이라 +1 셀)
+        saveEvent(EventType.RAPID_TRANSFER, RiskLevel.MEDIUM, now.minus(Duration.ofHours(30)));
 
         mockMvc.perform(get("/api/ops/overview").param("range", "24h").param("bucket", "1h"))
                 .andExpect(status().isOk())
@@ -112,17 +116,19 @@ class OpsOverviewApiTest {
                 .andExpect(jsonPath("$.kpis.transactionsDeltaPercent").value(100.0))
                 .andExpect(jsonPath("$.kpis.detectionRatePercent").value(50.0))
                 .andExpect(jsonPath("$.kpis.detectedLast5m").value(1))
-                // backlog = NEW(recent, legacyNew) + ACKNOWLEDGED = 3 (RESOLVED 제외)
+                // backlog = CRITICAL/HIGH의 NEW(recent, legacyNew) + ACKNOWLEDGED = 3
+                // (RESOLVED와 MEDIUM NEW 30시간 대기 건은 제외)
                 .andExpect(jsonPath("$.kpis.backlogCount").value(3))
-                // 가장 오래된 backlog는 3시간 전 ACKNOWLEDGED
+                // 가장 오래된 backlog는 3시간 전 ACKNOWLEDGED (30시간 된 MEDIUM NEW는 제외)
                 .andExpect(jsonPath("$.kpis.oldestBacklogAgeSeconds").value(greaterThanOrEqualTo(10700)))
+                .andExpect(jsonPath("$.kpis.oldestBacklogAgeSeconds").value(lessThan(11100)))
                 // 시계열 버킷 수 = 24 (빈 버킷 0 채움 포함, 합계는 아래에서 별도 검증)
                 .andExpect(jsonPath("$.series.length()").value(24))
                 // 마지막 버킷만 집계 중(partial), 과거 버킷은 완료
                 .andExpect(jsonPath("$.series[0].partial").value(false))
                 .andExpect(jsonPath("$.series[23].partial").value(true))
-                // 매트릭스: CRITICAL×NEW=2(null 합산), HIGH×ACKNOWLEDGED=1, MEDIUM×RESOLVED=1
-                .andExpect(jsonPath("$.riskStatusMatrix.length()").value(3))
+                // 매트릭스: CRITICAL×NEW=2(null 합산), HIGH×ACK=1, MEDIUM×RESOLVED=1, MEDIUM×NEW=1
+                .andExpect(jsonPath("$.riskStatusMatrix.length()").value(4))
                 .andExpect(jsonPath(
                         "$.riskStatusMatrix[?(@.riskLevel=='CRITICAL' && @.status=='NEW')].count",
                         contains(2)))

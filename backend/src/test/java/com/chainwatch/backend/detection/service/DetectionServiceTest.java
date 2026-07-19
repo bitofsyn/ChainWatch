@@ -51,9 +51,10 @@ class DetectionServiceTest {
     void setUp() {
         DetectionProperties properties = new DetectionProperties(
                 DetectionProperties.DetectionTransport.SYNC,
-                new BigDecimal("100.0"), null, 0, 10, 0, 15, List.of(), List.of());
+                new BigDecimal("100.0"), null, 0, 10, 0, 15, 0, List.of(), List.of());
         detectionService = new DetectionService(
                 List.of(new LargeTransferDetectionRule(properties)),
+                properties,
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
@@ -126,6 +127,71 @@ class DetectionServiceTest {
         ArgumentCaptor<DetectionEvent> captor = ArgumentCaptor.forClass(DetectionEvent.class);
         verify(detectionEventRepository).save(captor.capture());
         assertThat(captor.getValue().getEventType()).isEqualTo(EventType.LARGE_TRANSFER);
+    }
+
+    /** cooldown 창 안에 같은 지갑·같은 유형 이벤트가 있으면 룰 평가(창 집계 쿼리) 자체를 생략한다. */
+    @Test
+    void cooldownSkipsPatternRuleEvaluationForRecentlyFlaggedWallet() {
+        DetectionProperties cooldownProperties = new DetectionProperties(
+                DetectionProperties.DetectionTransport.SYNC,
+                new BigDecimal("100.0"), null, 3, 10, 0, 15, 30, List.of(), List.of());
+        com.chainwatch.backend.transaction.repository.TransactionRepository transactionRepository =
+                org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
+        DetectionService service = new DetectionService(
+                List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
+                        cooldownProperties, transactionRepository)),
+                cooldownProperties,
+                detectionEventRepository,
+                kafkaProducer,
+                new ChainWatchMetrics(new SimpleMeterRegistry()),
+                objectMapper,
+                faultInjector,
+                failureRecorder,
+                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+        );
+        when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
+                org.mockito.ArgumentMatchers.eq("0xfrom"),
+                org.mockito.ArgumentMatchers.eq(EventType.RAPID_TRANSFER),
+                any()))
+                .thenReturn(true);
+
+        service.analyzeTransaction(transaction(BigDecimal.ONE));
+
+        verify(transactionRepository, never()).countRecentTransfersFromAddress(anyString(), any());
+        verify(detectionEventRepository, never()).save(any());
+    }
+
+    /** cooldown 창에 기존 이벤트가 없으면 룰이 평소대로 평가·발화한다. */
+    @Test
+    void cooldownAllowsRuleWhenNoRecentEventExists() {
+        DetectionProperties cooldownProperties = new DetectionProperties(
+                DetectionProperties.DetectionTransport.SYNC,
+                new BigDecimal("100.0"), null, 3, 10, 0, 15, 30, List.of(), List.of());
+        com.chainwatch.backend.transaction.repository.TransactionRepository transactionRepository =
+                org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
+        DetectionService service = new DetectionService(
+                List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
+                        cooldownProperties, transactionRepository)),
+                cooldownProperties,
+                detectionEventRepository,
+                kafkaProducer,
+                new ChainWatchMetrics(new SimpleMeterRegistry()),
+                objectMapper,
+                faultInjector,
+                failureRecorder,
+                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+        );
+        when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
+                anyString(), any(), any())).thenReturn(false);
+        when(transactionRepository.countRecentTransfersFromAddress(anyString(), any())).thenReturn(5L);
+        when(detectionEventRepository.existsByTransactionIdAndEventType(any(), any())).thenReturn(false);
+        when(detectionEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.analyzeTransaction(transaction(BigDecimal.ONE));
+
+        ArgumentCaptor<DetectionEvent> captor = ArgumentCaptor.forClass(DetectionEvent.class);
+        verify(detectionEventRepository).save(captor.capture());
+        assertThat(captor.getValue().getEventType()).isEqualTo(EventType.RAPID_TRANSFER);
     }
 
     private Transaction transaction(BigDecimal amount) {

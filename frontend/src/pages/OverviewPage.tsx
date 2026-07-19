@@ -240,7 +240,7 @@ export function OverviewPage({ route }: OverviewPageProps) {
           change={changes?.backlogCount ?? null}
           semantic={KPI_SEMANTICS.backlogCount}
           formatChipDelta={chipCount}
-          help={`NEW + ACKNOWLEDGED 상태 이벤트 수. ${BACKLOG_WARN}건 초과 또는 30분 초과 대기 시 주의, ${BACKLOG_DANGER}건 초과 또는 2시간 초과 대기 시 위험.`}
+          help={`CRITICAL/HIGH 등급의 NEW + ACKNOWLEDGED 이벤트 수 (저위험은 자동 만료 대상이라 제외). ${BACKLOG_WARN}건 초과 또는 30분 초과 대기 시 주의, ${BACKLOG_DANGER}건 초과 또는 2시간 초과 대기 시 위험.`}
         />
       </section>
 

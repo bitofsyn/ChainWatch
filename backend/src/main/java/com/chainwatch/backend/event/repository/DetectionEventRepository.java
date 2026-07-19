@@ -22,6 +22,10 @@ public interface DetectionEventRepository
 
     boolean existsByTransactionIdAndEventType(Long transactionId, EventType eventType);
 
+    /** 룰 cooldown 판정: 같은 지갑·같은 유형 이벤트가 기준 시각 이후 존재하는지 (DetectionService) */
+    boolean existsByWalletAddressAndEventTypeAndDetectedAtAfter(
+            String walletAddress, EventType eventType, Instant threshold);
+
     long countByDetectedAtAfter(Instant threshold);
 
     List<DetectionEvent> findTop6ByOrderByDetectedAtDesc();
@@ -73,25 +77,56 @@ public interface DetectionEventRepository
     @Query("select count(e) from DetectionEvent e where e.detectedAt >= :from and e.detectedAt < :to")
     long countDetectedInWindow(@Param("from") Instant from, @Param("to") Instant to);
 
-    /** 대응 backlog = NEW(레거시 null 포함) + ACKNOWLEDGED. 정의는 ops overview와 통일한다. */
+    /**
+     * 대응 backlog = CRITICAL/HIGH의 NEW(레거시 null 포함) + ACKNOWLEDGED.
+     * MEDIUM/LOW는 자동 만료 대상이라 대응 대기 지표에서 제외한다(2026-07-19 재정의).
+     * 정의는 ops overview와 통일한다.
+     */
     @Query("""
             select count(e)
             from DetectionEvent e
-            where e.status is null
+            where (e.status is null
                or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW
-               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED)
+              and e.riskLevel in (
+                  com.chainwatch.backend.event.domain.RiskLevel.CRITICAL,
+                  com.chainwatch.backend.event.domain.RiskLevel.HIGH)
             """)
     long countBacklog();
 
-    /** backlog 중 가장 오래 대기한 이벤트의 탐지 시각. backlog가 없으면 null. */
+    /** backlog(CRITICAL/HIGH) 중 가장 오래 대기한 이벤트의 탐지 시각. backlog가 없으면 null. */
     @Query("""
             select min(e.detectedAt)
             from DetectionEvent e
-            where e.status is null
+            where (e.status is null
                or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW
-               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED
+               or e.status = com.chainwatch.backend.event.domain.EventStatus.ACKNOWLEDGED)
+              and e.riskLevel in (
+                  com.chainwatch.backend.event.domain.RiskLevel.CRITICAL,
+                  com.chainwatch.backend.event.domain.RiskLevel.HIGH)
             """)
     Instant oldestBacklogDetectedAt();
+
+    /**
+     * 저위험(MEDIUM/LOW) 미처리(NEW/null) 이벤트를 보존 기간 경과 시 일괄 자동 종결한다.
+     * 데이터는 삭제하지 않고 RESOLVED + 사유로 남겨 통계·감사를 보존한다 (LowRiskBacklogExpiryJob).
+     *
+     * @return 종결 처리된 행 수
+     */
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @Query("""
+            update DetectionEvent e
+            set e.status = com.chainwatch.backend.event.domain.EventStatus.RESOLVED,
+                e.resolutionReason = :reason,
+                e.statusChangedAt = :now
+            where (e.status is null or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW)
+              and e.riskLevel in (
+                  com.chainwatch.backend.event.domain.RiskLevel.MEDIUM,
+                  com.chainwatch.backend.event.domain.RiskLevel.LOW)
+              and e.detectedAt < :cutoff
+            """)
+    int expireLowRiskBacklog(
+            @Param("cutoff") Instant cutoff, @Param("reason") String reason, @Param("now") Instant now);
 
     /** 위험도×처리상태 매트릭스. status null(레거시)은 서비스에서 NEW로 합산한다. */
     @Query("select e.riskLevel, e.status, count(e) from DetectionEvent e group by e.riskLevel, e.status")

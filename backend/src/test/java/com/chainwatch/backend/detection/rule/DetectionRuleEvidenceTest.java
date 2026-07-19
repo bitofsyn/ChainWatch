@@ -30,6 +30,7 @@ class DetectionRuleEvidenceTest {
             10,
             5,
             15,
+            0, // cooldown 비활성 (룰 evidence 자체를 검증)
             List.of(WATCHLIST_ADDRESS),
             List.of(EXCHANGE_ADDRESS)
     );

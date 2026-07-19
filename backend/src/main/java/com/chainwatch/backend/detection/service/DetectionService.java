@@ -4,9 +4,11 @@ import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
 import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
+import com.chainwatch.backend.detection.config.DetectionProperties;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.detection.rule.DetectionRule;
 import com.chainwatch.backend.event.domain.DetectionEvent;
+import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.messaging.producer.ChainWatchKafkaProducer;
 import com.chainwatch.backend.messaging.producer.DetectedEventMessage;
@@ -36,6 +38,7 @@ public class DetectionService {
     private static final Logger log = LoggerFactory.getLogger(DetectionService.class);
 
     private final List<DetectionRule> detectionRules;
+    private final DetectionProperties detectionProperties;
     private final DetectionEventRepository detectionEventRepository;
     private final ChainWatchKafkaProducer kafkaProducer;
     private final ChainWatchMetrics metrics;
@@ -46,6 +49,7 @@ public class DetectionService {
 
     public DetectionService(
             List<DetectionRule> detectionRules,
+            DetectionProperties detectionProperties,
             DetectionEventRepository detectionEventRepository,
             ChainWatchKafkaProducer kafkaProducer,
             ChainWatchMetrics metrics,
@@ -55,6 +59,7 @@ public class DetectionService {
             AgentProcessingTracker processingTracker
     ) {
         this.detectionRules = detectionRules;
+        this.detectionProperties = detectionProperties;
         this.detectionEventRepository = detectionEventRepository;
         this.kafkaProducer = kafkaProducer;
         this.metrics = metrics;
@@ -81,6 +86,11 @@ public class DetectionService {
         }
         long startedNanos = System.nanoTime();
         for (DetectionRule detectionRule : detectionRules) {
+            // cooldown 안에 같은 지갑·같은 유형 이벤트가 이미 있으면 룰 평가 자체를 건너뛴다.
+            // 발화 폭증 방지가 목적이고, 부수적으로 룰의 창 집계 쿼리도 절감된다(catch-up 성능).
+            if (isInCooldown(detectionRule, transaction)) {
+                continue;
+            }
             detectionRule.evaluate(transaction)
                     .filter(command -> !detectionEventRepository.existsByTransactionIdAndEventType(
                             command.transaction().getId(),
@@ -97,6 +107,22 @@ public class DetectionService {
                     });
         }
         processingTracker.record("detection", System.nanoTime() - startedNanos);
+    }
+
+    /**
+     * 룰이 cooldown 대상을 선언했고(fromAddress 계약) 창 안에 기존 이벤트가 있으면 true.
+     * detectedAt이 벽시계 기준이므로 cutoff도 현재 시각 기준으로 계산한다 — catch-up으로
+     * 과거 블록을 처리 중이어도 실시간 30분당 지갑별 1건으로 발화가 억제된다.
+     */
+    private boolean isInCooldown(DetectionRule detectionRule, Transaction transaction) {
+        EventType cooldownType = detectionRule.cooldownEventType();
+        if (cooldownType == null || detectionProperties.ruleCooldownMinutes() <= 0) {
+            return false;
+        }
+        Instant cutoff = Instant.now()
+                .minus(detectionProperties.ruleCooldownMinutes(), java.time.temporal.ChronoUnit.MINUTES);
+        return detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
+                transaction.getFromAddress(), cooldownType, cutoff);
     }
 
     private static String shortHash(String txHash) {
