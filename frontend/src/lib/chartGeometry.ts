@@ -89,6 +89,18 @@ export function isPartialBucket(bucketStart: string, bucketMs: number | null, no
   return Number.isFinite(start) && start + bucketMs > now;
 }
 
+/**
+ * partial 판정: 서버 계약(point.partial)을 우선하고,
+ * 필드가 없는 구버전 응답만 bucketStart + bucket 길이 > now 로 폴백 판별한다.
+ */
+export function bucketPartial(
+  point: Pick<OpsSeriesPoint, "bucketStart" | "partial">,
+  bucketMs: number | null,
+  now: number
+): boolean {
+  return point.partial ?? isPartialBucket(point.bucketStart, bucketMs, now);
+}
+
 export interface LinePoint {
   x: number;
   y: number;
@@ -143,8 +155,9 @@ export function interpolateSeries(
       before.detectionRatePercent == null || point.detectionRatePercent == null
         ? point.detectionRatePercent
         : lerp(before.detectionRatePercent, point.detectionRatePercent);
+    // partial 등 값 이외의 계약 필드는 최종(next) 것을 그대로 유지한다.
     return {
-      bucketStart: point.bucketStart,
+      ...point,
       collectedTransactions: lerp(before.collectedTransactions, point.collectedTransactions),
       detectedEvents: lerp(before.detectedEvents, point.detectedEvents),
       detectionRatePercent: rate
