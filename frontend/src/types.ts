@@ -260,7 +260,7 @@ export interface OpsKpis {
   /** null = 최근 창 수집 0건(분모 0) */
   detectionRatePercent: number | null;
   detectedLast5m: number;
-  /** NEW(레거시 null 포함) + ACKNOWLEDGED */
+  /** CRITICAL/HIGH의 NEW(레거시 null 포함) + ACKNOWLEDGED. 저위험은 자동 만료 대상이라 제외 */
   backlogCount: number;
   /** null = backlog 없음 */
   oldestBacklogAgeSeconds: number | null;
