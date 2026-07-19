@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -12,8 +13,8 @@ import { formatCompact, formatPercent } from "../lib/opsOverview";
 import {
   bucketPartial,
   computeScales,
-  gappedLinePath,
-  linePath,
+  gappedMonotonePath,
+  monotonePath,
   nearestBucketIndex,
   parseBucketMs,
   type LinePoint
@@ -87,6 +88,10 @@ export function TimeSeriesChart({
 }: TimeSeriesChartProps) {
   const reducedMotion = usePrefersReducedMotion();
   const display = useSeriesTransition(series, queryKey, reducedMotion);
+  // 여러 차트 인스턴스에서도 gradient id가 충돌하지 않게 한다 (useId의 콜론은 url()에 부적합해 제거).
+  const gradientBase = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const barGradientId = `ts-bar-grad-${gradientBase}`;
+  const areaGradientId = `ts-area-grad-${gradientBase}`;
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   /** 고정 선택은 index가 아니라 bucket key로 저장해 시계열 이동에도 유지한다. */
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -275,6 +280,18 @@ export function TimeSeriesChart({
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
       >
+        <defs>
+          {/* 시리즈 토큰 기반 gradient — 색은 styles.css의 --series-* 변수만 사용 */}
+          <linearGradient id={barGradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: "var(--series-collected)" }} stopOpacity="0.75" />
+            <stop offset="100%" style={{ stopColor: "var(--series-collected)" }} stopOpacity="0.28" />
+          </linearGradient>
+          <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: "var(--series-detected)" }} stopOpacity="0.22" />
+            <stop offset="100%" style={{ stopColor: "var(--series-detected)" }} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
         {/* 축 단위 라벨 */}
         <text x={FRAME.padLeft - 6} y={10} textAnchor="end" className="ts-axis-text unit">
           건수
@@ -330,6 +347,8 @@ export function TimeSeriesChart({
                     y={barY}
                     width={barWidth}
                     height={Math.max(baseline - barY, point.collectedTransactions > 0 ? 1.5 : 0)}
+                    rx={Math.min(2, barWidth / 2)}
+                    fill={partial ? undefined : `url(#${barGradientId})`}
                     className={`ts-bar ${activeIndex === index ? "active" : ""} ${
                       partial ? "partial" : ""
                     } ${entering ? "enter" : ""}`}
@@ -338,24 +357,39 @@ export function TimeSeriesChart({
               })
             : null}
 
-          {/* 탐지 이벤트: 실선 + hover 시 point 강조 */}
-          {!hidden.has("detected") ? (
+          {/* 탐지 이벤트: monotone 곡선 + 은은한 area gradient + hover point */}
+          {!hidden.has("detected") && detectedPoints.length > 0 ? (
             <>
-              <path d={linePath(detectedPoints)} className="ts-line detected" />
+              <path
+                d={`${monotonePath(detectedPoints)} L${detectedPoints[detectedPoints.length - 1].x.toFixed(1)},${baseline} L${detectedPoints[0].x.toFixed(1)},${baseline} Z`}
+                fill={`url(#${areaGradientId})`}
+                className="ts-area detected"
+              />
+              <path d={monotonePath(detectedPoints)} className="ts-line detected" />
               {activeIndex != null && detectedPoints[activeIndex] ? (
                 <circle
                   cx={detectedPoints[activeIndex].x}
                   cy={detectedPoints[activeIndex].y}
-                  r={3.5}
+                  r={4}
                   className="ts-point detected"
                 />
               ) : null}
             </>
           ) : null}
 
-          {/* 탐지율: 점선(보조축). null 버킷은 잇지 않고 gap */}
+          {/* 탐지율: 점선 monotone 곡선(보조축). null 버킷은 잇지 않고 gap */}
           {!hidden.has("rate") ? (
-            <path d={gappedLinePath(ratePoints)} className="ts-line rate" />
+            <>
+              <path d={gappedMonotonePath(ratePoints)} className="ts-line rate" />
+              {activeIndex != null && ratePoints[activeIndex] ? (
+                <circle
+                  cx={ratePoints[activeIndex].x}
+                  cy={ratePoints[activeIndex].y}
+                  r={3}
+                  className="ts-point rate"
+                />
+              ) : null}
+            </>
           ) : null}
 
           {/* 이상 징후 marker: insight와 동일 bucket, 유형별 다른 모양. pulse 금지, 최초 1회만 강조 */}
