@@ -12,7 +12,8 @@ import {
   fetchPipelineStatus,
   fetchRecentEventFeed,
   fetchRecentTransactionFeed,
-  requestAnalysis
+  requestAnalysis,
+  updateDetectionThresholds
 } from "../api";
 import type { AuditLogFilters } from "../api";
 import type {
@@ -20,6 +21,7 @@ import type {
   CollectorResult,
   DetectionEventItem,
   DetectionRules,
+  DetectionThresholds,
   FeedEventItem,
   FeedTransactionItem,
   HealthResponse,
@@ -481,6 +483,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   EVENT_STATUS_CHANGE: "이벤트 상태 변경",
   COLLECTOR_COLLECT_LATEST: "최신 블록 수집",
   COLLECTOR_COLLECT_BLOCK: "블록 수집/재처리",
+  DETECTION_THRESHOLD_UPDATE: "탐지 threshold 변경",
   LOGIN_SUCCESS: "로그인 성공",
   LOGIN_FAILURE: "로그인 실패"
 };
@@ -631,6 +634,21 @@ function AdminAuditLogs() {
   );
 }
 
+const THRESHOLD_FIELDS: {
+  key: keyof DetectionThresholds;
+  label: string;
+  hint: string;
+  step?: string;
+}[] = [
+  { key: "largeTransferThresholdEth", label: "대규모 이체 임계값", hint: "ETH", step: "0.1" },
+  { key: "exchangeFlowThresholdEth", label: "거래소 플로우 임계값", hint: "ETH", step: "0.1" },
+  { key: "rapidTransferThresholdCount", label: "반복 이체 기준 횟수", hint: "회" },
+  { key: "rapidTransferWindowMinutes", label: "반복 이체 집계 창", hint: "분" },
+  { key: "fanOutThresholdRecipients", label: "자금 분산 기준 수신자", hint: "주소" },
+  { key: "fanOutWindowMinutes", label: "자금 분산 집계 창", hint: "분" },
+  { key: "ruleCooldownMinutes", label: "룰 cooldown", hint: "분 (0=비활성)" }
+];
+
 function AdminPolicies() {
   const [rules, setRules] = useState<DetectionRules | null>(null);
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
@@ -666,13 +684,15 @@ function AdminPolicies() {
   }, []);
 
   const notification = pipeline?.components.find((component) => component.name === "notification");
+  const isAdmin = useAuth().isAdmin;
 
   return (
     <>
       <p className="hint-text">
-        탐지 threshold와 알림 정책은 <span className="mono">application.yml</span>의{" "}
-        <span className="mono">chainwatch.detection / chainwatch.notification</span> 설정으로
-        관리하며, 변경은 배포 파이프라인을 통해 반영됩니다.
+        탐지 threshold와 주소 목록(watchlist·거래소)은 관리자 계정으로 아래에서 직접 수정할 수
+        있으며, 변경 즉시 룰 평가에 반영되고 감사 로그에 기록됩니다. 알림 정책은{" "}
+        <span className="mono">application.yml</span>의{" "}
+        <span className="mono">chainwatch.notification</span> 설정으로 관리합니다.
       </p>
 
       {error ? <div className="banner error">{error}</div> : null}
@@ -707,6 +727,8 @@ function AdminPolicies() {
         </section>
       ) : null}
 
+      {rules && isAdmin ? <ThresholdEditor rules={rules} onSaved={setRules} /> : null}
+
       {notification ? (
         <section className="glass-card policy-notification">
           <div className="section-head compact">
@@ -723,4 +745,193 @@ function AdminPolicies() {
       ) : null}
     </>
   );
+}
+
+const ETH_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+
+const ADDRESS_FIELDS: { key: "watchlistAddresses" | "exchangeAddresses"; label: string; hint: string }[] = [
+  {
+    key: "watchlistAddresses",
+    label: "watchlist 주소 (WHALE_ACTIVITY)",
+    hint: "한 줄에 주소 1개. 비우면 룰 비활성"
+  },
+  {
+    key: "exchangeAddresses",
+    label: "거래소 주소 (EXCHANGE_FLOW)",
+    hint: "한 줄에 주소 1개. 비우면 룰 비활성"
+  }
+];
+
+function parseAddressLines(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function ThresholdEditor({
+  rules,
+  onSaved
+}: {
+  rules: DetectionRules;
+  onSaved: (rules: DetectionRules) => void;
+}) {
+  const [draft, setDraft] = useState<Record<keyof DetectionThresholds, string>>(() =>
+    toDraft(rules.thresholds)
+  );
+  const [addressDraft, setAddressDraft] = useState<Record<"watchlistAddresses" | "exchangeAddresses", string>>(
+    () => toAddressDraft(rules)
+  );
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSuccess(null);
+
+    const patch: DetectionPolicyPatch = {};
+    for (const field of THRESHOLD_FIELDS) {
+      const raw = draft[field.key].trim();
+      const value = Number(raw);
+      if (raw === "" || !Number.isFinite(value) || value < 0) {
+        setFormError(`${field.label} 값이 올바르지 않습니다.`);
+        return;
+      }
+      patch[field.key] = value;
+    }
+    for (const field of ADDRESS_FIELDS) {
+      const addresses = parseAddressLines(addressDraft[field.key]);
+      const invalid = addresses.find((address) => !ETH_ADDRESS_PATTERN.test(address));
+      if (invalid) {
+        setFormError(`${field.label} 형식이 올바르지 않습니다: ${invalid} (0x + 40자리 hex)`);
+        return;
+      }
+      patch[field.key] = addresses;
+    }
+
+    setSaving(true);
+    setFormError(null);
+    try {
+      const updated = await updateDetectionThresholds(patch);
+      onSaved(updated);
+      setDraft(toDraft(updated.thresholds));
+      setAddressDraft(toAddressDraft(updated));
+      setSuccess("탐지 정책을 변경했습니다. 변경 내역은 감사 로그에서 확인할 수 있습니다.");
+    } catch (cause) {
+      if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) {
+        setFormError("threshold 변경은 ADMIN 권한이 필요합니다. 로그인 상태를 확인해주세요.");
+      } else if (cause instanceof ApiError && cause.serverMessage) {
+        setFormError(cause.serverMessage);
+      } else {
+        setFormError("threshold 변경에 실패했습니다. 백엔드 상태를 확인해주세요.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="glass-card">
+      <div className="section-head compact">
+        <div>
+          <p className="section-kicker">탐지 정책 수정</p>
+          <h2>threshold 변경 (ADMIN)</h2>
+        </div>
+        {rules.thresholdsUpdatedAt ? (
+          <small className="cell-muted">
+            마지막 변경: {rules.thresholdsUpdatedBy ?? "-"} ·{" "}
+            {formatFullDate(rules.thresholdsUpdatedAt)}
+          </small>
+        ) : (
+          <small className="cell-muted">application.yml 기본값 적용 중</small>
+        )}
+      </div>
+
+      <p className="hint-text">
+        임계값을 낮추면 발화량이 급증해 분석 백로그·AI 쿼터에 부담이 될 수 있습니다. 저장 즉시
+        룰 평가에 반영됩니다(재기동 불필요).
+      </p>
+
+      <form className="workflow-form" onSubmit={handleSubmit}>
+        <div className="threshold-grid">
+          {THRESHOLD_FIELDS.map((field) => (
+            <label className="workflow-field" key={field.key}>
+              {field.label} <em>({field.hint})</em>
+              <input
+                type="number"
+                min="0"
+                step={field.step ?? "1"}
+                value={draft[field.key]}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, [field.key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="workflow-row">
+          {ADDRESS_FIELDS.map((field) => (
+            <label className="workflow-field" key={field.key}>
+              {field.label} <em>({field.hint})</em>
+              <textarea
+                className="mono"
+                rows={4}
+                spellCheck={false}
+                placeholder={"0x0000000000000000000000000000000000000000"}
+                value={addressDraft[field.key]}
+                onChange={(event) =>
+                  setAddressDraft((current) => ({ ...current, [field.key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </div>
+
+        {formError ? <div className="banner error">{formError}</div> : null}
+        {success ? <div className="banner success">{success}</div> : null}
+
+        <div className="workflow-submit">
+          <button
+            type="button"
+            className="ghost-button"
+            disabled={saving}
+            onClick={() => {
+              setDraft(toDraft(rules.thresholds));
+              setAddressDraft(toAddressDraft(rules));
+              setFormError(null);
+              setSuccess(null);
+            }}
+          >
+            되돌리기
+          </button>
+          <button type="submit" className="primary-button" disabled={saving}>
+            {saving ? "저장 중..." : "threshold 저장"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function toAddressDraft(
+  rules: DetectionRules
+): Record<"watchlistAddresses" | "exchangeAddresses", string> {
+  return {
+    watchlistAddresses: (rules.watchlistAddresses ?? []).join("\n"),
+    exchangeAddresses: (rules.exchangeAddresses ?? []).join("\n")
+  };
+}
+
+function toDraft(thresholds: DetectionThresholds): Record<keyof DetectionThresholds, string> {
+  return {
+    largeTransferThresholdEth: String(thresholds.largeTransferThresholdEth),
+    exchangeFlowThresholdEth: String(thresholds.exchangeFlowThresholdEth),
+    rapidTransferThresholdCount: String(thresholds.rapidTransferThresholdCount),
+    rapidTransferWindowMinutes: String(thresholds.rapidTransferWindowMinutes),
+    fanOutThresholdRecipients: String(thresholds.fanOutThresholdRecipients),
+    fanOutWindowMinutes: String(thresholds.fanOutWindowMinutes),
+    ruleCooldownMinutes: String(thresholds.ruleCooldownMinutes)
+  };
 }

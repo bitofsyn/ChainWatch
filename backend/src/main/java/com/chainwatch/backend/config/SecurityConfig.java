@@ -53,6 +53,11 @@ public class SecurityConfig {
             "/api/agent-ops/faults/**"
     };
 
+    /** 탐지 정책 런타임 변경(PATCH). ADMIN 전용. */
+    private static final String[] ADMIN_PATCH_PATHS = {
+            "/api/detection/rules/thresholds"
+    };
+
     /** ADMIN 전용 경로: 감사 로그 열람, 사용자 계정 관리 전체. */
     private static final String[] ADMIN_READ_PATHS = {
             "/api/audit-logs/**",
@@ -96,6 +101,7 @@ public class SecurityConfig {
                             .requestMatchers(PUBLIC_PATHS).permitAll()
                             .requestMatchers(HttpMethod.POST, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(HttpMethod.DELETE, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
+                            .requestMatchers(HttpMethod.PATCH, ADMIN_PATCH_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(ADMIN_READ_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers("/api/**").hasAnyRole(ROLE_ADMIN, ROLE_ANALYST)
                             .anyRequest().authenticated()

@@ -1,6 +1,6 @@
 package com.chainwatch.backend.detection.rule;
 
-import com.chainwatch.backend.detection.config.DetectionProperties;
+import com.chainwatch.backend.detection.config.DetectionAddressListsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
 import com.chainwatch.backend.event.domain.EventType;
 import com.chainwatch.backend.event.domain.RiskLevel;
@@ -20,15 +20,15 @@ public class WatchlistActivityDetectionRule implements DetectionRule {
     /** watchlist가 주소 목록만 갖는 현재 구조에서의 고정 사유. 라벨/제재 사유 연동 시 세분화한다. */
     static final String WATCHLIST_REASON_CONFIGURED = "configured-watchlist-address";
 
-    private final DetectionProperties detectionProperties;
+    private final DetectionAddressListsProvider addressLists;
 
-    public WatchlistActivityDetectionRule(DetectionProperties detectionProperties) {
-        this.detectionProperties = detectionProperties;
+    public WatchlistActivityDetectionRule(DetectionAddressListsProvider addressLists) {
+        this.addressLists = addressLists;
     }
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        List<String> watchlistAddresses = normalizeAddresses(detectionProperties.watchlistAddresses());
+        List<String> watchlistAddresses = normalizeAddresses(addressLists.currentAddresses().watchlistAddresses());
         String from = normalize(transaction.getFromAddress());
         String to = normalize(transaction.getToAddress());
 

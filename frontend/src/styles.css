@@ -1378,6 +1378,14 @@ a {
 .workflow-submit {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 관리자 탐지 threshold 수정 폼 */
+.threshold-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
 }
 
 /* ── 관리자 ─────────────────────────────────── */
