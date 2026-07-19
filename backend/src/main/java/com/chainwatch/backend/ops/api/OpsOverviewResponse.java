@@ -50,7 +50,8 @@ public record OpsOverviewResponse(
             Instant bucketStart,
             long collectedTransactions,
             long detectedEvents,
-            Double detectionRatePercent       // null = 해당 버킷 수집 0건
+            Double detectionRatePercent,      // null = 해당 버킷 수집 0건
+            boolean partial                   // true = 아직 집계가 끝나지 않은 진행 중 버킷
     ) {
     }
 

@@ -157,8 +157,9 @@ public class OpsOverviewService {
     }
 
     /**
-     * 버킷 경계에 정렬된 시계열. 마지막 버킷은 진행 중(부분) 버킷이다.
-     * 빈 버킷도 0으로 채워 차트 축이 연속되게 한다.
+     * 버킷 경계에 정렬된 시계열. 빈 버킷도 0으로 채워 차트 축이 연속되게 한다.
+     * 버킷 종료 시각이 now 이후면 아직 집계 중인 부분(partial) 버킷으로 명시한다
+     * — 프론트가 시계로 추정하지 않도록 계약에 포함한다.
      */
     private List<SeriesPoint> series(Instant now, long bucketSeconds, int bucketCount) {
         long currentBucketStart = Math.floorDiv(now.getEpochSecond(), bucketSeconds) * bucketSeconds;
@@ -177,7 +178,9 @@ public class OpsOverviewService {
             long collected = entry.getValue()[0];
             long detected = entry.getValue()[1];
             Double rate = collected == 0 ? null : detected * 100.0 / collected;
-            points.add(new SeriesPoint(Instant.ofEpochSecond(entry.getKey()), collected, detected, rate));
+            boolean partial = entry.getKey() + bucketSeconds > now.getEpochSecond();
+            points.add(new SeriesPoint(
+                    Instant.ofEpochSecond(entry.getKey()), collected, detected, rate, partial));
         }
         return points;
     }

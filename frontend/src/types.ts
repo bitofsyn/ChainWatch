@@ -274,6 +274,8 @@ export interface OpsSeriesPoint {
   detectedEvents: number;
   /** null = 해당 버킷 수집 0건 */
   detectionRatePercent: number | null;
+  /** true = 아직 집계가 끝나지 않은 진행 중 버킷. 구버전 백엔드는 필드 부재(프론트가 시간으로 폴백 판별) */
+  partial?: boolean;
 }
 
 export interface OpsRiskStatusCell {

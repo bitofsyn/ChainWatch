@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OpsSeriesPoint } from "../types";
 import {
+  bucketPartial,
   clampTooltipPercent,
   computeScales,
   gappedLinePath,
@@ -80,6 +81,16 @@ describe("parseBucketMs / isPartialBucket", () => {
     // bucket 길이를 모르면 판정하지 않는다(추측 금지)
     expect(isPartialBucket("2026-07-18T10:00:00Z", null, now)).toBe(false);
   });
+
+  it("bucketPartial은 서버 계약을 우선하고 필드 부재 시에만 시간 폴백한다", () => {
+    const now = Date.parse("2026-07-18T10:30:00Z");
+    // 서버가 명시한 값이 시간 추정과 달라도 서버 계약을 따른다
+    expect(bucketPartial({ bucketStart: "2026-07-18T09:00:00Z", partial: true }, 3_600_000, now)).toBe(true);
+    expect(bucketPartial({ bucketStart: "2026-07-18T10:00:00Z", partial: false }, 3_600_000, now)).toBe(false);
+    // 구버전 응답(필드 부재)은 시간 기반 폴백
+    expect(bucketPartial({ bucketStart: "2026-07-18T10:00:00Z" }, 3_600_000, now)).toBe(true);
+    expect(bucketPartial({ bucketStart: "2026-07-18T09:00:00Z" }, 3_600_000, now)).toBe(false);
+  });
 });
 
 describe("path 생성", () => {
@@ -127,6 +138,11 @@ describe("interpolateSeries", () => {
   it("t>=1이면 최종 시리즈를 그대로 반환한다", () => {
     const next = [point("a", 1)];
     expect(interpolateSeries(prev, next, 1)).toBe(next);
+  });
+
+  it("보간 중에도 partial 등 값 이외의 계약 필드를 유지한다", () => {
+    const next = [{ ...point("a", 200), partial: true }];
+    expect(interpolateSeries(prev, next, 0.5)[0].partial).toBe(true);
   });
 });
 

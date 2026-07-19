@@ -118,6 +118,9 @@ class OpsOverviewApiTest {
                 .andExpect(jsonPath("$.kpis.oldestBacklogAgeSeconds").value(greaterThanOrEqualTo(10700)))
                 // 시계열 버킷 수 = 24 (빈 버킷 0 채움 포함, 합계는 아래에서 별도 검증)
                 .andExpect(jsonPath("$.series.length()").value(24))
+                // 마지막 버킷만 집계 중(partial), 과거 버킷은 완료
+                .andExpect(jsonPath("$.series[0].partial").value(false))
+                .andExpect(jsonPath("$.series[23].partial").value(true))
                 // 매트릭스: CRITICAL×NEW=2(null 합산), HIGH×ACKNOWLEDGED=1, MEDIUM×RESOLVED=1
                 .andExpect(jsonPath("$.riskStatusMatrix.length()").value(3))
                 .andExpect(jsonPath(

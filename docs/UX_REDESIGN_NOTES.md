@@ -68,7 +68,7 @@
 
 ### 3.4 시계열 차트 계약·가정 (문서화된 추측)
 
-- **partial bucket**: API에 완료 플래그가 없어 `bucketStart + bucket길이 > 서버 generatedAt`으로 결정론적 판별(`lib/chartGeometry.ts isPartialBucket`). 백엔드가 명시 플래그를 제공하면 대체할 것.
+- **partial bucket**: 백엔드 계약에 명시했다(2026-07-19) — `OpsOverviewResponse.SeriesPoint.partial`(버킷 종료 시각 > 집계 시각). 프론트는 `bucketPartial()`이 서버 값을 우선하고, 필드가 없는 구버전 응답만 `bucketStart + bucket길이 > 서버 generatedAt`으로 폴백 판별한다.
 - **null vs 0**: `detectionRatePercent == null`(수집 0건)은 선을 잇지 않고 gap(`gappedLinePath`). 수집/탐지 count는 계약상 non-null이라 0은 측정된 0으로 그린다.
 - polling 갱신은 bucket key 기준 값 보간 morph(320ms, `useSeriesTransition`) — 문자열 path 보간 금지. bucket 집합이 겹치지 않으면 즉시 교체. range 변경은 plot `<g key={queryKey}>` remount + 180ms crossfade.
 - anomaly marker는 `throughputInsight`와 동일 결과 객체를 공유(단일 source), 유형별 모양 상이, 최초 발견 1회만 진입 애니메이션.
