@@ -5,9 +5,11 @@ import {
   clampTooltipPercent,
   computeScales,
   gappedLinePath,
+  gappedMonotonePath,
   interpolateSeries,
   isPartialBucket,
   linePath,
+  monotonePath,
   nearestBucketIndex,
   parseBucketMs,
   sharesBuckets
@@ -90,6 +92,51 @@ describe("parseBucketMs / isPartialBucket", () => {
     // 구버전 응답(필드 부재)은 시간 기반 폴백
     expect(bucketPartial({ bucketStart: "2026-07-18T10:00:00Z" }, 3_600_000, now)).toBe(true);
     expect(bucketPartial({ bucketStart: "2026-07-18T09:00:00Z" }, 3_600_000, now)).toBe(false);
+  });
+});
+
+describe("monotone path", () => {
+  it("모든 데이터 점을 정확히 통과한다", () => {
+    const points = [
+      { x: 0, y: 100 },
+      { x: 50, y: 20 },
+      { x: 100, y: 60 },
+      { x: 150, y: 60 }
+    ];
+    const path = monotonePath(points);
+    expect(path.startsWith("M0.0,100.0")).toBe(true);
+    for (const point of points.slice(1)) {
+      expect(path).toContain(`${point.x.toFixed(1)},${point.y.toFixed(1)}`);
+    }
+    expect(path).toContain("C");
+  });
+
+  it("평평한 구간에서 overshoot을 만들지 않는다", () => {
+    // 같은 y의 연속 점: 제어점도 전부 같은 y여야 한다(가짜 봉우리 금지)
+    const path = monotonePath([
+      { x: 0, y: 50 },
+      { x: 50, y: 50 },
+      { x: 100, y: 50 }
+    ]);
+    const ys = [...path.matchAll(/,(-?\d+\.\d)/g)].map((m) => Number(m[1]));
+    expect(ys.every((y) => y === 50)).toBe(true);
+  });
+
+  it("점이 0/1개인 경우를 안전하게 처리한다", () => {
+    expect(monotonePath([])).toBe("");
+    expect(monotonePath([{ x: 3, y: 4 }])).toBe("M3.0,4.0");
+  });
+
+  it("gap 지원판은 null 구간마다 세그먼트를 끊는다", () => {
+    const path = gappedMonotonePath([
+      { x: 0, y: 1 },
+      { x: 10, y: 2 },
+      null,
+      { x: 30, y: 3 },
+      { x: 40, y: 4 }
+    ]);
+    expect(path.match(/M/g)?.length).toBe(2);
+    expect(path).not.toContain("20.0"); // gap을 가로지르는 좌표 없음
   });
 });
 

@@ -114,6 +114,84 @@ export function linePath(points: readonly LinePoint[]): string {
 }
 
 /**
+ * Fritsch–Carlson monotone cubic 보간 path.
+ * 데이터에 없는 봉우리/골을 만들지 않아(overshoot 없음) 관제 지표를 왜곡하지 않으면서
+ * 직선 연결보다 시각적으로 부드럽다. x 오름차순 좌표를 전제한다.
+ */
+export function monotonePath(points: readonly LinePoint[]): string {
+  if (points.length === 0) {
+    return "";
+  }
+  if (points.length === 1) {
+    return `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
+  }
+  const n = points.length;
+  const dx: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const h = points[i + 1].x - points[i].x;
+    dx.push(h);
+    slope.push(h === 0 ? 0 : (points[i + 1].y - points[i].y) / h);
+  }
+  const tangent: number[] = new Array(n);
+  tangent[0] = slope[0];
+  tangent[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    tangent[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+  }
+  // 단조성 보존: 구간 기울기 대비 접선을 제한해 overshoot을 막는다.
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) {
+      tangent[i] = 0;
+      tangent[i + 1] = 0;
+      continue;
+    }
+    const a = tangent[i] / slope[i];
+    const b = tangent[i + 1] / slope[i];
+    const h = Math.hypot(a, b);
+    if (h > 3) {
+      const scale = 3 / h;
+      tangent[i] = scale * a * slope[i];
+      tangent[i + 1] = scale * b * slope[i];
+    }
+  }
+  const parts = [`M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`];
+  for (let i = 0; i < n - 1; i++) {
+    const third = dx[i] / 3;
+    const c1x = points[i].x + third;
+    const c1y = points[i].y + tangent[i] * third;
+    const c2x = points[i + 1].x - third;
+    const c2y = points[i + 1].y - tangent[i + 1] * third;
+    parts.push(
+      `C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ` +
+        `${points[i + 1].x.toFixed(1)},${points[i + 1].y.toFixed(1)}`
+    );
+  }
+  return parts.join(" ");
+}
+
+/** monotonePath의 gap 지원판: null 구간마다 세그먼트를 끊는다. */
+export function gappedMonotonePath(points: readonly (LinePoint | null)[]): string {
+  const segments: string[] = [];
+  let run: LinePoint[] = [];
+  const flush = () => {
+    if (run.length > 0) {
+      segments.push(monotonePath(run));
+      run = [];
+    }
+  };
+  for (const point of points) {
+    if (point == null) {
+      flush();
+    } else {
+      run.push(point);
+    }
+  }
+  flush();
+  return segments.join(" ");
+}
+
+/**
  * null 값을 gap으로 남기는 path. null 구간마다 새 M 세그먼트를 시작해
  * 미측정 구간을 선으로 잇지 않는다.
  */
