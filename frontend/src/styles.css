@@ -1550,17 +1550,49 @@ a {
   font-size: 0.9rem;
 }
 
+/* 규칙 1건 = 1행 수평 스트립(이름 | 설명 | 임계값·등급) — 세로 카드 스택 대신
+   터미널식 목록으로 한눈에 훑는다. 좁은 화면에서는 다시 세로로 접힌다. */
 .rules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.rule-card {
+  display: grid;
+  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(250px, 330px);
+  gap: 24px;
+  align-items: center;
+}
+
+.rule-card .section-head.compact {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.rule-card .section-head.compact h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.rule-card .detail-list {
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .rule-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 
 .rule-description {
   color: var(--text-soft);
   font-size: 0.88rem;
   line-height: 1.6;
-  margin: 0 0 12px;
+  margin: 0;
 }
 
 /* ── 피드/상태 ──────────────────────────────── */
