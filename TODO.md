@@ -56,6 +56,7 @@ Phase 기준 남은 작업. 완료 항목은 [CHANGELOG.md](CHANGELOG.md)로 이
 
 ### 탐지 로직 고도화
 - [x] 그래프 분석 1차 — FAN_OUT 룰(트랜잭션 그래프 out-degree 기반 자금 분산/peeling chain 탐지), evidence에 관측 out-degree 기록
+- [x] OFAC SDN 제재 주소 스크리닝 — 제재 주소 리스트 주기 동기화(24h, 기본 비활성·ADMIN 수동 `POST /api/sanctions/sync`) + SANCTIONED_ADDRESS 룰(CRITICAL/100, 송수신 무관 발화, delist 이력 보존)
 - [ ] 그래프 분석 확장 — fan-in(consolidation), multi-hop 흐름 추적, 믹서 클러스터 탐지
 - [ ] ML 이상탐지 — 룰 기반 점수에 학습 모델 보강(라벨 데이터·피처 파이프라인·오프라인 학습 인프라 필요)
 - 선결 과제: 학습 데이터 확보 전략, 룰 엔진과 ML 점수 결합 방식
