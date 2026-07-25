@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Theme } from "../hooks/useTheme";
 import { useAuth } from "../contexts/AuthContext";
 import { navigate } from "../lib/router";
+import { TickerBar } from "./TickerBar";
 
 interface LayoutProps {
   route: string;
@@ -81,6 +82,7 @@ export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
           {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
         </button>
       </header>
+      <TickerBar />
       <main className="page-body">{children}</main>
     </div>
   );
