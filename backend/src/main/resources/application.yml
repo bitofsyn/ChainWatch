@@ -85,6 +85,11 @@ chainwatch:
       # CRITICAL/HIGH는 대상이 아니다(대응 backlog KPI, 사람이 처리). interval-ms는 잡 주기.
       enabled: ${CHAINWATCH_EVENT_EXPIRY_ENABLED:true}
       max-age-days: ${CHAINWATCH_EVENT_EXPIRY_MAX_AGE_DAYS:3}
+    triage:
+      # 같은 지갑·같은 유형의 저위험(MEDIUM/LOW) 미처리 이벤트가 중복 누적되면 최신 1건만 남기고
+      # 즉시 자동 종결한다(만료 잡과 달리 보존 기간을 기다리지 않음). CRITICAL/HIGH는 대상이 아니다.
+      enabled: ${CHAINWATCH_EVENT_TRIAGE_ENABLED:true}
+      interval-ms: 600000
   ai:
     enabled: false
     # provider/model을 비우면 AI 서버의 기본 체인이 프로바이더를 고르고,

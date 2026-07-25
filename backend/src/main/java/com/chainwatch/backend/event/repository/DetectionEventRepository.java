@@ -128,6 +128,37 @@ public interface DetectionEventRepository
     int expireLowRiskBacklog(
             @Param("cutoff") Instant cutoff, @Param("reason") String reason, @Param("now") Instant now);
 
+    /**
+     * 저위험(MEDIUM/LOW) 미처리(NEW/null) 이벤트 중 같은 지갑·같은 유형의 더 최신 미처리
+     * 이벤트가 존재하는 중복 발화 건을 일괄 자동 종결한다 — 지갑·유형당 최신 1건만 대응 큐에
+     * 남긴다(만료 잡과 달리 보존 기간을 기다리지 않는다). 최신 이벤트가 이미 처리 중이거나
+     * 종결된 경우는 대상이 아니다(살아있는 대표가 큐에 있을 때만 중복을 접는다).
+     * 데이터는 삭제하지 않고 RESOLVED + 사유로 남긴다 (DuplicateEventTriageJob).
+     *
+     * @return 종결 처리된 행 수
+     */
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @Query("""
+            update DetectionEvent e
+            set e.status = com.chainwatch.backend.event.domain.EventStatus.RESOLVED,
+                e.resolutionReason = :reason,
+                e.statusChangedAt = :now
+            where (e.status is null or e.status = com.chainwatch.backend.event.domain.EventStatus.NEW)
+              and e.riskLevel in (
+                  com.chainwatch.backend.event.domain.RiskLevel.MEDIUM,
+                  com.chainwatch.backend.event.domain.RiskLevel.LOW)
+              and exists (
+                  select 1
+                  from DetectionEvent d
+                  where d.walletAddress = e.walletAddress
+                    and d.eventType = e.eventType
+                    and (d.status is null or d.status = com.chainwatch.backend.event.domain.EventStatus.NEW)
+                    and (d.detectedAt > e.detectedAt
+                         or (d.detectedAt = e.detectedAt and d.id > e.id))
+              )
+            """)
+    int triageDuplicateLowRiskBacklog(@Param("reason") String reason, @Param("now") Instant now);
+
     /** 위험도×처리상태 매트릭스. status null(레거시)은 서비스에서 NEW로 합산한다. */
     @Query("select e.riskLevel, e.status, count(e) from DetectionEvent e group by e.riskLevel, e.status")
     List<Object[]> countGroupByRiskLevelAndStatus();
