@@ -3790,3 +3790,104 @@ tr.row-new {
   font-size: 1.15rem;
   font-weight: 600;
 }
+
+/* ── 실시간 티커 바 ─────────────────────────────
+   거래소 터미널의 시세 스트립. 모노 수치 + 헤어라인 구분, 상태 색은 KPI level을 따른다. */
+.ticker-bar {
+  width: min(1320px, 100%);
+  margin: 8px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.ticker-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+}
+
+.ticker-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ticker-live.stale {
+  color: var(--text-soft);
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding-left: 18px;
+  border-left: 1px solid var(--line);
+}
+
+.ticker-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+  color: var(--text-soft);
+}
+
+.ticker-value {
+  color: var(--text);
+}
+
+.ticker-value.tone-ok {
+  color: var(--success);
+}
+
+.ticker-value.tone-warn {
+  color: var(--high);
+}
+
+.ticker-value.tone-danger {
+  color: var(--critical);
+}
+
+/* ── Orderflow Noir: KPI 카드 재구성 (다크 전용) ──
+   캔버스의 "대형 수치 + 곁의 델타" 구조: 라벨은 속삭임, 수치가 주인공. */
+:root[data-theme="dark"] .ops-kpi {
+  padding: 14px 16px 12px;
+}
+
+:root[data-theme="dark"] .ops-kpi-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+}
+
+:root[data-theme="dark"] .ops-kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+:root[data-theme="dark"] .ops-kpi-value {
+  font-size: 2.05rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 10px 0 4px;
+}
+
+:root[data-theme="dark"] .ops-kpi-sub {
+  color: color-mix(in srgb, var(--text-soft) 75%, transparent);
+}
