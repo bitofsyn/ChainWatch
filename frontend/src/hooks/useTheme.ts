@@ -9,8 +9,8 @@ function resolveInitialTheme(): Theme {
   if (stored === "dark" || stored === "light") {
     return stored;
   }
-  // 거래소 백오피스 기준 라이트 모드 우선: 명시적 다크 선호일 때만 다크
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  // Orderflow Noir 터미널(다크)이 기본 — 라이트는 저장된 선호가 있을 때만 (주간 모드)
+  return "dark";
 }
 
 export function useTheme() {

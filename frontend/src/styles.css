@@ -67,28 +67,32 @@
   --series-rate: #0891b2;
 }
 
+/* ── Orderflow Noir 다크 테마 ──
+   docs/design/orderflow-noir.md 철학의 구현: near-black 바탕 위 발광 데이터,
+   채도를 죽인 jade(성공/매수)·oxblood(위험/매도) 이분법, 앰버는 주의 계기판이자
+   유일한 인터랙션 색. 회색 4단(hairline·ghost·label·numeral)이 나머지를 담당한다. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page-bg: #0e131b;
-  --panel: #161d27;
-  --line: #28313f;
-  --surface: #1b2330;
-  --surface-line: #2a3443;
-  --text: #e8edf4;
-  --text-soft: #94a2b6;
-  --accent: #5b96f5;
-  --accent-strong: #8bb5f8;
-  --accent-wash: color-mix(in srgb, var(--accent) 14%, var(--panel));
-  --critical: #f4736b;
-  --high: #e0a34a;
-  --elevated: #5b96f5;
-  --success: #3cc999;
-  --focus-ring: rgba(91, 150, 245, 0.4);
+  --page-bg: #0a0d12;
+  --panel: #10151c;
+  --line: #232a33;
+  --surface: #141a22;
+  --surface-line: #2a323d;
+  --text: #c8d0da;
+  --text-soft: #8b96a5;
+  --accent: #d8a24a;
+  --accent-strong: #e6bc72;
+  --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  --critical: #d05a63;
+  --high: #cf7a44;
+  --elevated: #d8a24a;
+  --success: #35b389;
+  --focus-ring: rgba(216, 162, 74, 0.4);
   --anomaly: #b08ef2;
-  /* 다크 surface(#161d27) 기준 검증 통과 스텝 — 라이트 값의 자동 반전이 아니다 */
-  --series-collected: #3f82f0;
-  --series-detected: #e0517d;
-  --series-rate: #0d95ad;
+  /* 다크 surface(#10151c) 기준 Noir 시리즈 — 수집=jade, 탐지=oxblood, 탐지율=앰버 */
+  --series-collected: #35b389;
+  --series-detected: #d05a63;
+  --series-rate: #d8a24a;
 
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.45),
@@ -647,6 +651,8 @@ a {
   color: var(--text);
   font-weight: 500;
   text-decoration: none;
+  /* 좁은 뷰포트에서 CJK 라벨이 1자씩 세로로 꺾이지 않게 한다(표는 가로 스크롤로 수용) */
+  white-space: nowrap;
 }
 
 .row-link:hover {
@@ -3666,4 +3672,121 @@ tr.row-new {
   .ops-kpi.kpi-flash {
     animation: none !important;
   }
+}
+
+/* ─────────────────────────────────────────────────
+   Orderflow Noir — 터미널 타이포그래피 레이어 (다크 전용)
+   철학: 수치는 전부 모노스페이스 — 숫자가 곧 인터페이스다.
+   대형 수치는 조용히 크게, 라벨은 넓은 자간의 속삭임으로.
+   라이트(주간) 모드는 기존 SaaS 타이포를 유지한다.
+   ───────────────────────────────────────────────── */
+
+:root {
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular,
+    Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 터미널은 모서리가 조용하다 — 라운딩을 한 단계 낮춘다 */
+:root[data-theme="dark"] {
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+}
+
+/* 수치·시각·해시 계열 전부 모노스페이스로 통일 */
+:root[data-theme="dark"] :is(
+  .metric-card strong,
+  .data-table .num,
+  .strong-num,
+  .cell-time,
+  .wallet-col strong,
+  .result-count strong,
+  .pagination-status,
+  .summary-score,
+  .risk-score-panel strong,
+  .current-status small,
+  .bar-value,
+  .queue-metrics strong,
+  .team-meter-label strong,
+  .route-card strong,
+  .ops-updated,
+  .ops-kpi-value,
+  .ops-kpi-sub,
+  .ts-axis-text,
+  .summary-note,
+  .health-node-sub,
+  .matrix-cell,
+  .matrix-total,
+  .live-countdown,
+  .kpi-delta-chip,
+  .chart-meta,
+  .health-change-time
+) {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* 브랜드는 넓은 자간의 조용한 대문자 — 시트의 표제처럼 */
+:root[data-theme="dark"] .brand {
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+}
+
+/* ── Orderflow Noir: 터미널 밀도·플랫 구획 (다크 전용) ──
+   거래소 터미널은 그림자 대신 헤어라인으로 구획하고 여백을 줄여 정보 밀도를 높인다.
+   표제는 조용히 물러나고 수치가 주인공이 된다. */
+:root[data-theme="dark"] {
+  /* 그림자 카드 → 헤어라인 플랫 패널 */
+  --shadow-xs: 0 0 0 1px var(--line);
+  --shadow-card: 0 0 0 1px var(--line);
+  --shadow-card-hover: 0 0 0 1px var(--surface-line);
+  --shadow-pop: 0 0 0 1px var(--surface-line), 0 18px 44px -14px rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="dark"] body {
+  font-size: 13px;
+}
+
+:root[data-theme="dark"] .app-shell {
+  padding: 14px 22px 48px;
+}
+
+:root[data-theme="dark"] .panel-card {
+  padding: 16px 18px;
+}
+
+:root[data-theme="dark"] .metric-card {
+  padding: 12px 16px;
+}
+
+/* 표는 터미널 그리드처럼: 촘촘한 행, 속삭이는 대문자 헤더 */
+:root[data-theme="dark"] .data-table th {
+  padding: 8px 10px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .data-table td {
+  padding: 8px 10px;
+}
+
+/* 배지는 면이 아니라 선에 가깝게 */
+:root[data-theme="dark"] .status-pill {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 페이지 표제는 조용히 — 대형 수치가 주인공이다 */
+:root[data-theme="dark"] .page-head h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+:root[data-theme="dark"] .ops-header-title h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
 }
