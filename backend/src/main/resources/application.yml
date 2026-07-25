@@ -133,6 +133,15 @@ chainwatch:
     base-url: https://api.etherscan.io
     api-key: ${CHAINWATCH_ETHERSCAN_API_KEY:}
     chain-id: "1"
+  sanctions:
+    # OFAC SDN 제재 암호화폐 주소 리스트 주기 동기화. 기본 소스는 OFAC SDN 원문을 CI로 추출한
+    # 공개 목록이며, 실서비스에서는 내부 미러 또는 SDN 원문(XML) 직접 파싱으로 대체할 것.
+    # 동기화가 꺼져 있어도 DB에 저장된 기존 제재 주소로 SANCTIONED_ADDRESS 룰은 계속 동작하고,
+    # ADMIN은 POST /api/sanctions/sync로 수동 동기화할 수 있다.
+    sync-enabled: ${CHAINWATCH_SANCTIONS_SYNC_ENABLED:false}
+    sync-interval-ms: 86400000     # 24시간
+    sync-initial-delay-ms: 60000
+    source-url: ${CHAINWATCH_SANCTIONS_SOURCE_URL:}   # 비우면 기본 공개 목록 사용
   detection:
     mode: ${CHAINWATCH_DETECTION_MODE:sync}   # sync | kafka (kafka: raw-transactions consumer가 탐지 수행)
     large-transfer-threshold-eth: 100.0

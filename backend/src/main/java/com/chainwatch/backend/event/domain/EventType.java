@@ -7,5 +7,7 @@ public enum EventType {
     RAPID_TRANSFER,
     WATCHLIST_MATCH,
     /** 자금 분산(peeling chain/스플리팅) 그래프 패턴: 한 지갑이 짧은 시간에 다수의 서로 다른 주소로 송금. */
-    FAN_OUT
+    FAN_OUT,
+    /** OFAC SDN 제재 대상 주소가 송신 또는 수신으로 관여한 트랜잭션. */
+    SANCTIONED_ADDRESS
 }

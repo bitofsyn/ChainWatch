@@ -6,6 +6,7 @@ import com.chainwatch.backend.auth.exception.InvalidRefreshTokenException;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.analysis.exception.AiAnalysisException;
 import com.chainwatch.backend.feed.exception.FeedCacheException;
+import com.chainwatch.backend.sanctions.exception.SanctionsSyncException;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleCollectorException(CollectorException exception) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(ApiErrorResponse.of("COLLECTOR_ERROR", exception.getMessage()));
+    }
+
+    @ExceptionHandler(SanctionsSyncException.class)
+    public ResponseEntity<ApiErrorResponse> handleSanctionsSyncException(SanctionsSyncException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiErrorResponse.of("SANCTIONS_SYNC_ERROR", exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
