@@ -63,3 +63,8 @@ ai/analysis-server/.env
 ### Local-only tooling ###
 .claude/
 docker-compose.override.yml
+
+### Scratch / generated artifacts ###
+_workspace/
+output/
+tmp/
