@@ -51,7 +51,9 @@ public class SecurityConfig {
     private static final String[] ADMIN_CONTROL_PATHS = {
             "/api/collector/blocks/**",
             "/api/agent-ops/faults/**",
-            "/api/sanctions/sync"
+            "/api/sanctions/sync",
+            "/api/ops/staking/observations",
+            "/api/ops/staking/reconciliations"
     };
 
     /** 탐지 정책 런타임 변경(PATCH). ADMIN 전용. */
