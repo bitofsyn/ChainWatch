@@ -7,7 +7,7 @@ export default defineConfig({
     port: Number(process.env.PORT) || 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:18080",
+        target: process.env.API_PROXY_TARGET || "http://localhost:18080",
         changeOrigin: true
       }
     }

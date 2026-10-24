@@ -68,7 +68,7 @@
 }
 
 /* ── Orderflow Noir 다크 테마 ──
-   docs/design/orderflow-noir.md 철학의 구현: near-black 바탕 위 발광 데이터,
+   기존 관제 화면의 시각 스타일: near-black 바탕 위 발광 데이터,
    채도를 죽인 jade(성공/매수)·oxblood(위험/매도) 이분법, 앰버는 주의 계기판이자
    유일한 인터랙션 색. 회색 4단(hairline·ghost·label·numeral)이 나머지를 담당한다. */
 :root[data-theme="dark"] {
@@ -3923,3 +3923,12 @@ tr.row-new {
 :root[data-theme="dark"] .ops-kpi-sub {
   color: color-mix(in srgb, var(--text-soft) 75%, transparent);
 }
+
+/* Staking observation: retain exact integer amounts and wrap root evidence. */
+.staking-panel { padding: 24px; margin-bottom: 20px; }
+.staking-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.staking-root { overflow-wrap: anywhere; font-family: monospace; }
+.staking-table { overflow-x: auto; margin: 16px 0; }
+.staking-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.staking-table th, .staking-table td { padding: 10px; border-bottom: 1px solid var(--border); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.staking-evidence { max-height: 420px; overflow: auto; padding: 16px; font-size: 12px; }

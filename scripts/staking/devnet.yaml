@@ -1,0 +1,14 @@
+# Local-only test keys and funds. Two peers exercise consensus integration, not production fault tolerance.
+# Package: github.com/ethpandaops/ethereum-package@3ad03186953bfa27e9060860aa9d636ea496f010
+participants:
+  - el_type: geth
+    el_image: ethereum/client-go@sha256:0a64251c30788dd92ede2fdce768a68e1f3ca3ac304d298a2623bbe0992092d7
+    cl_type: teku
+    cl_image: ethpandaops/teku@sha256:2950ec3a2d0d0ba4546bc675f8ccb84a7c2149c8c0ab3e32ab01645e1e6a6104
+    count: 2
+network_params:
+  preset: minimal
+  num_validator_keys_per_node: 128
+additional_services: []
+wait_for_finalization: true
+persistent: true

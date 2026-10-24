@@ -1,0 +1,10 @@
+# Combine with staking-poc: --spring.profiles.active=staking-poc,staking-postgres
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:55433/staking_lab
+    driver-class-name: org.postgresql.Driver
+    username: staking_lab
+    password: staking_local_only
+  h2:
+    console:
+      enabled: false

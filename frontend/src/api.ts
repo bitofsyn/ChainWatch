@@ -298,3 +298,37 @@ export function collectLatestBlock() {
 export function collectBlock(blockNumber: number) {
   return requestJson<CollectorResult>(`/api/collector/blocks/${blockNumber}`, { method: "POST" });
 }
+
+export interface StakingValidator {
+  index: string; publicKey: string; balanceGwei: string; effectiveBalanceGwei: string;
+  status: string; slashed: boolean; activationEpoch: string; exitEpoch: string; withdrawableEpoch: string;
+}
+export interface StakingObservation {
+  id: number; network: string; status: string; startedAt: string; completedAt: string | null;
+  stateRoot: string | null; blockRoot: string | null; slot: string | null; epoch: string | null; stateTime: string | null; clientVersion: string | null; errorCode: string | null;
+  stale: boolean; validators: StakingValidator[] | null;
+}
+export interface StakingOverview {
+  enabled: boolean; network: string; configuredValidators: string[]; observations: StakingObservation[];
+}
+export function fetchStakingObservations() {
+  return requestJson<StakingOverview>("/api/ops/staking/observations");
+}
+export function observeStakingValidators() {
+  return requestJson<StakingObservation>("/api/ops/staking/observations", { method: "POST" });
+}
+export function fetchStakingEvidence(id: number) {
+  return requestJson<unknown>(`/api/ops/staking/observations/${id}/evidence`);
+}
+
+export type ReconciliationRow = {
+  validatorIndex: string; openingGwei: string; closingGwei: string; attestationNetGwei: string;
+  proposerRewardGwei: string; syncNetGwei: string; consensusRewardsGwei: string; consensusPenaltiesGwei: string; withdrawalsGwei: string; expectedClosingGwei: string; residualGwei: string;
+};
+export type ReconciliationRun = {
+  id: number; network: string; accountingEpoch: number; status: string; errorCode: string | null; startedAt: string;
+  report: { startSlot?: string; endSlot?: string; attestationEpoch: string; linkedBlocks?: number; validators?: ReconciliationRow[]; settlementEligible: false } | null;
+};
+export const fetchReconciliations = () => requestJson<{enabled: boolean; runs: ReconciliationRun[]}>("/api/ops/staking/reconciliations");
+export const reconcileEpoch = (epoch: number) => requestJson<ReconciliationRun>("/api/ops/staking/reconciliations", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({epoch})});
+export const fetchReconciliationEvidence = (id: number) => requestJson<unknown>(`/api/ops/staking/reconciliations/${id}/evidence`);

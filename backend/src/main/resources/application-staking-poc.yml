@@ -1,0 +1,22 @@
+# Local fixture profile only. This is not a public testnet or validator node.
+spring:
+  kafka:
+    admin:
+      auto-create: false
+server:
+  address: 127.0.0.1
+  port: 18090
+chainwatch:
+  staking:
+    enabled: true
+    network: local-fixture
+    beacon-url: http://127.0.0.1:19596
+    genesis-validators-root: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    validator-ids: ["42"]
+  collector:
+    enabled: false
+  events:
+    expiry:
+      enabled: false
+    triage:
+      enabled: false
