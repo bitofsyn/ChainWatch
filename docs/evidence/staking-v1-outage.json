@@ -1,0 +1,35 @@
+{
+  "result": "PASS",
+  "recordedAt": "2026-10-23T13:19:57.774449+00:00",
+  "fault": "docker pause/unpause: unresponsive Beacon process; no validator restart",
+  "container": "cl-1-teku-geth--af69a5f0d6404b7cb6d897008aee97ed",
+  "network": "local-teku-1792761354",
+  "epoch": 1,
+  "runs": [
+    {
+      "id": 11,
+      "status": "MATCHED",
+      "errorCode": null,
+      "elapsedSeconds": 0.16
+    },
+    {
+      "id": 12,
+      "status": "INCOMPLETE",
+      "errorCode": "UPSTREAM_TIMEOUT",
+      "elapsedSeconds": 5.025
+    },
+    {
+      "id": 13,
+      "status": "MATCHED",
+      "errorCode": null,
+      "elapsedSeconds": 0.133
+    }
+  ],
+  "residualsGwei": [
+    "0",
+    "0",
+    "0"
+  ],
+  "sameReportAfterRecovery": true,
+  "containerResumed": true
+}
