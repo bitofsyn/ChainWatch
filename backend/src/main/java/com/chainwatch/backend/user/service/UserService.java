@@ -15,7 +15,6 @@ import com.chainwatch.backend.user.repository.UserAccountRepository;
 import java.security.SecureRandom;
 import java.util.List;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,20 +32,20 @@ public class UserService {
 
     private final UserAccountRepository userAccountRepository;
     private final RefreshTokenService refreshTokenService;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordChangeService passwordChangeService;
     private final AuditLogService auditLogService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public UserService(
             UserAccountRepository userAccountRepository,
             RefreshTokenService refreshTokenService,
-            PasswordEncoder passwordEncoder,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            PasswordChangeService passwordChangeService
     ) {
         this.userAccountRepository = userAccountRepository;
         this.refreshTokenService = refreshTokenService;
-        this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
+        this.passwordChangeService = passwordChangeService;
     }
 
     @Transactional(readOnly = true)
@@ -63,8 +62,8 @@ public class UserService {
         }
         boolean generated = request.initialPassword() == null || request.initialPassword().isBlank();
         String rawPassword = generated ? generatePassword() : request.initialPassword();
-        UserAccount user = userAccountRepository.save(new UserAccount(
-                request.username(), passwordEncoder.encode(rawPassword), request.role(), request.displayName()));
+        UserAccount user = passwordChangeService.create(
+                request.username(), rawPassword, request.role(), request.displayName());
         auditLogService.record("USER_CREATE", AUDIT_TARGET_TYPE_USER, user.getUsername(),
                 "Created with role " + user.getRole());
         return new UserCreateResponse(UserResponse.from(user), generated ? rawPassword : null);
@@ -113,10 +112,9 @@ public class UserService {
     /** ADMIN의 비밀번호 초기화. 대상 사용자의 모든 세션을 폐기한다. */
     @Transactional
     public UserCreateResponse resetPassword(Long id, PasswordResetRequest request) {
-        UserAccount user = requireUser(id);
         boolean generated = request.newPassword() == null || request.newPassword().isBlank();
         String rawPassword = generated ? generatePassword() : request.newPassword();
-        user.changePassword(passwordEncoder.encode(rawPassword));
+        UserAccount user = passwordChangeService.changePassword(id, rawPassword);
         refreshTokenService.revokeAllForUser(user);
         auditLogService.record("USER_PASSWORD_RESET", AUDIT_TARGET_TYPE_USER, user.getUsername(),
                 "Password reset by admin; all sessions revoked");

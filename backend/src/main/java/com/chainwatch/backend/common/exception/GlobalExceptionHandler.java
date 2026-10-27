@@ -3,6 +3,7 @@ package com.chainwatch.backend.common.exception;
 import com.chainwatch.backend.auth.exception.AuthenticationRequiredException;
 import com.chainwatch.backend.auth.exception.InvalidCredentialsException;
 import com.chainwatch.backend.auth.exception.InvalidRefreshTokenException;
+import com.chainwatch.backend.user.service.PasswordPolicyException;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.analysis.exception.AiAnalysisException;
 import com.chainwatch.backend.feed.exception.FeedCacheException;
@@ -52,6 +53,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of("BAD_REQUEST", exception.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordPolicyException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordPolicyException(PasswordPolicyException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of("PASSWORD_POLICY_VIOLATION", exception.getMessage()));
     }
 
     @ExceptionHandler(IOException.class)

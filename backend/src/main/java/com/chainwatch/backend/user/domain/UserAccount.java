@@ -37,6 +37,9 @@ public class UserAccount {
     @Column(name = "password_hash", nullable = false, length = 200)
     private String passwordHash;
 
+    @Column(name = "current_password_fingerprint", length = 64)
+    private String currentPasswordFingerprint;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;
@@ -79,8 +82,13 @@ public class UserAccount {
         this.updatedAt = Instant.now();
     }
 
-    public void changePassword(String newPasswordHash) {
+    public void changePassword(String newPasswordHash, String fingerprint) {
         this.passwordHash = newPasswordHash;
+        this.currentPasswordFingerprint = fingerprint;
+    }
+
+    public void setCurrentPasswordFingerprint(String fingerprint) {
+        this.currentPasswordFingerprint = fingerprint;
     }
 
     public void changeRole(UserRole newRole) {
@@ -113,6 +121,10 @@ public class UserAccount {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getCurrentPasswordFingerprint() {
+        return currentPasswordFingerprint;
     }
 
     public UserRole getRole() {

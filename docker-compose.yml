@@ -120,6 +120,7 @@ services:
       # 아래 4개는 호스트에 export된 경우에만 컨테이너로 전달 (미설정 시 Spring 기본값 사용)
       CHAINWATCH_JWT_ENABLED: ${CHAINWATCH_JWT_ENABLED:-false}
       CHAINWATCH_JWT_SECRET:
+      CHAINWATCH_PASSWORD_PEPPER: ${CHAINWATCH_PASSWORD_PEPPER:-chainwatch-local-development-pepper-change-before-deployment}
       CHAINWATCH_ADMIN_USERNAME:
       CHAINWATCH_ADMIN_PASSWORD:
       # AI 분석 연동 (.env의 CHAINWATCH_AI_ENABLED=true로 활성화)
