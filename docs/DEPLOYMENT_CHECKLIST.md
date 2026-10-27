@@ -19,6 +19,7 @@
 |---|---|---|---|
 | `CHAINWATCH_JWT_ENABLED` | `false` | **필수 (true)** | 프로덕션에서 비활성 상태로 두면 인증 없이 API 접근 가능 |
 | `CHAINWATCH_JWT_SECRET` | 내장 개발용 값(`chainwatch-local-dev-secret-key-change-in-production-0123456789`) | **필수 교체** | `SecurityConfig`가 JWT 활성 + 기본값 그대로면 **기동 자체를 실패**시키도록 되어 있음(의도된 안전장치). `openssl rand -hex 32` 등으로 생성 |
+| `CHAINWATCH_PASSWORD_PEPPER` | 내장 개발용 값 | **필수 교체** | 비밀번호 중복 통계의 HMAC 키. 전 인스턴스에 동일하게 주입하고, 기존 통계 재구성 계획 없이 교체하지 말 것. [운영 메모](PASSWORD_POLICY.md) 참고 |
 | `CHAINWATCH_ADMIN_USERNAME` | `admin` | 필수 교체 | |
 | `CHAINWATCH_ADMIN_PASSWORD` | `{noop}chainwatch` (평문 encoder) | **필수 교체** | 기본값 그대로면 경고 로그만 남고 기동은 되므로 배포 전 사람이 직접 확인해야 함. bcrypt 해시로 발급 권장(`{bcrypt}...`) |
 | `CHAINWATCH_ETHERSCAN_API_KEY` | 빈 값 | provider=etherscan일 때 필수 | Etherscan 무료 API 키 (요청 필요: 실 키는 사용자가 발급/제공) |
