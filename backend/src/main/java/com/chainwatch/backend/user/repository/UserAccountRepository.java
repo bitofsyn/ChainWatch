@@ -4,10 +4,18 @@ import com.chainwatch.backend.user.domain.UserAccount;
 import com.chainwatch.backend.user.domain.UserRole;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 public interface UserAccountRepository extends JpaRepository<UserAccount, Long> {
 
     Optional<UserAccount> findByUsername(String username);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<UserAccount> findLockedById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<UserAccount> findLockedByUsername(String username);
 
     boolean existsByUsername(String username);
 

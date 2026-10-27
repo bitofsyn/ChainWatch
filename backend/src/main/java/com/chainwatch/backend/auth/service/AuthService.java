@@ -11,6 +11,7 @@ import com.chainwatch.backend.auth.exception.InvalidRefreshTokenException;
 import com.chainwatch.backend.security.JwtTokenProvider;
 import com.chainwatch.backend.user.domain.UserAccount;
 import com.chainwatch.backend.user.repository.UserAccountRepository;
+import com.chainwatch.backend.user.service.PasswordChangeService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -36,25 +37,28 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final PasswordChangeService passwordChangeService;
 
     public AuthService(
             UserAccountRepository userAccountRepository,
             JwtTokenProvider jwtTokenProvider,
             RefreshTokenService refreshTokenService,
             PasswordEncoder passwordEncoder,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            PasswordChangeService passwordChangeService
     ) {
         this.userAccountRepository = userAccountRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
+        this.passwordChangeService = passwordChangeService;
     }
 
     /** noRollbackFor: 로그인 실패 시에도 LOGIN_FAILURE 감사 기록은 커밋되어야 한다. */
     @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public LoginResponse login(LoginRequest request) {
-        Optional<UserAccount> found = userAccountRepository.findByUsername(request.username());
+        Optional<UserAccount> found = userAccountRepository.findLockedByUsername(request.username());
         if (found.isEmpty()
                 || !found.get().isActive()
                 || !passwordEncoder.matches(request.password(), found.get().getPasswordHash())) {
@@ -67,6 +71,7 @@ public class AuthService {
         }
 
         UserAccount user = found.get();
+        passwordChangeService.enrollLegacy(user.getId(), request.password());
         user.markLogin(Instant.now());
         String accessToken = jwtTokenProvider.createToken(user.getUsername(), List.of(user.getRole().authority()));
         String refreshToken = refreshTokenService.issue(user);
@@ -104,11 +109,13 @@ public class AuthService {
     /** 본인 비밀번호 변경. 현재 비밀번호 검증 후 전체 세션(리프레시 토큰)을 폐기한다. */
     @Transactional
     public void changePassword(String principalName, PasswordChangeRequest request) {
-        UserAccount user = requireActiveUser(principalName);
+        UserAccount user = userAccountRepository.findLockedByUsername(principalName)
+                .filter(UserAccount::isActive)
+                .orElseThrow(AuthenticationRequiredException::new);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
-        user.changePassword(passwordEncoder.encode(request.newPassword()));
+        passwordChangeService.changePassword(user.getId(), request.newPassword());
         refreshTokenService.revokeAllForUser(user);
         auditLogService.record(AUDIT_ACTION_PASSWORD_CHANGE, AUDIT_TARGET_TYPE_AUTH, user.getUsername(),
                 "Password changed by owner; all sessions revoked");
