@@ -110,8 +110,3 @@ export function shortenAddress(value: string, head = 8, tail = 6): string {
   }
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
-
-/** 해시/주소가 없을 때 표시할 값 */
-export function orDash(value: string | null | undefined): string {
-  return value && value.trim() ? value : "-";
-}

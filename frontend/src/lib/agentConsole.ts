@@ -1,6 +1,5 @@
 import type {
   AgentFaultStatus,
-  AgentHandoffEvent,
   AgentHandoffResult,
   AgentOpsSnapshot,
   AgentTaskOutcome,
@@ -20,16 +19,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 /** 백엔드 GET /api/agent-ops/snapshot 조회. 실패 시 호출부에서 에러 배너를 표시한다. */
 export async function fetchAgentOpsSnapshot(): Promise<AgentOpsSnapshot> {
   return requestJson<AgentOpsSnapshot>("/api/agent-ops/snapshot");
-}
-
-export async function fetchAgentTeam(teamId: string): Promise<AgentTeam | null> {
-  const snapshot = await fetchAgentOpsSnapshot();
-  return snapshot.teams.find((team) => team.id === teamId) ?? null;
-}
-
-export async function fetchAgentHandoffs(limit = 50): Promise<AgentHandoffEvent[]> {
-  const snapshot = await fetchAgentOpsSnapshot();
-  return snapshot.handoffs.slice(0, limit);
 }
 
 /** 팀에 장애 주입 활성화. 활성화 즉시 드릴 실패 샘플이 기록되어 다음 폴링에 반영된다. */
