@@ -87,16 +87,6 @@ export function parseEventsQuery(query: string): EventFilters {
   return filters;
 }
 
-export interface TrendPoint {
-  bucketStart: string;
-  count: number;
-}
-
-export interface EventTrend {
-  hours: number;
-  points: TrendPoint[];
-}
-
 export interface ChartDatum {
   key: string;
   label: string;
