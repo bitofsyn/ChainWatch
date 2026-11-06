@@ -6,6 +6,8 @@ build/
 .kotlin
 
 ### IntelliJ IDEA ###
+.idea/
+**/.idea/
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
@@ -58,7 +60,20 @@ ai/analysis-server/.env
 
 ### Env files ###
 .env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
 *.env.local
+
+### Secrets and credentials ###
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
 
 ### Local-only tooling ###
 .claude/
