@@ -45,7 +45,7 @@ Backend (Spring) ──POST /api/v1/analyze──▶ AnalysisService
 }
 ```
 
-응답 (prompts v3, 구조화 필드는 additive — 상세 계약은 `docs/WAVE1_AI_CONTRACT.md` 참고):
+응답 (prompts v3, 구조화 필드는 additive):
 
 ```json
 {
