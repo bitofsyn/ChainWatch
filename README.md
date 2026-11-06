@@ -231,6 +231,16 @@ uvicorn app.main:app --port 8000
 pytest -q
 ```
 
+## CI/CD
+
+GitHub Actions가 `main` 브랜치와 Pull Request에서 백엔드, 프론트엔드, AI 분석 서버의 테스트와 빌드를 검증합니다. `main`의 CI가 성공하면 다음 Docker 이미지를 GitHub Container Registry에 게시합니다.
+
+- `ghcr.io/bitofsyn/chainwatch-backend`
+- `ghcr.io/bitofsyn/chainwatch-frontend`
+- `ghcr.io/bitofsyn/chainwatch-ai-analysis`
+
+각 이미지는 `latest`와 배포 원본을 식별할 수 있는 전체 Git 커밋 SHA 태그를 함께 제공합니다.
+
 ## 보안 및 운영 시 주의사항
 
 - `.env`, API 키, 개인 키, 인증서와 자격 증명 파일은 Git 추적 대상에서 제외됩니다.
