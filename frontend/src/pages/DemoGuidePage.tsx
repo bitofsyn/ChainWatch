@@ -21,7 +21,7 @@ export function DemoGuidePage() {
     </section>
     <section className="panel staking-panel"><h2>검증 범위</h2>
       <p>Geth·Teku 로컬 minimal 개발망의 Electra/Fulu를 대상으로 합니다. 자료 간 대사 결과이며 독립적인 합의·서명 검증은 아닙니다.</p>
-      <p>노드 프로세스 일시 정지 → timeout 기록 → 재개 → 같은 구간 재대사는 저장소의 smoke_outage.py로 재현합니다. 검증인 재시작이나 자동 복구를 증명하는 실험은 아닙니다.</p>
+      <p>노드 프로세스 일시 정지 → timeout 기록 → 재개 → 같은 구간 재대사 순서로 장애 대응 흐름을 확인할 수 있습니다. 검증인 재시작이나 자동 복구를 증명하는 실험은 아닙니다.</p>
       <p>고객 자금 수탁, 지분 배분, 원장, 지급, 공개 테스트넷 장기 운영은 v1 범위에 포함하지 않습니다.</p>
     </section>
   </>;

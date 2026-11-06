@@ -103,7 +103,7 @@ public class DetectionEvent {
 
     /**
      * 룰이 발화한 이유의 구조화 JSON (rule, ruleVersion, 임계값, 관측값, 매칭 주소 등).
-     * 룰별 스키마는 docs/WAVE2_BLOCKCHAIN_CONTRACTS.md 참조. 레거시 이벤트는 null.
+     * 레거시 이벤트는 null일 수 있다.
      */
     @Column(name = "evidence", columnDefinition = "text")
     private String evidence;
