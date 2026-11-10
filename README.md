@@ -226,6 +226,16 @@ docker compose --profile app down
 
 `down`은 컨테이너만 제거하고 PostgreSQL과 Redis의 named volume은 보존합니다. 저장 데이터까지 삭제하려는 경우가 아니라면 `docker compose down -v`는 사용하지 마세요.
 
+## 상시 운영 배포 (무료)
+
+위 방식은 개발 PC가 켜져 있을 때만 접속할 수 있습니다. 노트북과 무관하게 데모를 상시 운영하려면 Oracle Cloud Always Free(ARM 4 OCPU / 24GB RAM) 인스턴스에 배포합니다.
+
+- CD 워크플로가 게시하는 GHCR 멀티아치 이미지를 받아 [`docker-compose.prod.yml`](docker-compose.prod.yml)로 실행합니다. 서버에서 소스를 빌드하지 않습니다.
+- 모든 서비스가 `restart: always`로 재부팅 후에도 자동 복구되며, watchtower가 main 브랜치의 새 이미지를 감지해 자동 재배포합니다.
+- 외부 공개는 서버에서 상시 구동되는 Cloudflare Tunnel 컨테이너가 담당하므로 인바운드 포트를 열지 않습니다.
+
+전체 절차는 [docs/deployment.md](docs/deployment.md)를 참고하세요.
+
 ## 환경 설정
 
 비밀값은 저장소에 파일로 커밋하지 않고 실행 환경에서 주입합니다. 필요한 기능만 선택적으로 활성화할 수 있습니다.
