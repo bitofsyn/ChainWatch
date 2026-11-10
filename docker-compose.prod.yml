@@ -1,0 +1,172 @@
+# 상시 운영(VPS)용 구성. 소스를 빌드하지 않고 CD가 게시한 GHCR 이미지를 받아 실행한다.
+# 사용법은 docs/deployment.md 참고. 로컬 개발·소스 빌드는 docker-compose.yml 사용.
+#
+#   docker compose -f docker-compose.prod.yml --profile tunnel-quick up -d
+#
+# 모든 서비스는 restart: always로 VPS 재부팅 후에도 자동 복구된다.
+# 외부 공개는 Cloudflare Tunnel(아웃바운드 연결)만 사용하므로 인바운드 포트를 열 필요가 없다.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: chainwatch-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: chainwatch
+      POSTGRES_USER: chainwatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD를 설정하세요}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chainwatch -d chainwatch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: chainwatch-redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: apache/kafka:3.7.2
+    container_name: chainwatch-kafka
+    restart: always
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://chainwatch-kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@chainwatch-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  ai-analysis:
+    image: ghcr.io/bitofsyn/chainwatch-ai-analysis:${IMAGE_TAG:-latest}
+    container_name: chainwatch-ai-analysis
+    restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    environment:
+      CHAINWATCH_AI_DEFAULT_PROVIDER: ${CHAINWATCH_AI_DEFAULT_PROVIDER:-claude}
+      # VPS에는 로컬 LLM 서버가 없으므로 기본 폴백 체인에서 lmstudio·hermes 제외
+      CHAINWATCH_AI_FALLBACK_CHAIN: ${CHAINWATCH_AI_FALLBACK_CHAIN:-claude,gemini}
+      CHAINWATCH_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHAINWATCH_AI_GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CHAINWATCH_AI_GEMINI_MODEL: ${CHAINWATCH_AI_GEMINI_MODEL:-gemini-flash-latest}
+      CHAINWATCH_AI_HTTP_TIMEOUT_SECONDS: "45"
+      CHAINWATCH_AI_RETRY_MAX_ATTEMPTS: "1"
+
+  backend:
+    image: ghcr.io/bitofsyn/chainwatch-backend:${IMAGE_TAG:-latest}
+    container_name: chainwatch-backend
+    restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chainwatch
+      SPRING_DATASOURCE_USERNAME: chainwatch
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CHAINWATCH_ETHERSCAN_API_KEY: ${CHAINWATCH_ETHERSCAN_API_KEY:-}
+      # 공개 데모는 인증·운영자 계정이 필수
+      CHAINWATCH_JWT_ENABLED: ${CHAINWATCH_JWT_ENABLED:-true}
+      CHAINWATCH_JWT_SECRET: ${CHAINWATCH_JWT_SECRET:?.env에 CHAINWATCH_JWT_SECRET을 설정하세요}
+      CHAINWATCH_PASSWORD_PEPPER: ${CHAINWATCH_PASSWORD_PEPPER:?.env에 CHAINWATCH_PASSWORD_PEPPER를 설정하세요}
+      CHAINWATCH_ADMIN_USERNAME: ${CHAINWATCH_ADMIN_USERNAME:-}
+      CHAINWATCH_ADMIN_PASSWORD: ${CHAINWATCH_ADMIN_PASSWORD:-}
+      CHAINWATCH_AI_ENABLED: ${CHAINWATCH_AI_ENABLED:-false}
+      CHAINWATCH_AI_BASE_URL: http://ai-analysis:8000
+      CHAINWATCH_COLLECTOR_ENABLED: ${CHAINWATCH_COLLECTOR_ENABLED:-false}
+      CHAINWATCH_DETECTION_MODE: ${CHAINWATCH_DETECTION_MODE:-kafka}
+      CHAINWATCH_STAKING_ENABLED: ${CHAINWATCH_STAKING_ENABLED:-false}
+      CHAINWATCH_STAKING_NETWORK: ${CHAINWATCH_STAKING_NETWORK:-unconfigured}
+      CHAINWATCH_BEACON_URL: ${CHAINWATCH_BEACON_URL:-}
+      CHAINWATCH_BEACON_GENESIS_ROOT: ${CHAINWATCH_BEACON_GENESIS_ROOT:-}
+      CHAINWATCH_STAKING_VALIDATORS: ${CHAINWATCH_STAKING_VALIDATORS:-}
+      CHAINWATCH_STAKING_RECONCILIATION_ENABLED: ${CHAINWATCH_STAKING_RECONCILIATION_ENABLED:-false}
+      CHAINWATCH_STAKING_RECONCILIATION_EXECUTION_URL: ${CHAINWATCH_STAKING_RECONCILIATION_EXECUTION_URL:-}
+      CHAINWATCH_AI_WORKER_ENABLED: ${CHAINWATCH_AI_WORKER_ENABLED:-true}
+      CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS: ${CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS:-30000}
+      CHAINWATCH_AI_WORKER_BATCH_SIZE: ${CHAINWATCH_AI_WORKER_BATCH_SIZE:-3}
+    ports:
+      # SSH 접속 후 로컬 진단용. 외부에는 노출되지 않는다(127.0.0.1 바인딩).
+      - "127.0.0.1:18080:8080"
+
+  frontend:
+    image: ghcr.io/bitofsyn/chainwatch-frontend:${IMAGE_TAG:-latest}
+    container_name: chainwatch-frontend
+    restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    depends_on:
+      - backend
+    ports:
+      # 외부 공개는 Cloudflare Tunnel 컨테이너가 Docker 네트워크로 직접 접근한다.
+      - "127.0.0.1:8088:80"
+
+  # Quick Tunnel: 도메인 없이 무료로 공개. 컨테이너가 재시작되면 주소가 바뀐다.
+  # 주소 확인: docker compose -f docker-compose.prod.yml logs cloudflared-quick | grep trycloudflare
+  cloudflared-quick:
+    image: cloudflare/cloudflared:latest
+    container_name: chainwatch-tunnel-quick
+    profiles: ["tunnel-quick"]
+    restart: always
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      - frontend
+
+  # Named Tunnel: Cloudflare에 등록한 도메인으로 고정 주소 공개. .env에 토큰 필요.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: chainwatch-tunnel
+    profiles: ["tunnel-named"]
+    restart: always
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - frontend
+
+  # main 푸시 → CD가 GHCR에 새 이미지 게시 → watchtower가 감지해 자동 재배포.
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: chainwatch-watchtower
+    profiles: ["autoupdate"]
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -15,17 +15,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish-images:
-    name: Publish ${{ matrix.service }} image
+  build-images:
+    name: Build ${{ matrix.service }} (${{ matrix.platform }})
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
-    runs-on: ubuntu-latest
+    # 백엔드는 이미지 빌드 중 Gradle 빌드를 수행하므로 QEMU 에뮬레이션 대신
+    # 플랫폼별 네이티브 러너에서 빌드하고 digest로 push한 뒤 매니페스트로 합친다.
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
+        service: [backend, frontend, ai-analysis]
+        platform: [linux/amd64, linux/arm64]
         include:
           - service: backend
             context: backend
@@ -33,7 +37,16 @@ jobs:
             context: frontend
           - service: ai-analysis
             context: ai/analysis-server
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
+      - name: Prepare platform slug
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: echo "PLATFORM_SLUG=${PLATFORM//\//-}" >> "$GITHUB_ENV"
+
       - name: Check out tested revision
         uses: actions/checkout@v4
         with:
@@ -54,16 +67,74 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ env.PLATFORM_SLUG }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ env.PLATFORM_SLUG }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.service }}-${{ env.PLATFORM_SLUG }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-manifests:
+    name: Publish ${{ matrix.service }} manifest
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend, ai-analysis]
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.service }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Build and publish image
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ matrix.context }}
-          push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }}@sha256:%s ' *)
+
+      - name: Inspect published manifest
+        run: docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }}:latest

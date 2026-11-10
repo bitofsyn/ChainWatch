@@ -66,6 +66,8 @@ ai/analysis-server/.env
 .env.*
 **/.env.*
 *.env.local
+# 배포용 예시 파일은 추적한다 (실제 비밀값 없음)
+!.env.prod.example
 
 ### Secrets and credentials ###
 *.pem
