@@ -10,10 +10,12 @@ import com.chainwatch.backend.collector.config.ProviderType;
 import com.chainwatch.backend.collector.exception.CollectorException;
 import com.chainwatch.backend.collector.metrics.CollectorMetrics;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
+import com.chainwatch.backend.ops.service.OperationalSettingsService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,6 +65,9 @@ class BlockPollingSchedulerTest {
     private BlockPollingScheduler scheduler(boolean enabled, CollectionMode mode) {
         CollectorProperties properties = new CollectorProperties(
                 ProviderType.RPC, mode, enabled, 15_000, 0, 5, 6, 12, null, null, null);
-        return new BlockPollingScheduler(properties, blockCollectionService, metrics);
+        OperationalSettingsService operationalSettings = Mockito.mock(OperationalSettingsService.class);
+        Mockito.lenient().when(operationalSettings.current()).thenReturn(new OperationalSettingsService.Snapshot(
+                enabled, false, 70, null, null, null, null));
+        return new BlockPollingScheduler(properties, blockCollectionService, metrics, operationalSettings);
     }
 }
