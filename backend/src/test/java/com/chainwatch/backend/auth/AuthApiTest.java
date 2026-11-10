@@ -108,25 +108,15 @@ class AuthApiTest {
     }
 
     @Test
-    void protectedEndpointWithoutTokenReturns401() throws Exception {
+    void publicPortfolioReadEndpointWithoutTokenReturns200() throws Exception {
         mockMvc.perform(get("/api/events"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    void protectedEndpointWithTokenReturns200() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"chainwatch\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        String token = objectMapper
-                .readTree(loginResult.getResponse().getContentAsString())
-                .get("accessToken").asText();
-
-        mockMvc.perform(get("/api/events").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+    void adminEndpointWithoutTokenRemainsProtected() throws Exception {
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 }

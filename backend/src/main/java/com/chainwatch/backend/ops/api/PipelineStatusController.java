@@ -9,6 +9,7 @@ import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.event.repository.DetectionEventRepository;
 import com.chainwatch.backend.notification.config.NotificationProperties;
 import com.chainwatch.backend.ops.api.PipelineStatusResponse.ComponentStatus;
+import com.chainwatch.backend.ops.service.OperationalSettingsService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class PipelineStatusController {
     private final DetectionThresholdsProvider detectionThresholds;
     private final AiAnalysisProperties aiAnalysisProperties;
     private final NotificationProperties notificationProperties;
+    private final OperationalSettingsService operationalSettings;
     private final WebClient.Builder webClientBuilder;
 
     public PipelineStatusController(
@@ -50,6 +52,7 @@ public class PipelineStatusController {
             DetectionThresholdsProvider detectionThresholds,
             AiAnalysisProperties aiAnalysisProperties,
             NotificationProperties notificationProperties,
+            OperationalSettingsService operationalSettings,
             WebClient.Builder webClientBuilder
     ) {
         this.detectionEventRepository = detectionEventRepository;
@@ -61,6 +64,7 @@ public class PipelineStatusController {
         this.detectionThresholds = detectionThresholds;
         this.aiAnalysisProperties = aiAnalysisProperties;
         this.notificationProperties = notificationProperties;
+        this.operationalSettings = operationalSettings;
         this.webClientBuilder = webClientBuilder;
     }
 
@@ -142,7 +146,7 @@ public class PipelineStatusController {
                 collectorProperties.reorgRewindDepth(),
                 collectorProperties.confirmationDepth()
         );
-        if (!collectorProperties.enabled()) {
+        if (!operationalSettings.current().collectorEnabled()) {
             return ComponentStatus.disabled("collector", "자동 수집 비활성 (수동 트리거만 가능). " + detail);
         }
         return ComponentStatus.up("collector", detail);
@@ -162,18 +166,17 @@ public class PipelineStatusController {
     }
 
     private ComponentStatus describeNotification() {
-        boolean slackConfigured = notificationProperties.slackWebhookUrl() != null
-                && !notificationProperties.slackWebhookUrl().isBlank();
-        boolean discordConfigured = notificationProperties.discordWebhookUrl() != null
-                && !notificationProperties.discordWebhookUrl().isBlank();
+        var current = operationalSettings.current();
+        boolean slackConfigured = current.slackWebhookUrl() != null && !current.slackWebhookUrl().isBlank();
+        boolean discordConfigured = current.discordWebhookUrl() != null && !current.discordWebhookUrl().isBlank();
         String detail = String.format(
                 "위험 점수 %d점 이상 알림, 중복 억제 %d분, Slack %s, Discord %s",
-                notificationProperties.minRiskScore(),
+                current.minRiskScore(),
                 notificationProperties.dedupTtlMinutes(),
                 slackConfigured ? "연결됨" : "미설정",
                 discordConfigured ? "연결됨" : "미설정"
         );
-        if (!notificationProperties.enabled()) {
+        if (!current.notificationEnabled()) {
             return ComponentStatus.disabled("notification", "알림 비활성. " + detail);
         }
         return ComponentStatus.up("notification", detail);

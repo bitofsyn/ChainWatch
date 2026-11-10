@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * ADMIN/ANALYST 권한 분리 회귀 테스트.
  * - 관리자 제어 API(수집 트리거)는 ADMIN 전용: ANALYST는 403, 익명은 401.
- * - 조회/분석가 workflow API는 ANALYST 이상이면 접근 가능.
+ * - 포트폴리오 조회 API는 익명에게 공개하고 workflow 변경 API는 ANALYST 이상만 접근 가능.
  * - 감사 로그 열람은 ADMIN 전용.
  */
 @SpringBootTest(properties = {
@@ -84,9 +84,9 @@ class SecurityRoleAuthorizationTest {
     }
 
     @Test
-    void anonymousReadEndpointReturns401() throws Exception {
+    void anonymousPortfolioReadEndpointReturns200() throws Exception {
         mockMvc.perform(get("/api/events"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -11,9 +11,10 @@ interface LayoutProps {
 }
 
 const NAV_ITEMS = [
-  { path: "/staking", label: "관측·대사" },
-  { path: "/demo", label: "실행·데모 안내" },
-  { path: "/admin", label: "관리자" }
+  { path: "/", label: "대시보드" },
+  { path: "/events", label: "이상 거래" },
+  { path: "/rules", label: "탐지 정책" },
+  { path: "/admin", label: "운영 관리" }
 ];
 
 function isActive(route: string, path: string): boolean {
@@ -33,16 +34,16 @@ export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
 
   async function handleLogout() {
     await logout();
-    navigate("/staking");
+    navigate("/");
   }
 
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <a className="brand" href="#/staking">
+        <a className="brand" href="#/">
           <span className="brand-mark" aria-hidden="true" />
           ChainWatch
-          <span className="brand-sub">검증인 관측·보상 대사</span>
+          <span className="brand-sub">온체인 이상 거래 탐지</span>
         </a>
         <nav className="nav-links" aria-label="주요 메뉴">
           {NAV_ITEMS.map((item) => (

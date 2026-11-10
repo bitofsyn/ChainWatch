@@ -9,10 +9,12 @@ import {
   fetchDetectionRules,
   fetchEvents,
   fetchHealth,
+  fetchOperationalSettings,
   fetchPipelineStatus,
   fetchRecentEventFeed,
   fetchRecentTransactionFeed,
   requestAnalysis,
+  updateOperationalSettings,
   updateDetectionThresholds
 } from "../api";
 import type { AuditLogFilters } from "../api";
@@ -27,6 +29,7 @@ import type {
   FeedTransactionItem,
   HealthResponse,
   PipelineStatus
+  ,OperationalSettings
 } from "../types";
 import type { AdminSection } from "../lib/router";
 import { useAuth } from "../contexts/AuthContext";
@@ -652,20 +655,23 @@ const THRESHOLD_FIELDS: {
 ];
 
 function AdminPolicies() {
+  const isAdmin = useAuth().isAdmin;
   const [rules, setRules] = useState<DetectionRules | null>(null);
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
+  const [settings, setSettings] = useState<OperationalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([fetchDetectionRules(), fetchPipelineStatus()])
-      .then(([rulesData, pipelineData]) => {
+    Promise.all([fetchDetectionRules(), fetchPipelineStatus(), isAdmin ? fetchOperationalSettings() : Promise.resolve(null)])
+      .then(([rulesData, pipelineData, settingsData]) => {
         if (active) {
           startTransition(() => {
             setRules(rulesData);
             setPipeline(pipelineData);
+            setSettings(settingsData);
             setError(null);
             setLoading(false);
           });
@@ -683,18 +689,15 @@ function AdminPolicies() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAdmin]);
 
   const notification = pipeline?.components.find((component) => component.name === "notification");
-  const isAdmin = useAuth().isAdmin;
 
   return (
     <>
       <p className="hint-text">
         탐지 threshold와 주소 목록(watchlist·거래소)은 관리자 계정으로 아래에서 직접 수정할 수
-        있으며, 변경 즉시 룰 평가에 반영되고 감사 로그에 기록됩니다. 알림 정책은{" "}
-        <span className="mono">application.yml</span>의{" "}
-        <span className="mono">chainwatch.notification</span> 설정으로 관리합니다.
+        있으며, 변경 즉시 실행 중인 탐지·수집·알림 파이프라인에 반영되고 감사 로그에 기록됩니다.
       </p>
 
       {error ? <div className="banner error">{error}</div> : null}
@@ -731,6 +734,16 @@ function AdminPolicies() {
 
       {rules && isAdmin ? <ThresholdEditor rules={rules} onSaved={setRules} /> : null}
 
+      {settings && isAdmin ? (
+        <OperationalSettingsEditor
+          settings={settings}
+          onSaved={async (updated) => {
+            setSettings(updated);
+            setPipeline(await fetchPipelineStatus());
+          }}
+        />
+      ) : null}
+
       {notification ? (
         <section className="glass-card policy-notification">
           <div className="section-head compact">
@@ -746,6 +759,78 @@ function AdminPolicies() {
         </section>
       ) : null}
     </>
+  );
+}
+
+function OperationalSettingsEditor({
+  settings,
+  onSaved
+}: {
+  settings: OperationalSettings;
+  onSaved: (settings: OperationalSettings) => Promise<void>;
+}) {
+  const [collectorEnabled, setCollectorEnabled] = useState(settings.collectorEnabled);
+  const [notificationEnabled, setNotificationEnabled] = useState(settings.notificationEnabled);
+  const [minRiskScore, setMinRiskScore] = useState(String(settings.minRiskScore));
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState("");
+  const [clearSlack, setClearSlack] = useState(false);
+  const [clearDiscord, setClearDiscord] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const score = Number(minRiskScore);
+    if (!Number.isInteger(score) || score < 0 || score > 100) {
+      setFormError("알림 위험 점수는 0~100 사이의 정수여야 합니다.");
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    setMessage(null);
+    try {
+      const updated = await updateOperationalSettings({
+        collectorEnabled,
+        notificationEnabled,
+        minRiskScore: score,
+        ...(slackWebhookUrl.trim() ? { slackWebhookUrl: slackWebhookUrl.trim() } : {}),
+        ...(discordWebhookUrl.trim() ? { discordWebhookUrl: discordWebhookUrl.trim() } : {}),
+        ...(clearSlack ? { slackWebhookUrl: "" } : {}),
+        ...(clearDiscord ? { discordWebhookUrl: "" } : {})
+      });
+      setSlackWebhookUrl("");
+      setDiscordWebhookUrl("");
+      setClearSlack(false);
+      setClearDiscord(false);
+      await onSaved(updated);
+      setMessage("운영 설정을 저장했습니다. 실행 중인 파이프라인에 바로 반영됩니다.");
+    } catch (cause) {
+      setFormError(cause instanceof ApiError && cause.serverMessage ? cause.serverMessage : "운영 설정 저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="glass-card">
+      <div className="section-head compact">
+        <div><p className="section-kicker">운영 제어</p><h2>수집·웹훅 설정</h2></div>
+      </div>
+      <form className="operational-settings-form" onSubmit={submit}>
+        <label className="settings-toggle"><input type="checkbox" checked={collectorEnabled} onChange={(e) => setCollectorEnabled(e.target.checked)} /><span><strong>자동 블록 수집</strong><small>저장 즉시 polling 수집기의 실행 여부가 바뀝니다.</small></span></label>
+        <label className="settings-toggle"><input type="checkbox" checked={notificationEnabled} onChange={(e) => setNotificationEnabled(e.target.checked)} /><span><strong>웹훅 알림</strong><small>Slack 또는 Discord 웹훅이 하나 이상 있어야 활성화할 수 있습니다.</small></span></label>
+        <label><span>알림 위험 점수</span><input type="number" min="0" max="100" value={minRiskScore} onChange={(e) => setMinRiskScore(e.target.value)} /></label>
+        <label><span>Slack 웹훅 {settings.slackConfigured ? "(설정됨)" : "(미설정)"}</span><input type="password" autoComplete="off" placeholder="https://hooks.slack.com/..." value={slackWebhookUrl} disabled={clearSlack} onChange={(e) => setSlackWebhookUrl(e.target.value)} /></label>
+        {settings.slackConfigured ? <label className="inline-check"><input type="checkbox" checked={clearSlack} onChange={(e) => setClearSlack(e.target.checked)} /> 기존 Slack 웹훅 삭제</label> : null}
+        <label><span>Discord 웹훅 {settings.discordConfigured ? "(설정됨)" : "(미설정)"}</span><input type="password" autoComplete="off" placeholder="https://discord.com/api/webhooks/..." value={discordWebhookUrl} disabled={clearDiscord} onChange={(e) => setDiscordWebhookUrl(e.target.value)} /></label>
+        {settings.discordConfigured ? <label className="inline-check"><input type="checkbox" checked={clearDiscord} onChange={(e) => setClearDiscord(e.target.checked)} /> 기존 Discord 웹훅 삭제</label> : null}
+        {formError ? <div className="banner error">{formError}</div> : null}
+        {message ? <div className="banner success">{message}</div> : null}
+        <div><button className="primary-button" type="submit" disabled={saving}>{saving ? "저장 중..." : "운영 설정 저장"}</button></div>
+      </form>
+    </section>
   );
 }
 
