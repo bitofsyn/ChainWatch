@@ -8,6 +8,20 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 
 단순히 AI에게 거래 판단을 맡기지 않고, **재현 가능한 규칙이 먼저 이상 징후와 근거를 생성하고 AI는 그 결과를 해석하는 보조 계층으로 동작**하도록 구현했습니다.
 
+## 데모 바로가기
+
+- **Web UI**: [https://reviews-sunshine-man-ryan.trycloudflare.com](https://reviews-sunshine-man-ryan.trycloudflare.com)
+- 별도 클라우드 비용 없이 로컬 Docker Compose와 Cloudflare Quick Tunnel로 공개한 포트폴리오 데모입니다.
+- 임시 주소이므로 개발 PC와 터널이 실행 중일 때만 접속할 수 있습니다.
+
+### 처음 사용하는 방법
+
+1. **운영 대시보드**에서 수집·탐지·알림 파이프라인 상태를 확인합니다.
+2. **이상 거래**에서 위험도, 유형, 상태, 지갑 주소와 기간으로 탐지 이벤트를 검색합니다.
+3. 이벤트를 선택해 탐지 규칙, 실제 관측값, 관련 거래와 지갑 활동을 검토합니다.
+4. 로그인한 운영자는 이벤트 상태를 변경하거나 AI 재분석을 요청할 수 있습니다.
+5. 관리자는 **관리자 → 탐지·알림 정책**에서 탐지 기준, 자동 수집과 웹훅 알림을 설정합니다.
+
 ## 주요 기능
 
 - 이더리움 RPC 또는 Etherscan을 통한 블록·트랜잭션 수집
@@ -18,7 +32,7 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 - Claude, Gemini, LM Studio, Hermes 기반 AI 분석 및 프로바이더 폴백
 - 이벤트 상태 관리, 거래·지갑 상세 조회, 탐지 기준값 관리
 - JWT 인증, 역할 기반 접근 제어와 감사 로그
-- Slack, Discord 및 일반 Webhook 알림
+- Slack·Discord Webhook 알림과 위험 점수 기준 설정
 - Prometheus 지표와 Grafana 대시보드를 통한 운영 상태 확인
 
 ## 시스템 구조
@@ -33,7 +47,7 @@ flowchart LR
     E --> F[Kafka<br/>detected events]
     D --> G[(Redis 최신 피드)]
     F --> G
-    F --> H[Slack / Discord / Webhook]
+    F --> H[Slack / Discord Webhook]
     C --> I[AI 분석 서비스]
     I --> J[Claude / Gemini / Local LLM]
     C --> K[Spring Boot API]
@@ -106,13 +120,12 @@ ChainWatch/
 
 ## 주요 화면
 
-- **대시보드**: 이벤트 통계, 위험도 분포와 파이프라인 상태 확인
-- **탐지 이벤트**: 조건별 검색, 상세 근거 확인, 처리 상태 변경
+- **운영 대시보드**: 이벤트 통계, 위험도 분포와 파이프라인 상태 확인
+- **이상 거래**: 기본·상세 조건 검색, 상세 탐지 근거 확인, 처리 상태 변경
 - **거래·지갑 상세**: 관련 거래와 주소 활동 추적
 - **탐지 규칙**: 현재 임계값 조회 및 관리자 변경
 - **AI 분석**: 이벤트별 분석 결과와 처리 상태 확인
-- **관리자**: 사용자, 감사 로그, 파이프라인과 운영 정책 관리
-- **에이전트 운영 화면**: 작업 팀 상태, 인계와 장애 상태 확인
+- **관리자**: 사용자, 감사 로그, 파이프라인, 탐지 기준, 자동 수집과 웹훅 알림 관리
 
 ## 빠른 실행
 
@@ -188,7 +201,7 @@ CHAINWATCH_COLLECTOR_ENABLED=false
 
 ```bash
 docker compose --profile app up --build -d
-curl --fail http://127.0.0.1/actuator/health
+curl --fail http://127.0.0.1:18080/actuator/health
 ```
 
 헬스 체크 응답이 `{"status":"UP"}`인지 확인합니다.
@@ -247,6 +260,19 @@ export CHAINWATCH_ADMIN_PASSWORD="{bcrypt}..."
 | `CHAINWATCH_SLACK_WEBHOOK_URL` | Slack 알림 Webhook | 미설정 |
 | `CHAINWATCH_DISCORD_WEBHOOK_URL` | Discord 알림 Webhook | 미설정 |
 
+### 관리자 화면에서 운영 설정 변경
+
+서버를 다시 시작하지 않고 다음 항목을 변경하려면 ADMIN 계정으로 로그인한 뒤 **관리자 → 탐지·알림 정책 → 수집·웹훅 설정**을 사용합니다.
+
+- polling 방식 자동 블록 수집 활성화·비활성화
+- 웹훅 알림 활성화·비활성화
+- 알림을 보낼 최소 위험 점수(0~100)
+- Slack·Discord Webhook 등록, 교체와 삭제
+
+변경값은 PostgreSQL에 저장되어 즉시 수집·알림 파이프라인에 반영되고 감사 로그에 기록됩니다. 저장된 Webhook URL은 API 응답과 화면에 다시 노출하지 않습니다. 알림을 활성화하려면 Slack 또는 Discord Webhook이 하나 이상 설정되어 있어야 합니다.
+
+환경변수 값은 데이터베이스에 운영 설정이 아직 없을 때 사용하는 초기 기본값입니다. AI 분석은 API 키와 분석 서버 구성이 필요하므로 관리자 화면에서 즉시 활성화하는 대상이 아니며, 환경변수를 설정한 뒤 서비스를 다시 시작해야 합니다.
+
 AI 제공자와 모델, 폴백 순서에 관한 상세 설정은 [`ai/analysis-server/README.md`](ai/analysis-server/README.md)에서 확인할 수 있습니다.
 
 ## 주요 API
@@ -264,6 +290,8 @@ AI 제공자와 모델, 폴백 순서에 관한 상세 설정은 [`ai/analysis-s
 | 탐지 규칙 | `PATCH /api/detection/rules/thresholds` | 임계값 변경 |
 | 수집기 | `GET /api/collector/state` | 현재 수집 상태 조회 |
 | 운영 | `GET /api/ops/pipeline` | 파이프라인 상태 조회 |
+| 운영 설정 | `GET /api/admin/operational-settings` | 수집·웹훅 설정 조회(ADMIN) |
+| 운영 설정 | `PATCH /api/admin/operational-settings` | 수집·웹훅 설정 변경(ADMIN) |
 | 인증 | `POST /api/auth/login` | 로그인 및 토큰 발급 |
 
 전체 명세는 서비스를 실행한 뒤 Swagger UI에서 확인할 수 있습니다.
@@ -316,7 +344,8 @@ GitHub Actions가 `main` 브랜치와 Pull Request에서 백엔드, 프론트엔
 - Quick Tunnel에는 Web UI의 로컬 포트만 연결하고 PostgreSQL, Kafka, Redis, AI 서버 및 모니터링 포트는 공개하지 않습니다.
 - 저장소의 기본 계정과 비밀번호는 로컬 개발 편의를 위한 값이며 운영 환경에서 사용하면 안 됩니다.
 - 운영 환경에서는 JWT 비밀키, 비밀번호 pepper, 관리자 비밀번호와 Grafana 비밀번호를 반드시 교체해야 합니다.
-- Webhook URL과 AI API 키는 환경변수 또는 별도의 Secret Manager로 관리해야 합니다.
+- Webhook URL은 관리자 API 응답에서 마스킹되지만 데이터베이스에는 암호화되지 않은 상태로 저장됩니다. 실제 운영 환경에서는 애플리케이션 계정과 DB 접근을 제한하고 Secret Manager 연동을 권장합니다.
+- AI API 키는 환경변수 또는 별도의 Secret Manager로 관리해야 합니다.
 - AI가 생성한 내용은 참고 자료이며 제재 판단, 자금 동결과 같은 최종 조치에는 사람의 검토가 필요합니다.
 - 공개 RPC는 호출 제한과 데이터 신뢰성 문제가 있을 수 있으므로 운영 환경에서는 전용 제공자와 모니터링을 권장합니다.
 
