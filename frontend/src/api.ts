@@ -14,6 +14,8 @@ import type {
   HealthResponse,
   LoginResult,
   OpsOverview,
+  OperationalSettings,
+  OperationalSettingsPatch,
   PipelineStatus,
   Role,
   TransactionItem,
@@ -177,6 +179,18 @@ export function fetchWalletSummary(address: string) {
 
 export function fetchPipelineStatus(signal?: AbortSignal) {
   return requestJson<PipelineStatus>("/api/ops/pipeline", { signal });
+}
+
+export function fetchOperationalSettings() {
+  return requestJson<OperationalSettings>("/api/admin/operational-settings");
+}
+
+export function updateOperationalSettings(input: OperationalSettingsPatch) {
+  return requestJson<OperationalSettings>("/api/admin/operational-settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
 }
 
 /** GET /api/ops/overview — 운영 대시보드 집계(collector lag, KPI, 시계열, 매트릭스) */

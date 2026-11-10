@@ -34,7 +34,7 @@ import { StakingPage } from "./pages/StakingPage";
 
 function resolvePage(route: string) {
   if (route === "/demo") return <DemoGuidePage />;
-  if (route === "/" || route === "/staking") return <StakingPage />;
+  if (route === "/staking") return <StakingPage />;
   if (isLoginRoute(route)) {
     return <LoginPage nextPath={loginNextPath(route)} />;
   }
@@ -81,7 +81,7 @@ function resolvePage(route: string) {
         <p className="eyebrow">404</p>
         <h1>페이지를 찾을 수 없습니다</h1>
         <p className="page-lede">
-          <a href="#/">관측·대사로 돌아가기</a>
+          <a href="#/">대시보드로 돌아가기</a>
         </p>
       </div>
     </section>

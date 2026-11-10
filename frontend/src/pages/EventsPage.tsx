@@ -60,6 +60,12 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
     load(filters, 0);
   };
 
+  const handleReset = () => {
+    setFilters({});
+    setPage(0);
+    load({}, 0);
+  };
+
   const activeScope: QueueScope = filters.unassigned
     ? "unassigned"
     : user && filters.assignee?.toLowerCase() === user.username.toLowerCase()
@@ -83,10 +89,10 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">이상거래 큐</p>
-          <h1>탐지 이벤트 작업 큐</h1>
+          <p className="eyebrow">DETECTION EVENTS</p>
+          <h1>이상 거래 검토</h1>
           <p className="page-lede">
-            상태·유형·위험 등급·지갑 주소·담당자·기간으로 필터링해 처리할 이벤트를 선별하세요.
+            규칙이 탐지한 이벤트를 위험도와 상태별로 확인하고, 상세 화면에서 탐지 근거와 관련 거래를 추적할 수 있습니다.
           </p>
         </div>
       </section>
@@ -118,7 +124,7 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
           </button>
         </div>
 
-        <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} />
+        <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} onReset={handleReset} />
 
         <p className="result-count">
           총 <strong>{formatNumber(totalElements)}</strong>건

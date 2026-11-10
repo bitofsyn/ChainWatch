@@ -4,6 +4,7 @@ import com.chainwatch.backend.collector.config.CollectionMode;
 import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.metrics.CollectorMetrics;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
+import com.chainwatch.backend.ops.service.OperationalSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,20 +21,23 @@ public class BlockPollingScheduler {
     private final CollectorProperties collectorProperties;
     private final BlockCollectionService blockCollectionService;
     private final CollectorMetrics metrics;
+    private final OperationalSettingsService operationalSettings;
 
     public BlockPollingScheduler(
             CollectorProperties collectorProperties,
             BlockCollectionService blockCollectionService,
-            CollectorMetrics metrics
+            CollectorMetrics metrics,
+            OperationalSettingsService operationalSettings
     ) {
         this.collectorProperties = collectorProperties;
         this.blockCollectionService = blockCollectionService;
         this.metrics = metrics;
+        this.operationalSettings = operationalSettings;
     }
 
     @Scheduled(fixedDelayString = "${chainwatch.collector.poll-interval-ms:15000}")
     public void poll() {
-        if (!collectorProperties.enabled() || collectorProperties.mode() != CollectionMode.POLLING) {
+        if (!operationalSettings.current().collectorEnabled() || collectorProperties.mode() != CollectionMode.POLLING) {
             return;
         }
         try {

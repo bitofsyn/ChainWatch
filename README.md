@@ -121,20 +121,31 @@ ChainWatch/
 - Docker Desktop 및 Docker Compose
 - 전체 서비스를 컨테이너로 실행하지 않을 경우 Java 21, Node.js와 Python 3
 
-### 전체 서비스 실행
+### 애플리케이션 실행
 
-저장소 루트에서 다음 명령을 실행합니다.
+저장소 루트에서 핵심 애플리케이션 스택을 실행합니다. PostgreSQL, Redis, Kafka, AI 분석 서버, 백엔드와 프런트엔드가 함께 기동됩니다.
 
 ```bash
-docker compose --profile app up --build
+docker compose --profile app up --build -d
 ```
 
 | 서비스 | 주소 |
 |---|---|
-| Web UI | http://localhost |
+| Web UI | http://127.0.0.1:8088 |
 | Backend API | http://127.0.0.1:18080 |
 | Swagger UI | http://127.0.0.1:18080/swagger-ui.html |
-| AI Analysis API | http://127.0.0.1:8000 |
+| AI Analysis API | Docker 내부 `http://ai-analysis:8000` |
+
+AI 분석 서버는 백엔드 전용 내부 서비스이므로 호스트와 외부 네트워크에 직접 노출하지 않습니다.
+
+모니터링 도구까지 실행하려면 `monitoring` 프로필을 추가합니다.
+
+```bash
+docker compose --profile app --profile monitoring up --build -d
+```
+
+| 모니터링 서비스 | 주소 |
+|---|---|
 | Grafana | http://127.0.0.1:3000 |
 | Prometheus | http://127.0.0.1:9090 |
 | Kafka UI | http://127.0.0.1:8081 |
@@ -144,6 +155,63 @@ docker compose --profile app up --build
 ```bash
 docker compose --profile app down
 ```
+
+## 무료 외부 공개
+
+별도의 클라우드 서버 없이 개발용 Mac 또는 PC에서 Docker Compose를 실행하고 Cloudflare Quick Tunnel로 Web UI를 임시 공개할 수 있습니다. 프런트엔드는 `127.0.0.1:8088`에만 바인딩되며 데이터베이스, Kafka, Redis와 AI 서버는 외부에 공개되지 않습니다.
+
+### 현재 시연 주소
+
+- **Web UI**: [https://reviews-sunshine-man-ryan.trycloudflare.com](https://reviews-sunshine-man-ryan.trycloudflare.com)
+
+이 주소는 2026년 11월 10일 생성한 임시 Quick Tunnel 주소입니다. 로컬 Docker와 터널 프로세스가 실행 중일 때만 접속할 수 있으며, 터널을 다시 생성하면 주소도 변경됩니다.
+
+### 1. 공개용 인증 설정
+
+저장소 루트에 Git 추적에서 제외되는 `.env` 파일을 만듭니다. 예시 값을 그대로 사용하지 말고 각 비밀값을 새로 생성해야 합니다.
+
+```dotenv
+CHAINWATCH_JWT_ENABLED=true
+CHAINWATCH_JWT_SECRET=충분히-긴-무작위-문자열
+CHAINWATCH_PASSWORD_PEPPER=별도의-긴-무작위-문자열
+CHAINWATCH_ADMIN_USERNAME=admin
+CHAINWATCH_ADMIN_PASSWORD={noop}최초-로그인용-강한-비밀번호
+
+# 외부 API 사용료 방지를 위한 기본값
+CHAINWATCH_AI_ENABLED=false
+CHAINWATCH_COLLECTOR_ENABLED=false
+```
+
+`{noop}` 접두사는 최초 계정 생성 시에만 사용되며 실제 저장 시 BCrypt로 다시 인코딩됩니다. 기존 데이터 볼륨에 사용자가 이미 존재하면 bootstrap 환경변수는 계정을 덮어쓰지 않습니다.
+
+### 2. 애플리케이션 기동
+
+```bash
+docker compose --profile app up --build -d
+curl --fail http://127.0.0.1/actuator/health
+```
+
+헬스 체크 응답이 `{"status":"UP"}`인지 확인합니다.
+
+### 3. 임시 터널 생성
+
+macOS에서는 Homebrew로 `cloudflared`를 설치할 수 있습니다.
+
+```bash
+brew install cloudflared
+cloudflared tunnel --url http://127.0.0.1:8088 --no-autoupdate
+```
+
+명령 출력에 표시되는 `https://...trycloudflare.com` 주소로 접속합니다. Quick Tunnel 주소는 실행할 때마다 달라질 수 있으며, 터널 프로세스와 Docker Desktop이 실행되는 동안만 사용할 수 있습니다. 가용성 보장이 없는 개발·시연용 방식이므로 상시 운영 환경에는 사용하지 않습니다.
+
+터널과 애플리케이션을 종료할 때는 다음 명령을 사용합니다.
+
+```bash
+pkill cloudflared
+docker compose --profile app down
+```
+
+`down`은 컨테이너만 제거하고 PostgreSQL과 Redis의 named volume은 보존합니다. 저장 데이터까지 삭제하려는 경우가 아니라면 `docker compose down -v`는 사용하지 마세요.
 
 ## 환경 설정
 
@@ -244,6 +312,8 @@ GitHub Actions가 `main` 브랜치와 Pull Request에서 백엔드, 프론트엔
 ## 보안 및 운영 시 주의사항
 
 - `.env`, API 키, 개인 키, 인증서와 자격 증명 파일은 Git 추적 대상에서 제외됩니다.
+- 인터넷에 공개하기 전 `CHAINWATCH_JWT_ENABLED=true`와 강한 관리자 비밀번호를 반드시 설정해야 합니다.
+- Quick Tunnel에는 Web UI의 로컬 포트만 연결하고 PostgreSQL, Kafka, Redis, AI 서버 및 모니터링 포트는 공개하지 않습니다.
 - 저장소의 기본 계정과 비밀번호는 로컬 개발 편의를 위한 값이며 운영 환경에서 사용하면 안 됩니다.
 - 운영 환경에서는 JWT 비밀키, 비밀번호 pepper, 관리자 비밀번호와 Grafana 비밀번호를 반드시 교체해야 합니다.
 - Webhook URL과 AI API 키는 환경변수 또는 별도의 Secret Manager로 관리해야 합니다.

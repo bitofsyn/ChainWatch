@@ -68,12 +68,12 @@ services:
       # Opus adaptive thinking 여유(45s), 재시도는 프로바이더 폴백에 위임 → 최악 ~90s (백엔드 타임아웃 120s 내)
       CHAINWATCH_AI_HTTP_TIMEOUT_SECONDS: "45"
       CHAINWATCH_AI_RETRY_MAX_ATTEMPTS: "1"
-    ports:
-      - "127.0.0.1:8000:8000"
+    # 백엔드가 Docker 네트워크에서 직접 호출하므로 호스트에는 노출하지 않는다.
 
   prometheus:
     image: prom/prometheus:v2.53.0
     container_name: chainwatch-prometheus
+    profiles: ["monitoring"]
     volumes:
       - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infra/monitoring/prometheus-rules.yml:/etc/prometheus/prometheus-rules.yml:ro
@@ -86,6 +86,7 @@ services:
   grafana:
     image: grafana/grafana:11.1.0
     container_name: chainwatch-grafana
+    profiles: ["monitoring"]
     depends_on:
       - prometheus
     environment:
@@ -131,6 +132,14 @@ services:
       # 탐지 트리거: kafka = raw-transactions consumer가 비동기 탐지 수행.
       # 수집 루프에서 인라인 탐지를 분리해 catch-up 처리량을 높인다 (2026-07-19).
       CHAINWATCH_DETECTION_MODE: ${CHAINWATCH_DETECTION_MODE:-kafka}
+      # 선택 기능: 이더리움 검증인 상태 조회와 보상 내역 검산
+      CHAINWATCH_STAKING_ENABLED: ${CHAINWATCH_STAKING_ENABLED:-false}
+      CHAINWATCH_STAKING_NETWORK: ${CHAINWATCH_STAKING_NETWORK:-unconfigured}
+      CHAINWATCH_BEACON_URL: ${CHAINWATCH_BEACON_URL:-}
+      CHAINWATCH_BEACON_GENESIS_ROOT: ${CHAINWATCH_BEACON_GENESIS_ROOT:-}
+      CHAINWATCH_STAKING_VALIDATORS: ${CHAINWATCH_STAKING_VALIDATORS:-}
+      CHAINWATCH_STAKING_RECONCILIATION_ENABLED: ${CHAINWATCH_STAKING_RECONCILIATION_ENABLED:-false}
+      CHAINWATCH_STAKING_RECONCILIATION_EXECUTION_URL: ${CHAINWATCH_STAKING_RECONCILIATION_EXECUTION_URL:-}
       # 자동 분석 워커 (ai.enabled=true일 때 미분석 고위험 백로그를 자동 소비, 기본 on)
       CHAINWATCH_AI_WORKER_ENABLED: ${CHAINWATCH_AI_WORKER_ENABLED:-true}
       # 워커 처리율 = batch-size / poll-interval. 프로바이더 쿼터(RPM/RPD)에 맞춰 환경변수로 조절
@@ -148,11 +157,13 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      # 외부 공개는 Cloudflare Tunnel을 통해서만 허용한다.
+      - "127.0.0.1:8088:80"
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: chainwatch-kafka-ui
+    profiles: ["monitoring"]
     depends_on:
       kafka:
         condition: service_healthy

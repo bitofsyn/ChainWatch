@@ -111,8 +111,12 @@ export function OverviewPage({ route }: OverviewPageProps) {
       {/* A. Compact Operations Header */}
       <section className="ops-header">
         <div className="ops-header-title">
-          <p className="eyebrow">관제 현황</p>
-          <h1>실시간 리스크 관제</h1>
+          <p className="eyebrow">ON-CHAIN RISK MONITORING</p>
+          <h1>온체인 이상 거래 관제</h1>
+          <p className="page-lede ops-lede">
+            이더리움 거래를 수집하고 재현 가능한 규칙으로 이상 징후를 탐지합니다.
+            AI는 탐지 결과를 결정하지 않고 조사에 필요한 근거와 대응 방향을 정리합니다.
+          </p>
         </div>
         <div className="ops-header-status">
           <span className={`ops-overall level-${status.level}`}>

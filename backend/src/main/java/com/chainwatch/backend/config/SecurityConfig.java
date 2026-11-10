@@ -47,6 +47,18 @@ public class SecurityConfig {
             "/v3/api-docs/**"
     };
 
+    /** 공개 포트폴리오에서 익명 방문자가 확인할 수 있는 읽기 전용 데이터. 상태 변경 API는 포함하지 않는다. */
+    private static final String[] PUBLIC_READ_PATHS = {
+            "/api/health",
+            "/api/ops/overview",
+            "/api/ops/pipeline",
+            "/api/events/**",
+            "/api/transactions/**",
+            "/api/wallets/**",
+            "/api/detection/rules",
+            "/api/feed/**"
+    };
+
     /** 상태를 변경하는 운영자 제어 API. ADMIN 전용. */
     private static final String[] ADMIN_CONTROL_PATHS = {
             "/api/collector/blocks/**",
@@ -64,7 +76,8 @@ public class SecurityConfig {
     /** ADMIN 전용 경로: 감사 로그 열람, 사용자 계정 관리 전체. */
     private static final String[] ADMIN_READ_PATHS = {
             "/api/audit-logs/**",
-            "/api/users/**"
+            "/api/users/**",
+            "/api/admin/**"
     };
 
     @Bean
@@ -102,6 +115,7 @@ public class SecurityConfig {
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(PUBLIC_PATHS).permitAll()
+                            .requestMatchers(HttpMethod.GET, PUBLIC_READ_PATHS).permitAll()
                             .requestMatchers(HttpMethod.POST, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(HttpMethod.DELETE, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(HttpMethod.PATCH, ADMIN_PATCH_PATHS).hasRole(ROLE_ADMIN)

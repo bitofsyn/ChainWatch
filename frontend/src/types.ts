@@ -311,6 +311,24 @@ export interface PipelineStatus {
   components: PipelineComponent[];
 }
 
+export interface OperationalSettings {
+  collectorEnabled: boolean;
+  notificationEnabled: boolean;
+  minRiskScore: number;
+  slackConfigured: boolean;
+  discordConfigured: boolean;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+export interface OperationalSettingsPatch {
+  collectorEnabled?: boolean;
+  notificationEnabled?: boolean;
+  minRiskScore?: number;
+  slackWebhookUrl?: string;
+  discordWebhookUrl?: string;
+}
+
 export interface DetectionRule {
   eventType: string;
   name: string;
