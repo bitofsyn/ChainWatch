@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.notification.channel.NotificationChannel;
-import com.chainwatch.backend.notification.config.NotificationProperties;
 import com.chainwatch.backend.notification.domain.NotificationHistory;
 import com.chainwatch.backend.notification.domain.NotificationMessage;
 import com.chainwatch.backend.notification.repository.NotificationHistoryRepository;
 import com.chainwatch.backend.notification.service.NotificationDeduplicator;
 import com.chainwatch.backend.notification.service.NotificationHistoryRecorder;
 import com.chainwatch.backend.notification.service.NotificationService;
+import com.chainwatch.backend.ops.service.OperationalSettingsService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -74,8 +74,11 @@ class NotificationServiceTest {
                 "고액 이체 탐지", "0xabc", "0xdef", Instant.now());
     }
 
-    private static NotificationProperties properties(boolean enabled, int minRiskScore) {
-        return new NotificationProperties(enabled, minRiskScore, 30, "memory", "https://slack", "https://discord");
+    private static OperationalSettingsService settings(boolean enabled, int minRiskScore) {
+        OperationalSettingsService settings = Mockito.mock(OperationalSettingsService.class);
+        Mockito.when(settings.current()).thenReturn(new OperationalSettingsService.Snapshot(
+                false, enabled, minRiskScore, "https://slack", "https://discord", null, null));
+        return settings;
     }
 
     private final List<NotificationHistory> savedHistory = new ArrayList<>();
@@ -83,7 +86,7 @@ class NotificationServiceTest {
             new com.chainwatch.backend.agentops.service.AgentFaultInjector();
 
     private NotificationService service(
-            NotificationProperties properties,
+            OperationalSettingsService operationalSettings,
             NotificationDeduplicator deduplicator,
             List<NotificationChannel> channels
     ) {
@@ -95,12 +98,12 @@ class NotificationServiceTest {
                     return history;
                 });
         return new NotificationService(
-                properties,
                 deduplicator,
                 channels,
                 new NotificationHistoryRecorder(historyRepository),
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                faultInjector
+                faultInjector,
+                operationalSettings
         );
     }
 
@@ -108,7 +111,7 @@ class NotificationServiceTest {
     void recordsFailureHistoryInsteadOfSendingWhenFaultActive() {
         RecordingChannel slack = new RecordingChannel("slack", true, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(slack));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(slack));
         faultInjector.activate("notification", "test scenario", 60);
 
         service.notify(message(1, 90));
@@ -123,7 +126,7 @@ class NotificationServiceTest {
         RecordingChannel slack = new RecordingChannel("slack", true, false);
         RecordingChannel discord = new RecordingChannel("discord", true, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(slack, discord));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(slack, discord));
 
         service.notify(message(1, 90));
 
@@ -135,7 +138,7 @@ class NotificationServiceTest {
     void skipsWhenDisabled() {
         RecordingChannel slack = new RecordingChannel("slack", true, false);
         NotificationService service =
-                service(properties(false, 70), new RecordingDeduplicator(), List.of(slack));
+                service(settings(false, 70), new RecordingDeduplicator(), List.of(slack));
 
         service.notify(message(1, 90));
 
@@ -146,7 +149,7 @@ class NotificationServiceTest {
     void skipsBelowRiskThreshold() {
         RecordingChannel slack = new RecordingChannel("slack", true, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(slack));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(slack));
 
         service.notify(message(1, 69));
 
@@ -157,7 +160,7 @@ class NotificationServiceTest {
     void suppressesDuplicateNotifications() {
         RecordingChannel slack = new RecordingChannel("slack", true, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(slack));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(slack));
 
         service.notify(message(1, 90));
         service.notify(message(1, 90));
@@ -169,7 +172,7 @@ class NotificationServiceTest {
     void skipsUnconfiguredChannels() {
         RecordingChannel unconfigured = new RecordingChannel("slack", false, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(unconfigured));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(unconfigured));
 
         service.notify(message(1, 90));
 
@@ -182,7 +185,7 @@ class NotificationServiceTest {
         RecordingChannel healthy = new RecordingChannel("discord", true, false);
         RecordingDeduplicator deduplicator = new RecordingDeduplicator();
         NotificationService service =
-                service(properties(true, 70), deduplicator, List.of(failing, healthy));
+                service(settings(true, 70), deduplicator, List.of(failing, healthy));
 
         service.notify(message(1, 90));
 
@@ -195,7 +198,7 @@ class NotificationServiceTest {
         RecordingChannel failing = new RecordingChannel("slack", true, true);
         RecordingChannel healthy = new RecordingChannel("discord", true, false);
         NotificationService service =
-                service(properties(true, 70), new RecordingDeduplicator(), List.of(failing, healthy));
+                service(settings(true, 70), new RecordingDeduplicator(), List.of(failing, healthy));
 
         service.notify(message(1, 90));
 
@@ -217,7 +220,7 @@ class NotificationServiceTest {
         RecordingChannel failing = new RecordingChannel("slack", true, true);
         RecordingDeduplicator deduplicator = new RecordingDeduplicator();
         NotificationService service =
-                service(properties(true, 70), deduplicator, List.of(failing));
+                service(settings(true, 70), deduplicator, List.of(failing));
 
         service.notify(message(1, 90));
 
