@@ -11,8 +11,8 @@ import {
   fetchHealth,
   fetchOperationalSettings,
   fetchPipelineStatus,
-  fetchRecentEventFeed,
-  fetchRecentTransactionFeed,
+  fetchPolicySuggestions,
+  fetchUsers,
   requestAnalysis,
   updateOperationalSettings,
   updateDetectionThresholds
@@ -25,11 +25,11 @@ import type {
   DetectionPolicyPatch,
   DetectionRules,
   DetectionThresholds,
-  FeedEventItem,
-  FeedTransactionItem,
   HealthResponse,
-  PipelineStatus
-  ,OperationalSettings
+  PipelineStatus,
+  OperationalSettings,
+  PolicySuggestion,
+  UserAccountItem
 } from "../types";
 import type { AdminSection } from "../lib/router";
 import { useAuth } from "../contexts/AuthContext";
@@ -49,12 +49,15 @@ import { AdminUsersSection } from "./admin/AdminUsersSection";
 import { PolicySuggestionsPanel } from "../components/PolicySuggestionsPanel";
 
 const SECTION_ITEMS: { section: AdminSection; path: string; label: string; adminOnly?: boolean }[] = [
-  { section: "dashboard", path: "/admin", label: "운영 대시보드" },
-  { section: "pipeline", path: "/admin/pipeline", label: "파이프라인 상태" },
-  { section: "analysis", path: "/admin/analysis", label: "재분석" },
-  { section: "policies", path: "/admin/policies", label: "탐지·알림 정책" },
+  // 관리자가 바꿀 수 있는 것
+  { section: "dashboard", path: "/admin", label: "개요", adminOnly: true },
+  { section: "collection", path: "/admin/collection", label: "수집·알림", adminOnly: true },
+  { section: "policies", path: "/admin/policies", label: "탐지 기준" },
+  { section: "users", path: "/admin/users", label: "사용자 관리", adminOnly: true },
   { section: "audit", path: "/admin/audit", label: "감사 로그", adminOnly: true },
-  { section: "users", path: "/admin/users", label: "사용자 관리", adminOnly: true }
+  // 상태 확인과 보조 작업
+  { section: "pipeline", path: "/admin/pipeline", label: "파이프라인 상태" },
+  { section: "analysis", path: "/admin/analysis", label: "AI 재분석" }
 ];
 
 interface AdminPageProps {
@@ -72,7 +75,7 @@ export function AdminPage({ section }: AdminPageProps) {
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">운영 콘솔</p>
+          <p className="eyebrow">{isAdmin ? "운영 설정" : "운영 콘솔"}</p>
           <h1>{SECTION_ITEMS.find((item) => item.section === section)?.label}</h1>
         </div>
       </section>
@@ -89,7 +92,8 @@ export function AdminPage({ section }: AdminPageProps) {
         ))}
       </nav>
 
-      {section === "dashboard" ? <AdminDashboard /> : null}
+      {section === "dashboard" ? isAdmin ? <AdminDashboard /> : <AdminOnlyNotice /> : null}
+      {section === "collection" ? isAdmin ? <AdminCollection /> : <AdminOnlyNotice /> : null}
       {section === "pipeline" ? <AdminPipeline /> : null}
       {section === "analysis" ? <AdminReanalysis /> : null}
       {section === "policies" ? <AdminPolicies /> : null}
@@ -99,12 +103,199 @@ export function AdminPage({ section }: AdminPageProps) {
   );
 }
 
+function AdminOnlyNotice() {
+  return (
+    <DataState
+      unauthorized
+      unauthorizedMessage="이 화면은 관리자만 사용할 수 있습니다. 분석가는 탐지 기준 조회, 파이프라인 상태, AI 재분석을 사용할 수 있습니다."
+    />
+  );
+}
+
+interface HubData {
+  health: HealthResponse;
+  lastCollectedBlock: number | null;
+  settings: OperationalSettings;
+  rules: DetectionRules;
+  suggestions: PolicySuggestion[];
+  users: UserAccountItem[];
+  pipeline: PipelineStatus;
+}
+
+/**
+ * 관리자 첫 화면. 관리자가 바꿀 수 있는 것(수집, 탐지 기준, 알림, 예외 주소, 사용자)의 현재 상태를
+ * 한눈에 보여주고 각 설정 화면으로 보낸다.
+ */
 function AdminDashboard() {
-  const { isAdmin } = useAuth();
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [data, setData] = useState<HubData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [health, state, settings, rules, suggestions, users, pipeline] = await Promise.all([
+        fetchHealth(),
+        fetchCollectorState(),
+        fetchOperationalSettings(),
+        fetchDetectionRules(),
+        fetchPolicySuggestions(),
+        fetchUsers(),
+        fetchPipelineStatus()
+      ]);
+      startTransition(() => {
+        setData({
+          health,
+          lastCollectedBlock: state.lastCollectedBlock,
+          settings,
+          rules,
+          suggestions,
+          users,
+          pipeline
+        });
+        setError(null);
+      });
+    } catch {
+      startTransition(() => setError("설정 현황을 불러오지 못했습니다. 백엔드 상태를 확인해주세요."));
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (!data) {
+    return error ? <div className="banner error">{error}</div> : <div className="empty-state">불러오는 중...</div>;
+  }
+
+  const { settings, rules, suggestions, users, pipeline } = data;
+  const activeRules = rules.rules.filter((rule) => rule.active).length;
+  const pendingSuggestions = suggestions.filter((item) => item.status === "PENDING").length;
+  const activeExclusions = suggestions.filter((item) => item.status === "ACCEPTED").length;
+  const activeUsers = users.filter((user) => user.active);
+  const countRole = (role: string) => activeUsers.filter((user) => user.role === role).length;
+  const downComponents = pipeline.components.filter((component) => component.status === "DOWN");
+  const channels = [settings.slackConfigured ? "Slack" : null, settings.discordConfigured ? "Discord" : null]
+    .filter(Boolean)
+    .join(" · ");
+  const hasBlock = data.lastCollectedBlock != null && data.lastCollectedBlock >= 0;
+
+  return (
+    <>
+      {error ? <div className="banner error">{error}</div> : null}
+      <p className="hint-text">
+        관리자가 바꿀 수 있는 설정의 현재 상태입니다. 변경은 재시작 없이 바로 적용되고 감사 로그에 기록됩니다.
+      </p>
+
+      <section className="settings-hub">
+        <SettingCard
+          title="블록 수집"
+          state={settings.collectorEnabled ? "자동 수집 켜짐" : "자동 수집 꺼짐"}
+          on={settings.collectorEnabled}
+          detail={
+            hasBlock
+              ? `마지막 수집 블록 #${formatNumber(data.lastCollectedBlock as number)}`
+              : "아직 수집한 블록이 없습니다. 수동 수집으로 데이터를 채울 수 있습니다."
+          }
+          href="#/admin/collection"
+          action="수집 설정·수동 수집"
+        />
+        <SettingCard
+          title="탐지 기준"
+          state={`규칙 ${activeRules}/${rules.rules.length}개 활성`}
+          on={activeRules > 0}
+          detail={`대규모 이체 ${rules.thresholds.largeTransferThresholdEth} ETH 이상 · 반복 이체 ${rules.thresholds.rapidTransferWindowMinutes}분 내 ${rules.thresholds.rapidTransferThresholdCount}회 · 자금 분산 ${rules.thresholds.fanOutThresholdRecipients}개 주소`}
+          href="#/admin/policies"
+          action="임계값·주소 목록 수정"
+        />
+        <SettingCard
+          title="알림"
+          state={settings.notificationEnabled ? "웹훅 알림 켜짐" : "웹훅 알림 꺼짐"}
+          on={settings.notificationEnabled}
+          detail={`위험 점수 ${settings.minRiskScore}점 이상 알림 · ${channels || "연결된 채널 없음"}`}
+          href="#/admin/collection"
+          action="알림 채널 설정"
+        />
+        <SettingCard
+          title="탐지 예외 주소"
+          state={pendingSuggestions > 0 ? `검토 대기 ${pendingSuggestions}건` : "검토할 제안 없음"}
+          on={pendingSuggestions > 0}
+          attention={pendingSuggestions > 0}
+          detail={`분석가가 제안한 오탐 주소입니다. 현재 예외 적용 중 ${activeExclusions}건.`}
+          href="#/admin/policies"
+          action="제안 검토"
+        />
+        <SettingCard
+          title="사용자"
+          state={`활성 계정 ${activeUsers.length}개`}
+          on
+          detail={`관리자 ${countRole("ADMIN")} · 분석가 ${countRole("ANALYST")} · 조회자 ${countRole("VIEWER")}`}
+          href="#/admin/users"
+          action="계정·비밀번호 관리"
+        />
+        <SettingCard
+          title="시스템 상태"
+          state={downComponents.length > 0 ? `장애 ${downComponents.length}건` : "정상 동작 중"}
+          on={downComponents.length === 0}
+          attention={downComponents.length > 0}
+          detail={`백엔드 ${data.health.status} · 변경 이력은 감사 로그에서 확인합니다.`}
+          href="#/admin/pipeline"
+          action="파이프라인 상태"
+          secondaryHref="#/admin/audit"
+          secondaryAction="감사 로그"
+        />
+      </section>
+    </>
+  );
+}
+
+interface SettingCardProps {
+  title: string;
+  state: string;
+  /** 켜짐/정상 상태면 강조색으로 표시 */
+  on: boolean;
+  /** 관리자의 조치가 필요한 상태 */
+  attention?: boolean;
+  detail: string;
+  href: string;
+  action: string;
+  secondaryHref?: string;
+  secondaryAction?: string;
+}
+
+function SettingCard({
+  title,
+  state,
+  on,
+  attention,
+  detail,
+  href,
+  action,
+  secondaryHref,
+  secondaryAction
+}: SettingCardProps) {
+  return (
+    <article className={`glass-card setting-card ${attention ? "needs-attention" : ""}`}>
+      <p className="section-kicker">{title}</p>
+      <strong className={`setting-state ${on ? "is-on" : "is-off"}`}>{state}</strong>
+      <p className="setting-detail">{detail}</p>
+      <div className="setting-actions">
+        <a className="ghost-button" href={href}>
+          {action}
+        </a>
+        {secondaryHref && secondaryAction ? (
+          <a className="ghost-button" href={secondaryHref}>
+            {secondaryAction}
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+/** 수집·알림: 수동 블록 수집, 자동 수집 on/off, 웹훅 알림 설정. */
+function AdminCollection() {
   const [lastCollectedBlock, setLastCollectedBlock] = useState<number | null>(null);
-  const [eventFeed, setEventFeed] = useState<FeedEventItem[]>([]);
-  const [transactionFeed, setTransactionFeed] = useState<FeedTransactionItem[]>([]);
+  const [settings, setSettings] = useState<OperationalSettings | null>(null);
+  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [blockInput, setBlockInput] = useState("");
@@ -114,23 +305,19 @@ function AdminDashboard() {
 
   const loadStatus = useCallback(async () => {
     try {
-      const [healthData, stateData, eventFeedData, transactionFeedData] = await Promise.all([
-        fetchHealth(),
+      const [stateData, settingsData, pipelineData] = await Promise.all([
         fetchCollectorState(),
-        fetchRecentEventFeed(8),
-        fetchRecentTransactionFeed(8)
+        fetchOperationalSettings(),
+        fetchPipelineStatus()
       ]);
       startTransition(() => {
-        setHealth(healthData);
         setLastCollectedBlock(stateData.lastCollectedBlock);
-        setEventFeed(eventFeedData);
-        setTransactionFeed(transactionFeedData);
+        setSettings(settingsData);
+        setPipeline(pipelineData);
         setError(null);
       });
     } catch {
-      startTransition(() => {
-        setError("시스템 상태 조회에 실패했습니다. 백엔드 상태를 확인해주세요.");
-      });
+      startTransition(() => setError("수집·알림 설정을 불러오지 못했습니다. 백엔드 상태를 확인해주세요."));
     }
   }, []);
 
@@ -147,10 +334,6 @@ function AdminDashboard() {
       setCollectResult(result);
       await loadStatus();
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 403) {
-        setCollectError("블록 수집 트리거는 ADMIN 권한 계정만 사용할 수 있습니다.");
-        return;
-      }
       const serverMessage = cause instanceof ApiError ? cause.serverMessage : null;
       setCollectError(serverMessage ?? "블록 수집 요청에 실패했습니다. 수집기/노드 상태를 확인해주세요.");
     } finally {
@@ -161,137 +344,94 @@ function AdminDashboard() {
   const handleCollectBlock = (event: FormEvent) => {
     event.preventDefault();
     const blockNumber = Number(blockInput);
-    if (!Number.isInteger(blockNumber) || blockNumber < 0) {
+    if (blockInput.trim() === "" || !Number.isInteger(blockNumber) || blockNumber < 0) {
       setCollectError("올바른 블록 번호를 입력해주세요.");
       return;
     }
     runCollection(() => collectBlock(blockNumber));
   };
 
+  const notification = pipeline?.components.find((component) => component.name === "notification");
+  const hasBlock = lastCollectedBlock != null && lastCollectedBlock >= 0;
+
   return (
     <>
       {error ? <div className="banner error">{error}</div> : null}
 
-      <section className="kpi-grid">
-        <article className="metric-card">
-          <span>백엔드 상태</span>
-          <strong>{health?.status ?? "…"}</strong>
-          <small>{health?.service ?? "확인 중"}</small>
-        </article>
-        <article className="metric-card">
-          <span>마지막 수집 블록</span>
-          <strong>{lastCollectedBlock != null && lastCollectedBlock >= 0 ? lastCollectedBlock : "없음"}</strong>
-          <small>collector state</small>
-        </article>
-        <article className="metric-card">
-          <span>최근 트랜잭션 피드</span>
-          <strong>{transactionFeed.length}</strong>
-          <small>Redis 캐시</small>
-        </article>
-        <article className="metric-card">
-          <span>최근 이벤트 피드</span>
-          <strong>{eventFeed.length}</strong>
-          <small>Redis 캐시</small>
-        </article>
-      </section>
-
-      <section className="grid-panel">
-        {!isAdmin ? (
-          <article className="glass-card">
-            <div className="section-head compact">
-              <div>
-                <p className="section-kicker">수집 제어</p>
-                <h2>블록 수집 트리거</h2>
-              </div>
-            </div>
-            <div className="empty-state">블록 수집 트리거는 ADMIN 권한 계정만 사용할 수 있습니다.</div>
-          </article>
-        ) : (
-        <article className="glass-card">
-          <div className="section-head compact">
-            <div>
-              <p className="section-kicker">수집 제어</p>
-              <h2>블록 수집 트리거</h2>
-            </div>
+      <section className="glass-card">
+        <div className="section-head compact">
+          <div>
+            <p className="section-kicker">수동 수집</p>
+            <h2>블록 수집 트리거</h2>
           </div>
+          <span className="status-pill elevated">
+            {hasBlock ? `마지막 수집 #${formatNumber(lastCollectedBlock as number)}` : "수집 이력 없음"}
+          </span>
+        </div>
+        <p className="hint-text">
+          이더리움 메인넷 블록 하나를 가져와 저장하고 탐지 규칙을 실행합니다. 블록은 약 12초마다 생기므로, 최신 블록을
+          여러 번 수집할 때는 간격을 두고 누르세요.
+        </p>
 
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="primary-button"
-              disabled={collecting}
-              onClick={() => runCollection(collectLatestBlock)}
-            >
-              {collecting ? "수집 중..." : "최신 블록 수집"}
+        <div className="admin-actions">
+          <button
+            type="button"
+            className="primary-button"
+            disabled={collecting}
+            onClick={() => runCollection(collectLatestBlock)}
+          >
+            {collecting ? "수집 중..." : "최신 블록 수집"}
+          </button>
+
+          <form className="block-form" onSubmit={handleCollectBlock}>
+            <input
+              type="number"
+              min="0"
+              placeholder="블록 번호"
+              value={blockInput}
+              onChange={(event) => setBlockInput(event.target.value)}
+              aria-label="블록 번호"
+            />
+            <button type="submit" className="ghost-button" disabled={collecting}>
+              특정 블록 수집
             </button>
+          </form>
+        </div>
 
-            <form className="block-form" onSubmit={handleCollectBlock}>
-              <input
-                type="number"
-                min="0"
-                placeholder="블록 번호"
-                value={blockInput}
-                onChange={(event) => setBlockInput(event.target.value)}
-                aria-label="블록 번호"
-              />
-              <button type="submit" className="ghost-button" disabled={collecting}>
-                특정 블록 수집
-              </button>
-            </form>
+        {collectError ? <div className="banner error">{collectError}</div> : null}
+        {collectResult ? (
+          <div className="banner success">
+            블록 {collectResult.blockNumber} 수집 완료 — 트랜잭션 {collectResult.transactionCount}건 중{" "}
+            {collectResult.savedTransactionCount}건 저장 ({collectResult.network} / {collectResult.provider}).{" "}
+            <a href="#/events">탐지된 이벤트 보기</a>
           </div>
-
-          {collectError ? <div className="banner error">{collectError}</div> : null}
-          {collectResult ? (
-            <div className="banner success">
-              블록 {collectResult.blockNumber} 수집 완료 — 트랜잭션 {collectResult.transactionCount}건 중{" "}
-              {collectResult.savedTransactionCount}건 저장 ({collectResult.network} /{" "}
-              {collectResult.provider})
-            </div>
-          ) : null}
-        </article>
-        )}
-
-        <article className="glass-card">
-          <div className="section-head compact">
-            <div>
-              <p className="section-kicker">최근 탐지</p>
-              <h2>이벤트 피드</h2>
-            </div>
-          </div>
-          <div className="notes-feed">
-            {eventFeed.length === 0 ? (
-              <div className="empty-state">최근 탐지 이벤트가 없습니다.</div>
-            ) : null}
-            {eventFeed.map((item) => (
-              <a className="note-item linked" key={item.eventId} href={`#/events/${item.eventId}`}>
-                {formatEventType(item.eventType)} · 위험 점수 {item.riskScore}
-                <small>{formatDate(item.detectedAt)}</small>
-              </a>
-            ))}
-          </div>
-        </article>
-
-        <article className="glass-card wide-span">
-          <div className="section-head compact">
-            <div>
-              <p className="section-kicker">최근 수집</p>
-              <h2>트랜잭션 피드</h2>
-            </div>
-          </div>
-          <div className="notes-feed">
-            {transactionFeed.length === 0 ? (
-              <div className="empty-state">최근 수집된 트랜잭션이 없습니다.</div>
-            ) : null}
-            {transactionFeed.map((item) => (
-              <div className="note-item" key={item.txHash}>
-                블록 {item.blockNumber} · <span className="mono">{item.txHash.slice(0, 18)}...</span> ·{" "}
-                {item.amount} ETH
-                <small>{formatDate(item.timestamp)}</small>
-              </div>
-            ))}
-          </div>
-        </article>
+        ) : null}
       </section>
+
+      {settings ? (
+        <OperationalSettingsEditor
+          settings={settings}
+          onSaved={async (updated) => {
+            setSettings(updated);
+            setPipeline(await fetchPipelineStatus());
+          }}
+        />
+      ) : null}
+
+      {notification ? (
+        <section className="glass-card policy-notification">
+          <div className="section-head compact">
+            <div>
+              <p className="section-kicker">알림 정책</p>
+              <h2>웹훅 알림 상태</h2>
+            </div>
+            <span className={`status-pill component-${notification.status.toLowerCase()}`}>
+              {COMPONENT_STATUS_LABELS[notification.status] ?? notification.status}
+            </span>
+          </div>
+          <p>{notification.detail}</p>
+        </section>
+      ) : null}
     </>
   );
 }
@@ -658,21 +798,17 @@ const THRESHOLD_FIELDS: {
 function AdminPolicies() {
   const isAdmin = useAuth().isAdmin;
   const [rules, setRules] = useState<DetectionRules | null>(null);
-  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
-  const [settings, setSettings] = useState<OperationalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([fetchDetectionRules(), fetchPipelineStatus(), isAdmin ? fetchOperationalSettings() : Promise.resolve(null)])
-      .then(([rulesData, pipelineData, settingsData]) => {
+    fetchDetectionRules()
+      .then((rulesData) => {
         if (active) {
           startTransition(() => {
             setRules(rulesData);
-            setPipeline(pipelineData);
-            setSettings(settingsData);
             setError(null);
             setLoading(false);
           });
@@ -690,15 +826,14 @@ function AdminPolicies() {
     return () => {
       active = false;
     };
-  }, [isAdmin]);
-
-  const notification = pipeline?.components.find((component) => component.name === "notification");
+  }, []);
 
   return (
     <>
       <p className="hint-text">
-        탐지 threshold와 주소 목록(watchlist·거래소)은 관리자 계정으로 아래에서 직접 수정할 수
-        있으며, 변경 즉시 실행 중인 탐지·수집·알림 파이프라인에 반영되고 감사 로그에 기록됩니다.
+        {isAdmin
+          ? "탐지 임계값과 주소 목록(watchlist·거래소)을 아래에서 수정하고, 분석가가 제안한 예외 주소를 검토합니다. 변경은 즉시 탐지에 반영되고 감사 로그에 기록됩니다."
+          : "현재 적용 중인 탐지 기준과 예외 주소 제안 현황입니다. 기준 변경과 제안 승인은 관리자가 합니다."}
       </p>
 
       {error ? <div className="banner error">{error}</div> : null}
@@ -709,7 +844,7 @@ function AdminPolicies() {
           <div className="section-head compact">
             <div>
               <p className="section-kicker">탐지 정책</p>
-              <h2>Rule Engine threshold</h2>
+              <h2>적용 중인 탐지 규칙</h2>
             </div>
             <span className="status-pill elevated">mode: {rules.mode}</span>
           </div>
@@ -736,31 +871,6 @@ function AdminPolicies() {
       <PolicySuggestionsPanel />
 
       {rules && isAdmin ? <ThresholdEditor rules={rules} onSaved={setRules} /> : null}
-
-      {settings && isAdmin ? (
-        <OperationalSettingsEditor
-          settings={settings}
-          onSaved={async (updated) => {
-            setSettings(updated);
-            setPipeline(await fetchPipelineStatus());
-          }}
-        />
-      ) : null}
-
-      {notification ? (
-        <section className="glass-card policy-notification">
-          <div className="section-head compact">
-            <div>
-              <p className="section-kicker">알림 정책</p>
-              <h2>웹훅 알림 상태</h2>
-            </div>
-            <span className={`status-pill component-${notification.status.toLowerCase()}`}>
-              {COMPONENT_STATUS_LABELS[notification.status] ?? notification.status}
-            </span>
-          </div>
-          <p>{notification.detail}</p>
-        </section>
-      ) : null}
     </>
   );
 }
@@ -926,7 +1036,7 @@ function ThresholdEditor({
       <div className="section-head compact">
         <div>
           <p className="section-kicker">탐지 정책 수정</p>
-          <h2>threshold 변경 (ADMIN)</h2>
+          <h2>임계값·주소 목록 수정</h2>
         </div>
         {rules.thresholdsUpdatedAt ? (
           <small className="cell-muted">

@@ -79,13 +79,20 @@ export function matchAgentTeamDetail(route: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export type AdminSection = "dashboard" | "pipeline" | "analysis" | "policies" | "audit" | "users";
+export type AdminSection =
+  | "dashboard"
+  | "collection"
+  | "pipeline"
+  | "analysis"
+  | "policies"
+  | "audit"
+  | "users";
 
 export function matchAdminSection(route: string): AdminSection | null {
   if (route === "/admin") {
     return "dashboard";
   }
-  const match = route.match(/^\/admin\/(pipeline|analysis|policies|audit|users)$/);
+  const match = route.match(/^\/admin\/(collection|pipeline|analysis|policies|audit|users)$/);
   return match ? (match[1] as AdminSection) : null;
 }
 

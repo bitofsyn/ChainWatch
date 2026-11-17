@@ -4291,3 +4291,53 @@ tr.row-new {
   margin: 0 0 8px;
   font-size: 0.92rem;
 }
+
+/* ── 관리자 설정 허브 ───────────────────────── */
+
+.settings-hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.setting-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.setting-card.needs-attention {
+  border-color: var(--accent);
+}
+
+.setting-card .section-kicker {
+  margin: 0;
+}
+
+.setting-state {
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.setting-state.is-on {
+  color: var(--accent);
+}
+
+.setting-state.is-off {
+  color: var(--text-soft);
+}
+
+.setting-detail {
+  margin: 0;
+  min-height: 2.9em;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
