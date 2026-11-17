@@ -33,11 +33,14 @@ public class SecurityConfig {
 
     static final String ROLE_ADMIN = "ADMIN";
     static final String ROLE_ANALYST = "ANALYST";
+    static final String ROLE_VIEWER = "VIEWER";
 
     /** 무인증 공개 경로. /api/auth 하위라도 /me·/logout·/password는 인증 체인을 태운다. */
     private static final String[] PUBLIC_PATHS = {
             "/api/auth/login",
+            "/api/auth/demo",
             "/api/auth/refresh",
+            "/api/health",
             "/error",
             "/actuator/health",
             "/actuator/metrics/**",
@@ -47,9 +50,8 @@ public class SecurityConfig {
             "/v3/api-docs/**"
     };
 
-    /** 공개 포트폴리오에서 익명 방문자가 확인할 수 있는 읽기 전용 데이터. 상태 변경 API는 포함하지 않는다. */
-    private static final String[] PUBLIC_READ_PATHS = {
-            "/api/health",
+    /** 로그인한 모든 역할(조회자 포함)이 볼 수 있는 읽기 전용 데이터. 상태 변경 API는 포함하지 않는다. */
+    private static final String[] READ_ONLY_PATHS = {
             "/api/ops/overview",
             "/api/ops/pipeline",
             "/api/events/**",
@@ -115,7 +117,10 @@ public class SecurityConfig {
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(PUBLIC_PATHS).permitAll()
-                            .requestMatchers(HttpMethod.GET, PUBLIC_READ_PATHS).permitAll()
+                            // 세션 조회·로그아웃·비밀번호 변경은 역할과 무관하게 로그인만 필요하다.
+                            .requestMatchers("/api/auth/**").authenticated()
+                            .requestMatchers(HttpMethod.GET, READ_ONLY_PATHS)
+                                    .hasAnyRole(ROLE_ADMIN, ROLE_ANALYST, ROLE_VIEWER)
                             .requestMatchers(HttpMethod.POST, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(HttpMethod.DELETE, ADMIN_CONTROL_PATHS).hasRole(ROLE_ADMIN)
                             .requestMatchers(HttpMethod.PATCH, ADMIN_PATCH_PATHS).hasRole(ROLE_ADMIN)

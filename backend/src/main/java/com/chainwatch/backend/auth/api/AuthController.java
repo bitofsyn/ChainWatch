@@ -28,6 +28,12 @@ public class AuthController {
         return authService.login(request);
     }
 
+    /** 둘러보기: 비밀번호 없이 데모 조회자·분석가 세션을 발급한다. */
+    @PostMapping("/demo")
+    public LoginResponse demoLogin(@Valid @RequestBody DemoLoginRequest request) {
+        return authService.demoLogin(request.role());
+    }
+
     @PostMapping("/refresh")
     public LoginResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return authService.refresh(request.refreshToken());

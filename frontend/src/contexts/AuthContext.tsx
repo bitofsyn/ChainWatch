@@ -7,9 +7,9 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { fetchMe, login as loginApi, logoutSession, LOGOUT_EVENT } from "../api";
+import { demoLogin as demoLoginApi, fetchMe, login as loginApi, logoutSession, LOGOUT_EVENT } from "../api";
 import { clearTokens, getRefreshToken, hasTokens, setTokens } from "../lib/auth";
-import type { User } from "../types";
+import type { DemoRole, User } from "../types";
 
 interface AuthContextValue {
   /** 로그인된 사용자. jwt-enabled=false 개발 모드에서 비로그인 시 null(익명)이며 API는 공개다. */
@@ -17,6 +17,10 @@ interface AuthContextValue {
   /** 초기 /me 확인이 끝나기 전에는 "loading". 가드/리다이렉트는 ready 이후에만 판단할 것. */
   status: "loading" | "ready";
   isAdmin: boolean;
+  /** 이벤트 처리·AI 분석 요청 등 운영 작업 가능 여부(관리자·분석가). 조회자는 false. */
+  canOperate: boolean;
+  /** 둘러보기: 비밀번호 없이 데모 계정으로 들어온다. */
+  demoLogin: (role: DemoRole) => Promise<User>;
   login: (username: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
 }
@@ -68,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   }, []);
 
+  const demoLogin = useCallback(async (role: DemoRole) => {
+    const result = await demoLoginApi(role);
+    setTokens(result.accessToken, result.refreshToken);
+    setUser(result.user);
+    return result.user;
+  }, []);
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     if (refreshToken) {
@@ -83,8 +93,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, isAdmin: user?.role === "ADMIN", login, logout }),
-    [user, status, login, logout]
+    () => ({
+      user,
+      status,
+      isAdmin: user?.role === "ADMIN",
+      canOperate: user?.role === "ADMIN" || user?.role === "ANALYST",
+      demoLogin,
+      login,
+      logout
+    }),
+    [user, status, demoLogin, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

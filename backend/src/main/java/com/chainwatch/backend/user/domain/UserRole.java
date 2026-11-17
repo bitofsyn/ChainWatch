@@ -6,7 +6,9 @@ package com.chainwatch.backend.user.domain;
  */
 public enum UserRole {
     ADMIN,
-    ANALYST;
+    ANALYST,
+    /** 조회 전용. 대시보드·이벤트·탐지 정책을 볼 수 있고 상태 변경은 할 수 없다. */
+    VIEWER;
 
     public String authority() {
         return "ROLE_" + name();

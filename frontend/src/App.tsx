@@ -14,6 +14,7 @@ import {
   matchTransactionDetail,
   matchWalletDetail,
   navigate,
+  roleHomePath,
   useHashRoute
 } from "./lib/router";
 import { parseEventsQuery } from "./lib/events";
@@ -93,17 +94,32 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const { user, status } = useAuth();
 
-  // 관리자 영역 가드: 세션 확인이 끝난(ready) 뒤 익명이면 로그인으로 보낸다.
-  const needsAuth = matchAdminSection(route) != null;
+  const onLogin = isLoginRoute(route);
+  const adminSection = matchAdminSection(route);
+  // 조회자는 운영 화면에 들어갈 수 없다. 서버도 같은 규칙으로 막지만 빈 화면 대신 첫 화면으로 돌려보낸다.
+  const forbidden =
+    user?.role === "VIEWER" && (adminSection != null || route.startsWith("/agents") || route === "/staking");
+
+  // 모든 화면은 로그인이 필요하다. 세션 확인이 끝난(ready) 뒤에만 판단한다.
   useEffect(() => {
-    if (needsAuth && status === "ready" && !user) {
-      navigate(`/login?next=${encodeURIComponent(route)}`);
+    if (status !== "ready") {
+      return;
     }
-  }, [needsAuth, status, user, route]);
+    if (!user && !onLogin) {
+      navigate(route === "/" ? "/login" : `/login?next=${encodeURIComponent(route)}`);
+    } else if (user && onLogin) {
+      // 이미 로그인한 상태로 로그인 화면에 오면 역할별 첫 화면으로 보낸다.
+      navigate(roleHomePath(user.role));
+    } else if (forbidden) {
+      navigate(roleHomePath(user?.role));
+    }
+  }, [status, user, onLogin, forbidden, route]);
+
+  const waiting = status === "loading" || (!user && !onLogin) || (user != null && onLogin) || forbidden;
 
   return (
     <Layout route={route} theme={theme} onToggleTheme={toggleTheme}>
-      {needsAuth && status === "loading" ? (
+      {waiting ? (
         <div className="data-state">세션 확인 중…</div>
       ) : (
         <ErrorBoundary resetKey={route}>{resolvePage(route)}</ErrorBoundary>

@@ -1,5 +1,7 @@
 package com.chainwatch.backend.auth.service;
 
+import com.chainwatch.backend.auth.demo.DemoAccountRunner;
+import com.chainwatch.backend.auth.demo.DemoLoginProperties;
 import com.chainwatch.backend.audit.service.AuditLogService;
 import com.chainwatch.backend.auth.api.LoginRequest;
 import com.chainwatch.backend.auth.api.LoginResponse;
@@ -38,6 +40,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final PasswordChangeService passwordChangeService;
+    private final DemoLoginProperties demoLoginProperties;
 
     public AuthService(
             UserAccountRepository userAccountRepository,
@@ -45,7 +48,8 @@ public class AuthService {
             RefreshTokenService refreshTokenService,
             PasswordEncoder passwordEncoder,
             AuditLogService auditLogService,
-            PasswordChangeService passwordChangeService
+            PasswordChangeService passwordChangeService,
+            DemoLoginProperties demoLoginProperties
     ) {
         this.userAccountRepository = userAccountRepository;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -53,6 +57,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.passwordChangeService = passwordChangeService;
+        this.demoLoginProperties = demoLoginProperties;
     }
 
     /** noRollbackFor: 로그인 실패 시에도 LOGIN_FAILURE 감사 기록은 커밋되어야 한다. */
@@ -77,6 +82,32 @@ public class AuthService {
         String refreshToken = refreshTokenService.issue(user);
         auditLogService.record(user.getUsername(), user.getRole().authority(), AUDIT_ACTION_LOGIN_SUCCESS,
                 AUDIT_TARGET_TYPE_AUTH, user.getUsername(), "Login succeeded");
+        return LoginResponse.bearer(
+                accessToken, jwtTokenProvider.expirationSeconds(), refreshToken, UserSummary.from(user));
+    }
+
+    /**
+     * 둘러보기 로그인. 비밀번호 없이 데모 계정(조회자 또는 분석가)의 세션을 발급한다.
+     * 데모가 꺼져 있거나 계정이 준비되지 않았으면 일반 로그인 실패와 같은 응답을 준다.
+     */
+    @Transactional(noRollbackFor = InvalidCredentialsException.class)
+    public LoginResponse demoLogin(String requestedRole) {
+        String username = "ANALYST".equalsIgnoreCase(requestedRole)
+                ? DemoAccountRunner.ANALYST_USERNAME
+                : "VIEWER".equalsIgnoreCase(requestedRole) ? DemoAccountRunner.VIEWER_USERNAME : null;
+        Optional<UserAccount> found = username == null || !demoLoginProperties.loginEnabled()
+                ? Optional.empty()
+                : userAccountRepository.findLockedByUsername(username);
+        if (found.isEmpty() || !found.get().isActive()) {
+            throw new InvalidCredentialsException();
+        }
+
+        UserAccount user = found.get();
+        user.markLogin(Instant.now());
+        String accessToken = jwtTokenProvider.createToken(user.getUsername(), List.of(user.getRole().authority()));
+        String refreshToken = refreshTokenService.issue(user);
+        auditLogService.record(user.getUsername(), user.getRole().authority(), "DEMO_LOGIN",
+                AUDIT_TARGET_TYPE_AUTH, user.getUsername(), "Demo login succeeded");
         return LoginResponse.bearer(
                 accessToken, jwtTokenProvider.expirationSeconds(), refreshToken, UserSummary.from(user));
     }

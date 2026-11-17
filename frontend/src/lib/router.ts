@@ -103,3 +103,14 @@ export function loginNextPath(route: string): string {
 export function isLoginRoute(route: string): boolean {
   return route === "/login" || route.startsWith("/login?");
 }
+
+/** 로그인 직후 역할별 첫 화면. 관리자는 운영 설정, 분석가는 작업 큐, 조회자는 대시보드. */
+export function roleHomePath(role: string | null | undefined): string {
+  if (role === "ADMIN") {
+    return "/admin";
+  }
+  if (role === "ANALYST") {
+    return "/events";
+  }
+  return "/";
+}

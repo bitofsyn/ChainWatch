@@ -371,7 +371,7 @@ function AiAnalysisSection({
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   // 요청 중에는 패널 전체를 진행 중 상태로 전환해 응답 도착 즉시 리포트가 그 자리에 표시된다.
   const view: AiReportView = analyzing ? { kind: "pending" } : resolveAiReportView(event.aiReport);
-  const authed = useAuth().user != null;
+  const authed = useAuth().canOperate;
   const reportStatus = event.aiReport?.status;
 
   // 백로그 워커 등이 걸어둔 PENDING/IN_PROGRESS 리포트는 완료 시점에 자동 반영한다(수동 새로고침 불필요).
@@ -455,7 +455,7 @@ function AiAnalysisSection({
           emptyMessage={
             authed
               ? "아직 분석 리포트가 없습니다. 상단 버튼으로 분석을 요청하세요."
-              : "아직 분석 리포트가 없습니다. 분석 요청은 로그인 후 가능합니다."
+              : "아직 분석 리포트가 없습니다. 분석 요청은 분석가·관리자만 할 수 있습니다."
           }
         />
       ) : null}
@@ -615,8 +615,7 @@ function OperatorActionSection({
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const currentUser = useAuth().user;
-  const authed = currentUser != null;
+  const { user: currentUser, canOperate: authed } = useAuth();
   const reasonField = requiredReasonField(targetStatus);
 
   const handleSubmit = async (formEvent: FormEvent) => {
@@ -672,11 +671,8 @@ function OperatorActionSection({
         </div>
         <DataState
           unauthorized
-          unauthorizedMessage={`현재 상태: ${formatLifecycleStatus(event.status)}. 상태 변경·담당자 지정은 분석가/관리자 로그인 후 가능합니다.`}
+          unauthorizedMessage={`현재 상태: ${formatLifecycleStatus(event.status)}. 상태 변경과 담당자 지정은 분석가·관리자만 할 수 있습니다.`}
         />
-        <a className="ghost-button" href={`#/login?next=${encodeURIComponent(`/events/${event.id}`)}`}>
-          로그인 하러 가기
-        </a>
       </article>
     );
   }

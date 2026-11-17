@@ -108,9 +108,9 @@ class AuthApiTest {
     }
 
     @Test
-    void publicPortfolioReadEndpointWithoutTokenReturns200() throws Exception {
+    void readEndpointWithoutTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/events"))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

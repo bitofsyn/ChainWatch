@@ -14,6 +14,8 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 - **Web UI**: [https://chainwatch.devfolio-2026.workers.dev](https://chainwatch.devfolio-2026.workers.dev)
 - **Backend 상태 확인**: [https://chainwatch-backend.onrender.com/actuator/health](https://chainwatch-backend.onrender.com/actuator/health)
 
+계정이 없어도 로그인 화면의 **둘러보기** 버튼으로 조회자 또는 분석가 화면에 바로 들어갈 수 있습니다.
+
 프런트엔드는 Cloudflare Workers, 백엔드는 Render에 배포되어 있으며 `main`의 CI가 성공하면 자동으로 재배포됩니다. Render 무료 인스턴스는 일정 시간 요청이 없으면 중지되므로 첫 접속 시 응답까지 시간이 걸릴 수 있습니다. 배포 환경은 Kafka·Redis 없이 단독 실행하며 자동 수집과 AI 분석은 꺼져 있습니다.
 
 ## 주요 기능
@@ -22,7 +24,7 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 - 고액 송금, 반복 송금, 자금 분산 등 규칙 기반 이상 거래 탐지와 탐지 근거 저장
 - Claude·Gemini·로컬 LLM을 이용한 이벤트 분석 리포트와 제공자 폴백
 - 이벤트 처리 상태 관리, 거래·지갑 상세 추적
-- JWT 인증과 역할 기반 접근 제어, 감사 로그, Slack·Discord 알림
+- 조회자·분석가·관리자 역할별 화면과 접근 제어(JWT), 감사 로그, Slack·Discord 알림
 - Prometheus·Grafana 모니터링
 
 ## 화면

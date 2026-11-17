@@ -3990,3 +3990,116 @@ tr.row-new {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* ── 로그인 첫 화면 ─────────────────────────── */
+
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 420px);
+  gap: 40px;
+  align-items: start;
+  max-width: 1040px;
+  margin: 24px auto 0;
+}
+
+.login-layout .login-card {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.login-layout .login-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.login-intro h1 {
+  margin: 6px 0 12px;
+}
+
+.role-guide {
+  display: grid;
+  gap: 0;
+  margin: 28px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.role-guide-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.role-guide dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.role-guide dt span {
+  font-weight: 400;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.role-guide dd {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.demo-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.login-hint {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* 메뉴 아래 역할 안내 */
+.role-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 18px;
+  padding: 0 4px;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+.role-scope strong {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+@media (max-width: 860px) {
+  .login-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}

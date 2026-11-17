@@ -48,6 +48,9 @@ springdoc:
     path: /swagger-ui.html
 
 chainwatch:
+  demo:
+    # 로그인 화면의 "둘러보기" 버튼(비밀번호 없는 조회자·분석가 데모 세션) 허용 여부
+    login-enabled: ${CHAINWATCH_DEMO_LOGIN_ENABLED:true}
   infra:
     # Kafka·Redis 없이 단독 실행하는 구성에서는 false. 파이프라인 상태에 "미사용"으로 표시된다.
     kafka-enabled: ${CHAINWATCH_KAFKA_ENABLED:true}

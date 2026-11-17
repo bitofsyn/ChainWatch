@@ -94,7 +94,8 @@ export async function requestJson<T>(url: string, init: RequestInit = {}): Promi
 
   // 액세스 토큰 만료로 보이는 401은 리프레시 후 1회만 재시도한다.
   // 인증 엔드포인트 자체(로그인/리프레시)는 재시도 대상에서 제외.
-  const isAuthEndpoint = url.startsWith("/api/auth/login") || url.startsWith("/api/auth/refresh");
+  const isAuthEndpoint =
+    url.startsWith("/api/auth/login") || url.startsWith("/api/auth/demo") || url.startsWith("/api/auth/refresh");
   if (response.status === 401 && !isAuthEndpoint && getRefreshToken()) {
     const refreshed = await refreshOnce();
     if (refreshed) {
@@ -224,6 +225,15 @@ export function login(username: string, password: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password })
+  });
+}
+
+/** 둘러보기: 비밀번호 없이 데모 조회자·분석가 세션을 받는다. */
+export function demoLogin(role: "VIEWER" | "ANALYST") {
+  return requestJson<LoginResult>("/api/auth/demo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role })
   });
 }
 

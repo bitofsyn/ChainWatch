@@ -84,9 +84,56 @@ class SecurityRoleAuthorizationTest {
     }
 
     @Test
-    void anonymousPortfolioReadEndpointReturns200() throws Exception {
+    void anonymousReadEndpointReturns401() throws Exception {
+        // 모든 화면은 로그인이 필요하다. 계정이 없는 방문자는 둘러보기(데모 로그인)로 들어온다.
         mockMvc.perform(get("/api/events"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void viewerCanReadButCannotOperate() throws Exception {
+        String viewerToken = jwtTokenProvider.createToken("demo-viewer", List.of("ROLE_VIEWER"));
+        DetectionEvent event = detectionEventRepository.save(new DetectionEvent(
+                EventType.LARGE_TRANSFER, RiskLevel.HIGH, 90,
+                "Large transfer detected", "0xabc", Instant.now(), null));
+
+        mockMvc.perform(get("/api/events").header("Authorization", "Bearer " + viewerToken))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/detection/rules").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/events/" + event.getId() + "/status")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ACKNOWLEDGED\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/events/" + event.getId() + "/analysis")
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void demoLoginIssuesViewerAndAnalystSessionsButNeverAdmin() throws Exception {
+        mockMvc.perform(post("/api/auth/demo").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"VIEWER\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role").value("VIEWER"))
+                .andExpect(jsonPath("$.user.username").value("demo-viewer"));
+        mockMvc.perform(post("/api/auth/demo").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"ANALYST\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role").value("ANALYST"));
+        mockMvc.perform(post("/api/auth/demo").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"ADMIN\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void demoAccountCannotLogInWithPassword() throws Exception {
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"demo-viewer\",\"password\":\"chainwatch\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

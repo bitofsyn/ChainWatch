@@ -163,7 +163,10 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-export type Role = "ADMIN" | "ANALYST";
+export type Role = "ADMIN" | "ANALYST" | "VIEWER";
+
+/** 둘러보기(비밀번호 없는 데모 세션)로 들어올 수 있는 역할 */
+export type DemoRole = "VIEWER" | "ANALYST";
 
 export interface User {
   username: string;

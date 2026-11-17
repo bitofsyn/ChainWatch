@@ -30,9 +30,22 @@ Grafana(3000)·Prometheus(9090)·Kafka UI(8081)는 `--profile monitoring`을 추
 | `CHAINWATCH_JWT_ENABLED` | JWT 인증 활성화 (외부 공개 시 필수) | `false` |
 | `CHAINWATCH_JWT_SECRET` / `CHAINWATCH_PASSWORD_PEPPER` | 인증 비밀값 | 개발용 기본값 |
 | `CHAINWATCH_ADMIN_USERNAME` / `CHAINWATCH_ADMIN_PASSWORD` | 최초 관리자 계정 | 미설정 |
+| `CHAINWATCH_DEMO_LOGIN_ENABLED` | 로그인 화면의 둘러보기(비밀번호 없는 조회자·분석가 데모 세션) 허용 | `true` |
 | `CHAINWATCH_ANALYST_PASSWORD` | 최초 분석가 계정 비밀번호. JWT 인증이 켜진 상태에서 개발 기본값이면 계정을 만들지 않음 | 개발용 기본값 |
 
 자동 수집, 웹훅 알림, 최소 알림 위험 점수는 **운영 관리 → 탐지·알림 정책**에서 재시작 없이 변경할 수 있고 변경 내역은 감사 로그에 남습니다.
+
+## 역할
+
+모든 화면은 로그인이 필요합니다. 로그인하면 역할에 따라 메뉴와 첫 화면이 달라집니다.
+
+| 역할 | 첫 화면 | 할 수 있는 일 |
+|---|---|---|
+| 조회자 (`VIEWER`) | 대시보드 | 대시보드, 이상 거래와 탐지 근거, 탐지 정책 조회 |
+| 분석가 (`ANALYST`) | 작업 큐 | 조회 + 이벤트 담당자 지정·상태 변경·메모, AI 분석 요청 |
+| 관리자 (`ADMIN`) | 운영 설정 | 분석가 권한 + 블록 수집, 탐지 임계값·주소 목록, 알림 웹훅, 사용자 관리, 감사 로그 |
+
+둘러보기 버튼은 `demo-viewer`, `demo-analyst` 계정의 세션을 비밀번호 없이 발급합니다. 두 계정은 일반 로그인으로는 들어올 수 없고, 관리자 데모는 제공하지 않습니다. 공개 환경에서 분석가 둘러보기를 켜 두면 방문자가 이벤트 상태를 바꿀 수 있습니다.
 
 ## 개별 실행과 테스트
 

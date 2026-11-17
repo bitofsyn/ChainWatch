@@ -8,7 +8,8 @@ import { DataState } from "../../components/DataState";
 
 const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "관리자",
-  ANALYST: "분석가"
+  ANALYST: "분석가",
+  VIEWER: "조회자"
 };
 
 /** 생성/초기화 직후 1회만 노출되는 임시 비밀번호 안내 상태. */
@@ -208,6 +209,7 @@ export function AdminUsersSection() {
             <span className="workflow-field-head">역할</span>
             <select value={newRole} onChange={(event) => setNewRole(event.target.value as Role)}>
               <option value="ANALYST">분석가 (ANALYST)</option>
+              <option value="VIEWER">조회자 (VIEWER)</option>
               <option value="ADMIN">관리자 (ADMIN)</option>
             </select>
           </label>
@@ -266,6 +268,7 @@ export function AdminUsersSection() {
                           onChange={(event) => handleRoleChange(row, event.target.value as Role)}
                         >
                           <option value="ANALYST">{ROLE_LABELS.ANALYST}</option>
+                          <option value="VIEWER">{ROLE_LABELS.VIEWER}</option>
                           <option value="ADMIN">{ROLE_LABELS.ADMIN}</option>
                         </select>
                       </td>
