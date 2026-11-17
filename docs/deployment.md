@@ -1,4 +1,16 @@
-# 상시 운영 배포 가이드 (무료)
+# 배포 가이드 (무료)
+
+## 임시 공개: Cloudflare Quick Tunnel
+
+로컬에서 실행 중인 Web UI를 계정·도메인 없이 공개합니다. 공개 전 `.env`에 `CHAINWATCH_JWT_ENABLED=true`와 JWT 비밀키, 관리자 비밀번호를 설정하세요([`.env.prod.example`](../.env.prod.example) 참고).
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8088 --no-autoupdate
+```
+
+출력된 `https://...trycloudflare.com` 주소로 접속합니다. Web UI 포트만 공개되며, 주소는 터널을 실행할 때마다 바뀌고 PC와 터널이 켜져 있는 동안만 유효합니다.
+
+## 상시 운영: Oracle Cloud Always Free
 
 노트북이 꺼져 있어도 데모가 계속 동작하도록, 상시 구동되는 무료 서버에 배포하는 절차입니다.
 
@@ -6,7 +18,7 @@
 - **이미지**: CD 워크플로가 GHCR에 게시하는 멀티아치(amd64·arm64) 이미지를 pull만 해서 사용합니다. VPS에서 소스를 빌드하지 않습니다.
 - **공개**: Cloudflare Tunnel. 아웃바운드 연결만 사용하므로 서버 방화벽에 인바운드 포트를 열지 않습니다.
 
-## 1. Oracle Cloud 인스턴스 준비
+### 1. Oracle Cloud 인스턴스 준비
 
 1. [Oracle Cloud 무료 계정](https://www.oracle.com/kr/cloud/free/)을 생성합니다. 카드 인증이 필요하지만 Always Free 자원만 쓰면 과금되지 않습니다.
 2. **홈 리전은 신중히 선택**합니다(가입 후 변경 불가). 서울·춘천 리전은 A1 용량 부족으로 인스턴스 생성이 실패(`Out of capacity`)할 수 있으며, 이 경우 시간을 바꿔 재시도하거나 다른 가용 도메인을 선택합니다.
@@ -19,7 +31,7 @@
 
 > **유휴 회수 주의**: Oracle은 장기간 유휴 상태인 Always Free 인스턴스를 회수할 수 있습니다. 수집기가 켜진 상태로 상시 구동되면 보통 문제없지만, 확실히 하려면 계정을 PAYG(Pay As You Go)로 전환해 두는 방법이 있습니다. Always Free 자원만 쓰는 한 전환 후에도 요금은 발생하지 않습니다.
 
-## 2. Docker 설치
+### 2. Docker 설치
 
 SSH 접속 후 공식 저장소에서 Docker를 설치합니다.
 
@@ -29,7 +41,7 @@ sudo usermod -aG docker "$USER"
 # 그룹 반영을 위해 재접속
 ```
 
-## 3. 애플리케이션 배포
+### 3. 애플리케이션 배포
 
 ```bash
 git clone https://github.com/bitofsyn/ChainWatch.git
@@ -45,7 +57,7 @@ curl --fail http://127.0.0.1:18080/actuator/health
 - GHCR 이미지(`chainwatch-backend`, `chainwatch-frontend`, `chainwatch-ai-analysis`)가 **public**으로 설정되어 있어야 로그인 없이 pull됩니다. private이면 GitHub Packages 설정에서 public으로 바꾸거나, VPS에서 `read:packages` 권한의 PAT로 `docker login ghcr.io` 합니다.
 - `autoupdate` 프로필은 watchtower를 함께 띄워 5분 간격으로 GHCR을 확인하고, main 브랜치 CD가 새 이미지를 게시하면 자동으로 재배포합니다. 수동 배포를 원하면 이 프로필을 빼고 `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`를 직접 실행합니다.
 
-## 4. 공개 주소 확인
+### 4. 공개 주소 확인
 
 ```bash
 docker compose -f docker-compose.prod.yml logs cloudflared-quick | grep -o 'https://.*trycloudflare.com'
@@ -67,7 +79,7 @@ docker compose -f docker-compose.prod.yml --profile tunnel-quick down cloudflare
 docker compose -f docker-compose.prod.yml --profile tunnel-named --profile autoupdate up -d
 ```
 
-## 5. 운영 점검
+### 5. 운영 점검
 
 | 작업 | 명령 |
 |---|---|
@@ -79,7 +91,7 @@ docker compose -f docker-compose.prod.yml --profile tunnel-named --profile autou
 
 재부팅 후에도 모든 서비스가 `restart: always`로 자동 복구되므로 별도의 systemd 설정은 필요 없습니다.
 
-## 구성 요약
+### 구성 요약
 
 ```mermaid
 flowchart LR
