@@ -8,19 +8,31 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 
 단순히 AI에게 거래 판단을 맡기지 않고, **재현 가능한 규칙이 먼저 이상 징후와 근거를 생성하고 AI는 그 결과를 해석하는 보조 계층으로 동작**하도록 구현했습니다.
 
-## 데모 바로가기
+## 화면
 
-- **Web UI**: [https://reviews-sunshine-man-ryan.trycloudflare.com](https://reviews-sunshine-man-ryan.trycloudflare.com)
-- 별도 클라우드 비용 없이 로컬 Docker Compose와 Cloudflare Quick Tunnel로 공개한 포트폴리오 데모입니다.
-- 임시 주소이므로 개발 PC와 터널이 실행 중일 때만 접속할 수 있습니다.
+### 운영 대시보드
 
-### 처음 사용하는 방법
+![운영 대시보드](docs/images/dashboard.png)
 
-1. **운영 대시보드**에서 수집·탐지·알림 파이프라인 상태를 확인합니다.
-2. **이상 거래**에서 위험도, 유형, 상태, 지갑 주소와 기간으로 탐지 이벤트를 검색합니다.
-3. 이벤트를 선택해 탐지 규칙, 실제 관측값, 관련 거래와 지갑 활동을 검토합니다.
-4. 로그인한 운영자는 이벤트 상태를 변경하거나 AI 재분석을 요청할 수 있습니다.
-5. 관리자는 **관리자 → 탐지·알림 정책**에서 탐지 기준, 자동 수집과 웹훅 알림을 설정합니다.
+수집 지연, 처리량, 탐지율과 미처리 backlog를 한 화면에서 확인합니다. 수집 → 탐지 → 알림 파이프라인의 단계별 상태와 위험도 × 처리 상태 매트릭스로 지금 대응이 필요한 이벤트 규모를 파악합니다.
+
+### 이상 거래 검토
+
+![이상 거래 목록](docs/images/events.png)
+
+규칙이 탐지한 이벤트를 유형, 위험도, 처리 상태, 지갑 주소로 검색합니다.
+
+### 이벤트 상세
+
+![이벤트 상세](docs/images/event-detail.png)
+
+위험 점수와 함께 규칙이 발화한 근거(임계값, 실제 관측값, 집계 구간)와 온체인 트랜잭션 증거를 나란히 보여 줍니다. 로그인한 운영자는 처리 상태를 변경하거나 AI 분석 리포트를 요청할 수 있습니다.
+
+### 탐지 정책
+
+![탐지 정책](docs/images/rules.png)
+
+현재 적용 중인 규칙별 임계값과 기본 위험 점수를 확인합니다. 관리자는 **운영 관리** 화면에서 임계값, 자동 수집, 웹훅 알림을 재시작 없이 변경합니다.
 
 ## 주요 기능
 
@@ -56,18 +68,6 @@ flowchart LR
     K --> M[Prometheus / Grafana]
 ```
 
-### 처리 흐름
-
-1. **수집**: 백엔드가 블록체인 제공자에서 블록과 트랜잭션을 가져옵니다.
-2. **저장 및 발행**: 원본 거래를 PostgreSQL에 저장하고 Kafka 토픽으로 발행합니다.
-3. **탐지**: 탐지 엔진이 각 거래를 여러 규칙으로 평가합니다.
-4. **근거 기록**: 조건을 만족하면 위험도, 탐지 유형, 임계값, 관측값 등 판단 근거를 이벤트에 저장합니다.
-5. **후속 처리**: 이벤트를 Redis 피드에 반영하고 설정된 외부 채널로 알립니다.
-6. **AI 분석**: 고위험 이벤트는 AI 분석 서버가 요약, 가능 시나리오, 오탐 요인, 권장 조치와 신뢰도를 생성합니다.
-7. **검토**: 사용자는 웹 화면에서 이벤트를 조회하고 상태를 변경하거나 관련 거래와 지갑을 추적합니다.
-
-수집과 탐지는 동기 방식으로도 실행할 수 있지만, 기본 통합 환경에서는 Kafka를 이용해 각 단계를 분리합니다. 특정 외부 서비스가 느려지더라도 전체 파이프라인이 함께 멈추지 않도록 재시도, 백오프, Dead Letter 처리와 상태 지표를 포함했습니다.
-
 ## 탐지 규칙
 
 | 탐지 유형 | 판단 기준 | 기본 위험도 |
@@ -79,20 +79,17 @@ flowchart LR
 | 관심 주소 활동 (`WHALE_ACTIVITY`) | Watchlist에 등록된 주소가 거래에 참여 | HIGH |
 | 제재 주소 활동 (`SANCTIONED_ADDRESS`) | OFAC 제재 목록의 주소가 거래에 참여 | CRITICAL |
 
-각 이벤트에는 단순한 결과만 저장하지 않고 `thresholdEth`, `observedAmountEth`, `windowMinutes`, `matchedAddress` 등 규칙별 판단 근거도 함께 기록합니다. 임계값은 관리자 API와 화면에서 변경할 수 있습니다.
+각 이벤트에는 `thresholdEth`, `observedAmountEth`, `windowMinutes`, `matchedAddress` 등 규칙별 판단 근거가 함께 기록됩니다.
 
 ## AI 분석 방식
 
-AI 분석 서버는 Python과 FastAPI로 구현했으며, 백엔드에서 탐지 이벤트를 전달받아 구조화된 분석 결과를 반환합니다.
+AI 분석 서버(FastAPI)는 규칙이 만든 탐지 결과를 해석하는 보조 계층이며 최종 판단을 대체하지 않습니다.
 
-- 공통 `ModelAdapter` 인터페이스로 AI 제공자를 분리했습니다.
-- Claude, Gemini와 OpenAI 호환 로컬 모델 서버를 지원합니다.
-- 요청한 제공자가 실패하면 설정된 순서에 따라 다음 제공자로 전환합니다.
-- 재시도와 지수 백오프를 적용하며, 모든 제공자가 실패하면 성공한 것처럼 꾸미지 않고 분석 실패로 기록합니다.
-- LLM 응답이 JSON 스키마와 맞지 않으면 원문 보고서만 보존하는 방식으로 안전하게 저하됩니다.
-- 거래 데이터는 프롬프트 내부에서 명령이 아닌 신뢰할 수 없는 입력 데이터로 구분해 전달합니다.
+- 공통 `ModelAdapter` 인터페이스로 Claude, Gemini, OpenAI 호환 로컬 모델을 지원하고 실패 시 설정된 순서대로 폴백합니다.
+- 모든 제공자가 실패하면 분석 실패로 기록하며, 응답이 JSON 스키마와 맞지 않으면 원문 보고서만 보존합니다.
+- 거래 데이터는 프롬프트에서 명령이 아닌 신뢰할 수 없는 입력으로 구분해 전달합니다.
 
-AI 결과에는 위험 요약, 판단 근거, 가능한 시나리오, 권장 조치, 오탐 가능성, 신뢰도와 에스컬레이션 수준이 포함될 수 있습니다. AI 분석은 규칙 탐지 결과를 설명하는 보조 수단이며 최종 의사결정을 대체하지 않습니다.
+제공자·모델·폴백 순서 설정은 [`ai/analysis-server/README.md`](ai/analysis-server/README.md)를 참고하세요.
 
 ## 기술 스택
 
@@ -106,37 +103,9 @@ AI 결과에는 위험 요약, 판단 근거, 가능한 시나리오, 권장 조
 | Monitoring | Spring Actuator, Micrometer, Prometheus, Grafana |
 | Infrastructure | Docker, Docker Compose, Nginx |
 
-## 저장소 구성
+## 실행
 
-```text
-ChainWatch/
-├── backend/                    # API, 수집기, 탐지 엔진, 인증과 데이터 저장
-├── frontend/                   # 모니터링 및 관리자 웹 화면
-├── ai/analysis-server/         # LLM 어댑터와 분석 API
-├── infra/monitoring/           # Prometheus·Grafana 설정
-├── docker-compose.yml          # 전체 로컬 실행 환경
-└── README.md
-```
-
-## 주요 화면
-
-- **운영 대시보드**: 이벤트 통계, 위험도 분포와 파이프라인 상태 확인
-- **이상 거래**: 기본·상세 조건 검색, 상세 탐지 근거 확인, 처리 상태 변경
-- **거래·지갑 상세**: 관련 거래와 주소 활동 추적
-- **탐지 규칙**: 현재 임계값 조회 및 관리자 변경
-- **AI 분석**: 이벤트별 분석 결과와 처리 상태 확인
-- **관리자**: 사용자, 감사 로그, 파이프라인, 탐지 기준, 자동 수집과 웹훅 알림 관리
-
-## 빠른 실행
-
-### 사전 준비
-
-- Docker Desktop 및 Docker Compose
-- 전체 서비스를 컨테이너로 실행하지 않을 경우 Java 21, Node.js와 Python 3
-
-### 애플리케이션 실행
-
-저장소 루트에서 핵심 애플리케이션 스택을 실행합니다. PostgreSQL, Redis, Kafka, AI 분석 서버, 백엔드와 프런트엔드가 함께 기동됩니다.
+Docker Desktop이 필요합니다. PostgreSQL, Redis, Kafka, AI 분석 서버, 백엔드, 프런트엔드가 함께 기동됩니다.
 
 ```bash
 docker compose --profile app up --build -d
@@ -147,88 +116,22 @@ docker compose --profile app up --build -d
 | Web UI | http://127.0.0.1:8088 |
 | Backend API | http://127.0.0.1:18080 |
 | Swagger UI | http://127.0.0.1:18080/swagger-ui.html |
-| AI Analysis API | Docker 내부 `http://ai-analysis:8000` |
 
-AI 분석 서버는 백엔드 전용 내부 서비스이므로 호스트와 외부 네트워크에 직접 노출하지 않습니다.
+Grafana(3000)·Prometheus(9090)·Kafka UI(8081)는 `--profile monitoring`을 추가하면 함께 실행됩니다. 종료는 `docker compose --profile app down`이며 데이터 볼륨은 보존됩니다.
 
-모니터링 도구까지 실행하려면 `monitoring` 프로필을 추가합니다.
+## 배포 (무료)
 
-```bash
-docker compose --profile app --profile monitoring up --build -d
-```
+### 임시 공개: Cloudflare Quick Tunnel
 
-| 모니터링 서비스 | 주소 |
-|---|---|
-| Grafana | http://127.0.0.1:3000 |
-| Prometheus | http://127.0.0.1:9090 |
-| Kafka UI | http://127.0.0.1:8081 |
-
-서비스를 종료할 때는 다음 명령을 사용합니다.
+로컬에서 실행 중인 Web UI를 계정·도메인 없이 공개합니다. 공개 전 `.env`에 `CHAINWATCH_JWT_ENABLED=true`와 JWT 비밀키, 관리자 비밀번호를 설정하세요([`.env.prod.example`](.env.prod.example) 참고).
 
 ```bash
-docker compose --profile app down
-```
-
-## 무료 외부 공개
-
-별도의 클라우드 서버 없이 개발용 Mac 또는 PC에서 Docker Compose를 실행하고 Cloudflare Quick Tunnel로 Web UI를 임시 공개할 수 있습니다. 프런트엔드는 `127.0.0.1:8088`에만 바인딩되며 데이터베이스, Kafka, Redis와 AI 서버는 외부에 공개되지 않습니다.
-
-### 현재 시연 주소
-
-- **Web UI**: [https://reviews-sunshine-man-ryan.trycloudflare.com](https://reviews-sunshine-man-ryan.trycloudflare.com)
-
-이 주소는 2026년 11월 10일 생성한 임시 Quick Tunnel 주소입니다. 로컬 Docker와 터널 프로세스가 실행 중일 때만 접속할 수 있으며, 터널을 다시 생성하면 주소도 변경됩니다.
-
-### 1. 공개용 인증 설정
-
-저장소 루트에 Git 추적에서 제외되는 `.env` 파일을 만듭니다. 예시 값을 그대로 사용하지 말고 각 비밀값을 새로 생성해야 합니다.
-
-```dotenv
-CHAINWATCH_JWT_ENABLED=true
-CHAINWATCH_JWT_SECRET=충분히-긴-무작위-문자열
-CHAINWATCH_PASSWORD_PEPPER=별도의-긴-무작위-문자열
-CHAINWATCH_ADMIN_USERNAME=admin
-CHAINWATCH_ADMIN_PASSWORD={noop}최초-로그인용-강한-비밀번호
-
-# 외부 API 사용료 방지를 위한 기본값
-CHAINWATCH_AI_ENABLED=false
-CHAINWATCH_COLLECTOR_ENABLED=false
-```
-
-`{noop}` 접두사는 최초 계정 생성 시에만 사용되며 실제 저장 시 BCrypt로 다시 인코딩됩니다. 기존 데이터 볼륨에 사용자가 이미 존재하면 bootstrap 환경변수는 계정을 덮어쓰지 않습니다.
-
-### 2. 애플리케이션 기동
-
-```bash
-docker compose --profile app up --build -d
-curl --fail http://127.0.0.1:18080/actuator/health
-```
-
-헬스 체크 응답이 `{"status":"UP"}`인지 확인합니다.
-
-### 3. 임시 터널 생성
-
-macOS에서는 Homebrew로 `cloudflared`를 설치할 수 있습니다.
-
-```bash
-brew install cloudflared
 cloudflared tunnel --url http://127.0.0.1:8088 --no-autoupdate
 ```
 
-명령 출력에 표시되는 `https://...trycloudflare.com` 주소로 접속합니다. Quick Tunnel 주소는 실행할 때마다 달라질 수 있으며, 터널 프로세스와 Docker Desktop이 실행되는 동안만 사용할 수 있습니다. 가용성 보장이 없는 개발·시연용 방식이므로 상시 운영 환경에는 사용하지 않습니다.
+출력된 `https://...trycloudflare.com` 주소로 접속합니다. Web UI 포트만 공개되며, 주소는 터널을 실행할 때마다 바뀌고 PC와 터널이 켜져 있는 동안만 유효합니다.
 
-터널과 애플리케이션을 종료할 때는 다음 명령을 사용합니다.
-
-```bash
-pkill cloudflared
-docker compose --profile app down
-```
-
-`down`은 컨테이너만 제거하고 PostgreSQL과 Redis의 named volume은 보존합니다. 저장 데이터까지 삭제하려는 경우가 아니라면 `docker compose down -v`는 사용하지 마세요.
-
-## 상시 운영 배포 (무료)
-
-위 방식은 개발 PC가 켜져 있을 때만 접속할 수 있습니다. 노트북과 무관하게 데모를 상시 운영하려면 Oracle Cloud Always Free(ARM 4 OCPU / 24GB RAM) 인스턴스에 배포합니다.
+### 상시 운영: Oracle Cloud Always Free
 
 - CD 워크플로가 게시하는 GHCR 멀티아치 이미지를 받아 [`docker-compose.prod.yml`](docker-compose.prod.yml)로 실행합니다. 서버에서 소스를 빌드하지 않습니다.
 - 모든 서비스가 `restart: always`로 재부팅 후에도 자동 복구되며, watchtower가 main 브랜치의 새 이미지를 감지해 자동 재배포합니다.
@@ -238,104 +141,30 @@ docker compose --profile app down
 
 ## 환경 설정
 
-비밀값은 저장소에 파일로 커밋하지 않고 실행 환경에서 주입합니다. 필요한 기능만 선택적으로 활성화할 수 있습니다.
-
-```bash
-# 블록 수집
-export CHAINWATCH_COLLECTOR_ENABLED=true
-export CHAINWATCH_ETHERSCAN_API_KEY="발급받은 키"
-
-# AI 분석
-export CHAINWATCH_AI_ENABLED=true
-export ANTHROPIC_API_KEY="발급받은 키"
-export GEMINI_API_KEY="발급받은 키"
-
-# 인증을 활성화하는 경우 반드시 운영용 값으로 변경
-export CHAINWATCH_JWT_ENABLED=true
-export CHAINWATCH_JWT_SECRET="충분히 긴 임의 문자열"
-export CHAINWATCH_PASSWORD_PEPPER="별도로 관리하는 임의 문자열"
-export CHAINWATCH_ADMIN_USERNAME="관리자 계정"
-export CHAINWATCH_ADMIN_PASSWORD="{bcrypt}..."
-```
+비밀값은 커밋하지 않고 환경변수로 주입합니다.
 
 | 변수 | 설명 | 기본 상태 |
 |---|---|---|
 | `CHAINWATCH_COLLECTOR_ENABLED` | 자동 블록 수집 활성화 | `false` |
 | `CHAINWATCH_COLLECTOR_PROVIDER` | `rpc` 또는 `etherscan` 선택 | `rpc` |
-| `CHAINWATCH_COLLECTOR_MODE` | `polling` 또는 `websocket` 선택 | `polling` |
+| `CHAINWATCH_ETHERSCAN_API_KEY` | Etherscan API 키 | 미설정 |
 | `CHAINWATCH_AI_ENABLED` | AI 분석 연동 활성화 | `false` |
-| `ANTHROPIC_API_KEY` | Claude API 인증 키 | 미설정 |
-| `GEMINI_API_KEY` | Gemini API 인증 키 | 미설정 |
-| `CHAINWATCH_JWT_ENABLED` | JWT 인증 활성화 | `false` |
-| `CHAINWATCH_SLACK_WEBHOOK_URL` | Slack 알림 Webhook | 미설정 |
-| `CHAINWATCH_DISCORD_WEBHOOK_URL` | Discord 알림 Webhook | 미설정 |
+| `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` | AI 제공자 인증 키 | 미설정 |
+| `CHAINWATCH_JWT_ENABLED` | JWT 인증 활성화 (외부 공개 시 필수) | `false` |
+| `CHAINWATCH_JWT_SECRET` / `CHAINWATCH_PASSWORD_PEPPER` | 인증 비밀값 | 개발용 기본값 |
+| `CHAINWATCH_ADMIN_USERNAME` / `CHAINWATCH_ADMIN_PASSWORD` | 최초 관리자 계정 | 미설정 |
 
-### 관리자 화면에서 운영 설정 변경
+자동 수집, 웹훅 알림, 최소 알림 위험 점수는 **운영 관리 → 탐지·알림 정책**에서 재시작 없이 변경할 수 있고 변경 내역은 감사 로그에 남습니다.
 
-서버를 다시 시작하지 않고 다음 항목을 변경하려면 ADMIN 계정으로 로그인한 뒤 **관리자 → 탐지·알림 정책 → 수집·웹훅 설정**을 사용합니다.
-
-- polling 방식 자동 블록 수집 활성화·비활성화
-- 웹훅 알림 활성화·비활성화
-- 알림을 보낼 최소 위험 점수(0~100)
-- Slack·Discord Webhook 등록, 교체와 삭제
-
-변경값은 PostgreSQL에 저장되어 즉시 수집·알림 파이프라인에 반영되고 감사 로그에 기록됩니다. 저장된 Webhook URL은 API 응답과 화면에 다시 노출하지 않습니다. 알림을 활성화하려면 Slack 또는 Discord Webhook이 하나 이상 설정되어 있어야 합니다.
-
-환경변수 값은 데이터베이스에 운영 설정이 아직 없을 때 사용하는 초기 기본값입니다. AI 분석은 API 키와 분석 서버 구성이 필요하므로 관리자 화면에서 즉시 활성화하는 대상이 아니며, 환경변수를 설정한 뒤 서비스를 다시 시작해야 합니다.
-
-AI 제공자와 모델, 폴백 순서에 관한 상세 설정은 [`ai/analysis-server/README.md`](ai/analysis-server/README.md)에서 확인할 수 있습니다.
-
-## 주요 API
-
-| 영역 | 경로 | 설명 |
-|---|---|---|
-| 상태 확인 | `GET /api/health` | 백엔드 상태 확인 |
-| 이벤트 | `GET /api/events` | 탐지 이벤트 검색 및 페이지 조회 |
-| 이벤트 | `GET /api/events/{id}` | 이벤트와 탐지 근거 상세 조회 |
-| 이벤트 | `PATCH /api/events/{id}/status` | 이벤트 처리 상태 변경 |
-| AI 분석 | `POST /api/events/{id}/analysis` | 이벤트 AI 분석 실행 |
-| 거래 | `GET /api/transactions` | 수집된 거래 조회 |
-| 지갑 | `GET /api/wallets/{address}` | 지갑 활동 요약 조회 |
-| 탐지 규칙 | `GET /api/detection/rules` | 규칙 및 임계값 조회 |
-| 탐지 규칙 | `PATCH /api/detection/rules/thresholds` | 임계값 변경 |
-| 수집기 | `GET /api/collector/state` | 현재 수집 상태 조회 |
-| 운영 | `GET /api/ops/pipeline` | 파이프라인 상태 조회 |
-| 운영 설정 | `GET /api/admin/operational-settings` | 수집·웹훅 설정 조회(ADMIN) |
-| 운영 설정 | `PATCH /api/admin/operational-settings` | 수집·웹훅 설정 변경(ADMIN) |
-| 인증 | `POST /api/auth/login` | 로그인 및 토큰 발급 |
-
-전체 명세는 서비스를 실행한 뒤 Swagger UI에서 확인할 수 있습니다.
-
-## 개별 실행 및 테스트
-
-### Backend
+## 테스트
 
 ```bash
-cd backend
-./gradlew bootRun
-./gradlew test
+cd backend && ./gradlew test
+cd frontend && npm ci && npm test
+cd ai/analysis-server && pip install -r requirements-dev.txt && pytest -q
 ```
 
-### Frontend
-
-```bash
-cd frontend
-npm ci
-npm run dev
-npm test
-npm run build
-```
-
-### AI Analysis Server
-
-```bash
-cd ai/analysis-server
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-uvicorn app.main:app --port 8000
-pytest -q
-```
+API 명세는 실행 후 Swagger UI에서 확인할 수 있습니다.
 
 ## CI/CD
 
@@ -347,18 +176,8 @@ GitHub Actions가 `main` 브랜치와 Pull Request에서 백엔드, 프론트엔
 
 각 이미지는 `latest`와 배포 원본을 식별할 수 있는 전체 Git 커밋 SHA 태그를 함께 제공합니다.
 
-## 보안 및 운영 시 주의사항
+## 주의사항
 
-- `.env`, API 키, 개인 키, 인증서와 자격 증명 파일은 Git 추적 대상에서 제외됩니다.
-- 인터넷에 공개하기 전 `CHAINWATCH_JWT_ENABLED=true`와 강한 관리자 비밀번호를 반드시 설정해야 합니다.
-- Quick Tunnel에는 Web UI의 로컬 포트만 연결하고 PostgreSQL, Kafka, Redis, AI 서버 및 모니터링 포트는 공개하지 않습니다.
-- 저장소의 기본 계정과 비밀번호는 로컬 개발 편의를 위한 값이며 운영 환경에서 사용하면 안 됩니다.
-- 운영 환경에서는 JWT 비밀키, 비밀번호 pepper, 관리자 비밀번호와 Grafana 비밀번호를 반드시 교체해야 합니다.
-- Webhook URL은 관리자 API 응답에서 마스킹되지만 데이터베이스에는 암호화되지 않은 상태로 저장됩니다. 실제 운영 환경에서는 애플리케이션 계정과 DB 접근을 제한하고 Secret Manager 연동을 권장합니다.
-- AI API 키는 환경변수 또는 별도의 Secret Manager로 관리해야 합니다.
-- AI가 생성한 내용은 참고 자료이며 제재 판단, 자금 동결과 같은 최종 조치에는 사람의 검토가 필요합니다.
-- 공개 RPC는 호출 제한과 데이터 신뢰성 문제가 있을 수 있으므로 운영 환경에서는 전용 제공자와 모니터링을 권장합니다.
-
-## 프로젝트 범위
-
-ChainWatch는 이상 징후의 자동 수집·탐지·설명과 운영 흐름을 구현한 프로젝트입니다. 모든 자금세탁 행위를 확정적으로 판별하거나 법적 제재 여부를 자동 결정하는 시스템은 아닙니다. 규칙과 임계값은 대상 네트워크, 거래량과 운영 정책에 맞게 조정해야 합니다.
+- 외부에 공개할 때는 JWT 인증을 켜고 JWT 비밀키, pepper, 관리자 비밀번호를 반드시 새로 생성합니다. 저장소의 기본값은 로컬 개발용입니다.
+- Webhook URL은 API 응답에서 마스킹되지만 데이터베이스에는 평문으로 저장됩니다.
+- ChainWatch는 이상 징후를 탐지하고 설명하는 도구이며, 제재 판단이나 자금 동결 같은 최종 조치는 사람의 검토가 필요합니다.
