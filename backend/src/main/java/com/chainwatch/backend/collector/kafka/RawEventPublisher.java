@@ -4,9 +4,11 @@ import com.chainwatch.backend.collector.dto.BlockDto;
 import com.chainwatch.backend.collector.dto.TransactionDto;
 import com.chainwatch.backend.collector.metrics.CollectorMetrics;
 import com.chainwatch.backend.messaging.config.KafkaTopicProperties;
+import com.chainwatch.backend.ops.config.InfraProperties;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -22,18 +24,43 @@ public class RawEventPublisher {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaTopicProperties topics;
     private final CollectorMetrics metrics;
+    /** false면 Kafka 미사용 구성: 발행을 건너뛴다(브로커 대기로 수집이 지연되지 않게). */
+    private final boolean kafkaEnabled;
+
+    @Autowired
+    public RawEventPublisher(
+            KafkaTemplate<String, Object> kafkaTemplate,
+            KafkaTopicProperties topics,
+            CollectorMetrics metrics,
+            InfraProperties infraProperties
+    ) {
+        this(kafkaTemplate, topics, metrics, infraProperties.kafkaEnabled());
+    }
 
     public RawEventPublisher(
             KafkaTemplate<String, Object> kafkaTemplate,
             KafkaTopicProperties topics,
             CollectorMetrics metrics
     ) {
+        this(kafkaTemplate, topics, metrics, true);
+    }
+
+    private RawEventPublisher(
+            KafkaTemplate<String, Object> kafkaTemplate,
+            KafkaTopicProperties topics,
+            CollectorMetrics metrics,
+            boolean kafkaEnabled
+    ) {
         this.kafkaTemplate = kafkaTemplate;
         this.topics = topics;
         this.metrics = metrics;
+        this.kafkaEnabled = kafkaEnabled;
     }
 
     public void publishBlock(BlockDto block) {
+        if (!kafkaEnabled) {
+            return;
+        }
         Instant collectedAt = Instant.now();
 
         try {
