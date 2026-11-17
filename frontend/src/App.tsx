@@ -19,6 +19,7 @@ import {
 } from "./lib/router";
 import { parseEventsQuery } from "./lib/events";
 import { LoginPage } from "./pages/LoginPage";
+import { WorkQueuePage } from "./pages/WorkQueuePage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { EventsPage } from "./pages/EventsPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
@@ -46,6 +47,9 @@ function resolvePage(route: string) {
   if (eventsQuery != null) {
     // 쿼리가 바뀌면 key로 리마운트해 딥링크 필터가 즉시 반영되게 한다.
     return <EventsPage key={eventsQuery} initialFilters={parseEventsQuery(eventsQuery)} />;
+  }
+  if (route === "/work") {
+    return <WorkQueuePage />;
   }
   if (route === "/rules") {
     return <RulesPage />;
@@ -98,7 +102,7 @@ export default function App() {
   const adminSection = matchAdminSection(route);
   // 조회자는 운영 화면에 들어갈 수 없다. 서버도 같은 규칙으로 막지만 빈 화면 대신 첫 화면으로 돌려보낸다.
   const forbidden =
-    user?.role === "VIEWER" && (adminSection != null || route.startsWith("/agents") || route === "/staking");
+    user?.role === "VIEWER" && (adminSection != null || route.startsWith("/agents") || route === "/staking" || route === "/work");
 
   // 모든 화면은 로그인이 필요하다. 세션 확인이 끝난(ready) 뒤에만 판단한다.
   useEffect(() => {

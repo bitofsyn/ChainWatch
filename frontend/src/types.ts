@@ -476,3 +476,69 @@ export interface AgentOpsSnapshot {
   handoffs: AgentHandoffEvent[];
   faults?: AgentFaultStatus[];
 }
+
+/* ── 분석가 업무(작업 큐·처리 이력·일괄 처리·예외 주소 제안·거래 상대) ── */
+
+export interface WorkQueue {
+  username: string;
+  myOpenCount: number;
+  unassignedHighRiskCount: number;
+  /** 미할당 고위험 중 가장 오래된 건의 탐지 시각. 없으면 null */
+  oldestUnassignedDetectedAt: string | null;
+  myCases: DetectionEventItem[];
+  unassignedHighRisk: DetectionEventItem[];
+}
+
+export type EventActivityType = "STATUS" | "ASSIGNMENT" | "COMMENT";
+
+export interface EventActivity {
+  id: number;
+  actor: string;
+  type: EventActivityType;
+  detail: string;
+  createdAt: string;
+}
+
+export interface BulkStatusRequest {
+  ids: number[];
+  status: EventLifecycleStatus;
+  assignee?: string;
+  resolutionReason?: string;
+  falsePositiveReason?: string;
+  notes?: string;
+}
+
+export interface BulkStatusResult {
+  updated: number;
+  missingIds: number[];
+}
+
+export type PolicySuggestionStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "REVOKED";
+
+export interface PolicySuggestion {
+  id: number;
+  address: string;
+  reason: string;
+  eventId: number | null;
+  proposedBy: string;
+  status: PolicySuggestionStatus;
+  decidedBy: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export interface Counterparty {
+  address: string;
+  txCount: number;
+  totalAmount: number;
+  lastAt: string | null;
+}
+
+export interface WalletCounterparties {
+  address: string;
+  outgoingTxCount: number;
+  incomingTxCount: number;
+  recipients: Counterparty[];
+  senders: Counterparty[];
+}

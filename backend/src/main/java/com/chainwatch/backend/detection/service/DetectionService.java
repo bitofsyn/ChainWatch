@@ -46,6 +46,7 @@ public class DetectionService {
     private final AgentFaultInjector faultInjector;
     private final AgentFailureRecorder failureRecorder;
     private final AgentProcessingTracker processingTracker;
+    private com.chainwatch.backend.casework.service.ExcludedAddressRegistry excludedAddressRegistry;
 
     public DetectionService(
             List<DetectionRule> detectionRules,
@@ -67,6 +68,20 @@ public class DetectionService {
         this.faultInjector = faultInjector;
         this.failureRecorder = failureRecorder;
         this.processingTracker = processingTracker;
+    }
+
+    /** 관리자가 승인한 탐지 예외 주소. 테스트 등 레지스트리가 없는 구성에서는 예외 없이 동작한다. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setExcludedAddressRegistry(
+            com.chainwatch.backend.casework.service.ExcludedAddressRegistry excludedAddressRegistry) {
+        this.excludedAddressRegistry = excludedAddressRegistry;
+    }
+
+    /** 제재 주소 탐지는 예외 주소로도 끌 수 없다. */
+    private boolean isExcluded(com.chainwatch.backend.detection.domain.DetectionCommand command) {
+        return excludedAddressRegistry != null
+                && command.eventType() != EventType.SANCTIONED_ADDRESS
+                && excludedAddressRegistry.isExcluded(command.walletAddress());
     }
 
     @Transactional
@@ -92,6 +107,7 @@ public class DetectionService {
                 continue;
             }
             detectionRule.evaluate(transaction)
+                    .filter(command -> !isExcluded(command))
                     .filter(command -> !detectionEventRepository.existsByTransactionIdAndEventType(
                             command.transaction().getId(),
                             command.eventType()

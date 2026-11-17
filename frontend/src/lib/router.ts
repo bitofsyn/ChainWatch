@@ -110,7 +110,7 @@ export function roleHomePath(role: string | null | undefined): string {
     return "/admin";
   }
   if (role === "ANALYST") {
-    return "/events";
+    return "/work";
   }
   return "/";
 }

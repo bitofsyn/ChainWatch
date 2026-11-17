@@ -1,3 +1,4 @@
+import { CounterpartiesPanel } from "../components/CounterpartiesPanel";
 import { startTransition, useEffect, useState } from "react";
 import { fetchEvents, fetchTransactions, fetchWalletSummary } from "../api";
 import type { DetectionEventItem, TransactionItem, WalletSummary } from "../types";
@@ -183,6 +184,7 @@ export function WalletDetailPage({ address }: WalletDetailPageProps) {
           </div>
         </article>
       </section>
+      <CounterpartiesPanel address={address} />
     </>
   );
 }

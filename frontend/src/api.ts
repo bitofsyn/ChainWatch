@@ -23,7 +23,13 @@ import type {
   User,
   UserAccountItem,
   UserCreateResult,
-  WalletSummary
+  WalletSummary,
+  WorkQueue,
+  EventActivity,
+  BulkStatusRequest,
+  BulkStatusResult,
+  PolicySuggestion,
+  WalletCounterparties
 } from "./types";
 import { buildEventsQuery, type EventFilters } from "./lib/events";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./lib/auth";
@@ -352,3 +358,57 @@ export type ReconciliationRun = {
 export const fetchReconciliations = () => requestJson<{enabled: boolean; runs: ReconciliationRun[]}>("/api/ops/staking/reconciliations");
 export const reconcileEpoch = (epoch: number) => requestJson<ReconciliationRun>("/api/ops/staking/reconciliations", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({epoch})});
 export const fetchReconciliationEvidence = (id: number) => requestJson<unknown>(`/api/ops/staking/reconciliations/${id}/evidence`);
+
+/* ── 분석가 업무 ─────────────────────────────── */
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+export function fetchWorkQueue() {
+  return requestJson<WorkQueue>("/api/workqueue");
+}
+
+export function fetchEventActivities(eventId: number) {
+  return requestJson<EventActivity[]>(`/api/events/${eventId}/activities`);
+}
+
+export function addEventComment(eventId: number, text: string) {
+  return requestJson<EventActivity>(`/api/events/${eventId}/comments`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ text })
+  });
+}
+
+export function updateEventStatusInBulk(request: BulkStatusRequest) {
+  return requestJson<BulkStatusResult>("/api/events/bulk-status", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(request)
+  });
+}
+
+export function fetchPolicySuggestions() {
+  return requestJson<PolicySuggestion[]>("/api/policy-suggestions");
+}
+
+export function proposeExcludedAddress(address: string, reason: string, eventId?: number) {
+  return requestJson<PolicySuggestion>("/api/policy-suggestions", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ address, reason, eventId })
+  });
+}
+
+export function decidePolicySuggestion(id: number, decision: "ACCEPT" | "REJECT" | "REVOKE", note?: string) {
+  return requestJson<PolicySuggestion>(`/api/admin/policy-suggestions/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ decision, note })
+  });
+}
+
+export function fetchWalletCounterparties(address: string, limit = 10) {
+  return requestJson<WalletCounterparties>(
+    `/api/wallets/${encodeURIComponent(address)}/counterparties?limit=${limit}`
+  );
+}

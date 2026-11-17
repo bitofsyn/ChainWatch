@@ -1,3 +1,4 @@
+import { EventCaseworkSection } from "../components/EventCaseworkSection";
 import { startTransition, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -121,6 +122,7 @@ export function EventDetailPage({ eventId }: EventDetailPageProps) {
             <TransactionEvidenceSection event={event} transaction={transaction} />
             <AiAnalysisSection event={event} onReportChange={setEvent} />
             <OperatorActionSection event={event} onEventChange={setEvent} />
+            <EventCaseworkSection event={event} />
           </section>
         </>
       ) : null}

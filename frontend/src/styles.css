@@ -4103,3 +4103,191 @@ tr.row-new {
     gap: 24px;
   }
 }
+
+/* ── 분석가 업무: 처리 이력·일괄 처리·예외 제안·거래 상대 ── */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.comment-form {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 16px;
+  justify-items: end;
+}
+
+.comment-form textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.comment-form textarea:focus,
+.bulk-bar select:focus,
+.bulk-bar input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.activity-item {
+  padding: 12px 0 12px 16px;
+  border-left: 2px solid var(--line);
+  border-bottom: 1px solid var(--surface-line);
+}
+
+.activity-item:last-child {
+  border-bottom: 0;
+}
+
+.activity-item.activity-status {
+  border-left-color: var(--accent);
+}
+
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.activity-meta strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.activity-item p {
+  margin: 4px 0 0;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.exclusion-proposal {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+
+.exclusion-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.exclusion-head p {
+  margin: 4px 0 0;
+  max-width: 64ch;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-wash);
+}
+
+.bulk-bar > strong {
+  align-self: center;
+}
+
+.bulk-bar label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.bulk-bar .bulk-reason {
+  flex: 1 1 220px;
+}
+
+.bulk-bar .bulk-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+}
+
+.bulk-bar select,
+.bulk-bar input[type="text"] {
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.bulk-bar .banner {
+  flex-basis: 100%;
+}
+
+.data-table tr.row-selected td {
+  background: var(--accent-wash);
+}
+
+.inline-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.suggestion-status {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.suggestion-status.status-pending {
+  color: var(--accent);
+}
+
+.suggestion-status.status-rejected,
+.suggestion-status.status-revoked {
+  color: var(--text-soft);
+}
+
+.counterparty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+.counterparty-title {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+}

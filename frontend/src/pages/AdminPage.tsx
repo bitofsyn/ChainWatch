@@ -46,6 +46,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { DataState } from "../components/DataState";
 import { Pagination } from "../components/Pagination";
 import { AdminUsersSection } from "./admin/AdminUsersSection";
+import { PolicySuggestionsPanel } from "../components/PolicySuggestionsPanel";
 
 const SECTION_ITEMS: { section: AdminSection; path: string; label: string; adminOnly?: boolean }[] = [
   { section: "dashboard", path: "/admin", label: "운영 대시보드" },
@@ -731,6 +732,8 @@ function AdminPolicies() {
           </div>
         </section>
       ) : null}
+
+      <PolicySuggestionsPanel />
 
       {rules && isAdmin ? <ThresholdEditor rules={rules} onSaved={setRules} /> : null}
 

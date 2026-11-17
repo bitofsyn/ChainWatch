@@ -24,7 +24,8 @@ const AGENTS: NavItem = { path: "/agents", label: "Agent 관제" };
 const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   VIEWER: [DASHBOARD, { path: "/events", label: "이상 거래" }, RULES],
   ANALYST: [
-    { path: "/events", label: "작업 큐" },
+    { path: "/work", label: "작업 큐" },
+    { path: "/events", label: "이상 거래" },
     DASHBOARD,
     RULES,
     { path: "/admin/analysis", label: "재분석" },
@@ -32,6 +33,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   ADMIN: [
     { path: "/admin", label: "운영 설정" },
+    { path: "/work", label: "작업 큐" },
     DASHBOARD,
     { path: "/events", label: "이상 거래" },
     RULES,

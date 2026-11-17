@@ -82,4 +82,30 @@ public interface TransactionRepository
     ) {
         return findAll(TransactionSpecifications.search(wallet, blockNumber, from, to), pageable);
     }
+
+    // ── 지갑 거래 상대 집계(조사 패널) ─────────────
+
+    /** 이 지갑이 보낸 상대 주소별 [주소, 건수, 금액 합계, 마지막 거래 시각], 건수 많은 순 */
+    @Query("""
+            select t.toAddress, count(t), sum(t.amount), max(t.timestamp)
+            from Transaction t
+            where t.fromAddress = :address and t.toAddress is not null
+            group by t.toAddress
+            order by count(t) desc, sum(t.amount) desc
+            """)
+    List<Object[]> summarizeRecipients(@Param("address") String address, org.springframework.data.domain.Pageable pageable);
+
+    /** 이 지갑이 받은 상대 주소별 [주소, 건수, 금액 합계, 마지막 거래 시각], 건수 많은 순 */
+    @Query("""
+            select t.fromAddress, count(t), sum(t.amount), max(t.timestamp)
+            from Transaction t
+            where t.toAddress = :address
+            group by t.fromAddress
+            order by count(t) desc, sum(t.amount) desc
+            """)
+    List<Object[]> summarizeSenders(@Param("address") String address, org.springframework.data.domain.Pageable pageable);
+
+    long countByFromAddress(String fromAddress);
+
+    long countByToAddress(String toAddress);
 }

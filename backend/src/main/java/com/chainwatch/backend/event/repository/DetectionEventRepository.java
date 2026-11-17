@@ -256,4 +256,47 @@ public interface DetectionEventRepository
                         eventType, riskLevel, status, wallet, assignee, unassignedOnly, network, from, to),
                 pageable);
     }
+
+    // ── 분석가 작업 큐 ─────────────────────────────
+    // 레거시 이벤트는 status가 NULL로 저장되어 있고 NEW로 취급하므로 미완료 조건에 포함한다.
+
+    @Query("""
+            select count(e) from DetectionEvent e
+            where lower(e.assignee) = lower(:assignee) and (e.status is null or e.status in :statuses)
+            """)
+    long countAssignedOpen(@Param("assignee") String assignee, @Param("statuses") Collection<EventStatus> statuses);
+
+    @Query("""
+            select e from DetectionEvent e
+            where lower(e.assignee) = lower(:assignee) and (e.status is null or e.status in :statuses)
+            order by e.riskScore desc, e.detectedAt asc
+            """)
+    List<DetectionEvent> findAssignedOpen(
+            @Param("assignee") String assignee,
+            @Param("statuses") Collection<EventStatus> statuses,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            select count(e) from DetectionEvent e
+            where e.assignee is null and e.riskLevel in :levels and (e.status is null or e.status in :statuses)
+            """)
+    long countUnassignedOpen(
+            @Param("levels") Collection<RiskLevel> levels, @Param("statuses") Collection<EventStatus> statuses);
+
+    @Query("""
+            select min(e.detectedAt) from DetectionEvent e
+            where e.assignee is null and e.riskLevel in :levels and (e.status is null or e.status in :statuses)
+            """)
+    Instant findOldestUnassignedOpenDetectedAt(
+            @Param("levels") Collection<RiskLevel> levels, @Param("statuses") Collection<EventStatus> statuses);
+
+    @Query("""
+            select e from DetectionEvent e
+            where e.assignee is null and e.riskLevel in :levels and (e.status is null or e.status in :statuses)
+            order by e.riskScore desc, e.detectedAt asc
+            """)
+    List<DetectionEvent> findUnassignedOpen(
+            @Param("levels") Collection<RiskLevel> levels,
+            @Param("statuses") Collection<EventStatus> statuses,
+            org.springframework.data.domain.Pageable pageable);
 }

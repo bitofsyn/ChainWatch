@@ -16,5 +16,13 @@
 | 운영 설정 | `GET /api/admin/operational-settings` | 수집·웹훅 설정 조회(ADMIN) |
 | 운영 설정 | `PATCH /api/admin/operational-settings` | 수집·웹훅 설정 변경(ADMIN) |
 | 인증 | `POST /api/auth/login` | 로그인 및 토큰 발급 |
+| 작업 큐 | `GET /api/workqueue` | 내 미완료 건과 미할당 고위험 건(분석가·관리자) |
+| 처리 이력 | `GET /api/events/{id}/activities` | 이벤트 처리 이력 조회 |
+| 처리 이력 | `POST /api/events/{id}/comments` | 코멘트 추가(분석가·관리자) |
+| 일괄 처리 | `POST /api/events/bulk-status` | 여러 이벤트 상태 일괄 변경(분석가·관리자) |
+| 예외 주소 | `GET` · `POST /api/policy-suggestions` | 탐지 예외 주소 제안 조회·등록(분석가·관리자) |
+| 예외 주소 | `PATCH /api/admin/policy-suggestions/{id}` | 제안 승인·반려·해제(ADMIN) |
+| 지갑 | `GET /api/wallets/{address}/counterparties` | 지갑의 거래 상대 집계 |
+| 인증 | `POST /api/auth/demo` | 둘러보기(데모 조회자·분석가 세션 발급) |
 
 전체 명세는 서비스를 실행한 뒤 Swagger UI에서 확인할 수 있습니다.
