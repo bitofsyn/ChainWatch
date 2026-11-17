@@ -85,3 +85,6 @@ docker-compose.override.yml
 _workspace/
 output/
 tmp/
+
+# Cloudflare Wrangler 로컬 상태
+.wrangler/

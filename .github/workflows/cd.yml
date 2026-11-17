@@ -138,3 +138,76 @@ jobs:
 
       - name: Inspect published manifest
         run: docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/chainwatch-${{ matrix.service }}:latest
+
+  # 프런트엔드: Cloudflare Workers. 저장소 변수 CLOUDFLARE_ACCOUNT_ID가 없으면 건너뛴다.
+  deploy-frontend:
+    name: Deploy frontend (Cloudflare Workers)
+    if: >-
+      vars.CLOUDFLARE_ACCOUNT_ID != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: npx wrangler@4 deploy --var "BACKEND_URL:${BACKEND_URL}"
+
+  # 백엔드: Render Deploy Hook. 저장소 변수 BACKEND_URL이 없으면 건너뛴다.
+  deploy-backend:
+    name: Deploy backend (Render)
+    if: >-
+      vars.BACKEND_URL != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Request Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          curl --fail-with-body --silent --show-error --request POST \
+            "${RENDER_DEPLOY_HOOK_URL}&ref=${COMMIT_SHA}"
+
+      - name: Wait for backend health
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          # 무료 인스턴스는 빌드와 기동에 수 분이 걸린다. 15초 간격으로 최대 15분 대기.
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --max-time 10 "${BACKEND_URL}/actuator/health" | grep -q '"UP"'; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Backend did not become healthy within 15 minutes."
+          exit 1

@@ -1,5 +1,39 @@
 # 배포 가이드 (무료)
 
+## 자동 배포: Cloudflare Workers + Render
+
+`main`의 CI가 성공하면 CD 워크플로가 프런트엔드를 Cloudflare Workers에, 백엔드를 Render에 배포합니다. 둘 다 무료 플랜으로 동작하며 PC를 켜 둘 필요가 없습니다.
+
+```mermaid
+flowchart LR
+    A[main 푸시] --> B[CI] --> C[CD]
+    C -->|wrangler deploy| D[Cloudflare Workers<br/>정적 자산 + /api 프록시]
+    C -->|Deploy Hook| E[Render<br/>Spring Boot]
+    D -->|/api/*| E
+    E --> F[(외부 PostgreSQL)]
+```
+
+- **프런트엔드**: [`frontend/wrangler.jsonc`](../frontend/wrangler.jsonc)와 [`frontend/worker/index.js`](../frontend/worker/index.js). Worker가 `/api/*` 요청을 백엔드로 전달하므로 브라우저는 같은 출처만 호출합니다.
+- **백엔드**: [`render.yaml`](../render.yaml). 무료 인스턴스(512MB)에 맞춰 Kafka·Redis 없이 단독 실행합니다. 탐지는 sync 모드로 동작하고, 수집기와 AI 분석은 기본으로 꺼져 있습니다.
+- **제약**: Render 무료 인스턴스는 15분간 요청이 없으면 중지되어 첫 응답에 1분가량 걸릴 수 있습니다. Kafka 기반 비동기 파이프라인과 모니터링 스택은 이 구성에 포함되지 않습니다.
+
+### 최초 1회 설정
+
+1. **PostgreSQL 준비**: [Neon](https://neon.tech) 등 무료 PostgreSQL을 만들고 접속 정보를 확인합니다. JDBC URL 형식은 `jdbc:postgresql://<host>/<db>?sslmode=require`입니다.
+2. **Render 서비스 생성**: Render 대시보드 → New → Blueprint에서 이 저장소를 선택하면 `render.yaml`대로 서비스가 만들어집니다. 생성 화면에서 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `CHAINWATCH_ADMIN_PASSWORD`(`{noop}비밀번호` 형식)를 입력합니다.
+3. **Deploy Hook 복사**: Render 서비스 → Settings → Deploy Hook의 URL을 복사합니다.
+4. **Cloudflare API 토큰 발급**: Cloudflare 대시보드 → My Profile → API Tokens에서 "Edit Cloudflare Workers" 템플릿으로 토큰을 만듭니다.
+5. **GitHub 저장소 설정**: Settings → Secrets and variables → Actions에 아래 값을 등록합니다.
+
+| 종류 | 이름 | 값 |
+|---|---|---|
+| Secret | `CLOUDFLARE_API_TOKEN` | 4번에서 발급한 토큰 |
+| Secret | `RENDER_DEPLOY_HOOK_URL` | 3번에서 복사한 URL |
+| Variable | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
+| Variable | `BACKEND_URL` | Render 서비스 주소 (예: `https://chainwatch-backend.onrender.com`) |
+
+`CLOUDFLARE_ACCOUNT_ID`가 없으면 프런트엔드 배포를, `BACKEND_URL`이 없으면 백엔드 배포를 건너뜁니다. 설정을 마친 뒤 Actions → CD → Run workflow로 첫 배포를 실행합니다.
+
 ## 임시 공개: Cloudflare Quick Tunnel
 
 로컬에서 실행 중인 Web UI를 계정·도메인 없이 공개합니다. 공개 전 `.env`에 `CHAINWATCH_JWT_ENABLED=true`와 JWT 비밀키, 관리자 비밀번호를 설정하세요([`.env.prod.example`](../.env.prod.example) 참고).

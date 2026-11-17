@@ -1,0 +1,56 @@
+# Render 무료 인스턴스(512MB)용 백엔드 Blueprint. 사용법은 docs/deployment.md 참고.
+# Kafka·Redis 없이 단독 실행한다(탐지는 sync 모드, 알림 중복 방지는 메모리).
+# 배포는 CD 워크플로가 Deploy Hook으로 요청하므로 autoDeploy는 끈다.
+services:
+  - type: web
+    name: chainwatch-backend
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: "8080"
+      # 512MB 한도에 맞춘 JVM 설정. 로컬에서 RSS 약 400MB로 확인.
+      - key: JAVA_TOOL_OPTIONS
+        value: >-
+          -XX:+UseSerialGC -Xmx192m -Xss512k -XX:MaxMetaspaceSize=140m
+          -XX:ReservedCodeCacheSize=40m -XX:TieredStopAtLevel=1
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      # Kafka·Redis가 없는 환경: 토픽 자동 생성 대기와 Redis 헬스 체크를 끈다.
+      - key: SPRING_KAFKA_ADMIN_AUTO_CREATE
+        value: "false"
+      - key: MANAGEMENT_HEALTH_REDIS_ENABLED
+        value: "false"
+      - key: CHAINWATCH_DETECTION_MODE
+        value: sync
+      - key: CHAINWATCH_NOTIFICATION_DEDUP_STORE
+        value: memory
+      # 외부 PostgreSQL(예: Neon 무료 플랜). 무료 인스턴스는 유휴 시 재시작되므로 영속 DB가 필요하다.
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        value: org.postgresql.Driver
+      - key: CHAINWATCH_JWT_ENABLED
+        value: "true"
+      - key: CHAINWATCH_JWT_SECRET
+        generateValue: true
+      - key: CHAINWATCH_PASSWORD_PEPPER
+        generateValue: true
+      - key: CHAINWATCH_ADMIN_USERNAME
+        value: admin
+      # 최초 계정 생성용. `{noop}비밀번호` 형식으로 입력하면 저장 시 BCrypt로 인코딩된다.
+      - key: CHAINWATCH_ADMIN_PASSWORD
+        sync: false
+      # 메인넷 수집은 무료 DB 용량을 빠르게 채우므로 기본은 꺼 둔다.
+      - key: CHAINWATCH_COLLECTOR_ENABLED
+        value: "false"
+      - key: CHAINWATCH_AI_ENABLED
+        value: "false"

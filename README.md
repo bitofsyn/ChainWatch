@@ -92,5 +92,5 @@ docker compose --profile app down            # 종료
 |---|---|
 | [시스템 구조](docs/architecture.md) | 처리 흐름, 탐지 규칙과 판단 근거, AI 분석 방식 |
 | [실행·설정·테스트](docs/operations.md) | 환경변수, 운영 설정, 개별 실행과 테스트, CI/CD, 보안 주의사항 |
-| [배포](docs/deployment.md) | Cloudflare Quick Tunnel 임시 공개, Oracle Cloud Always Free 상시 운영 |
+| [배포](docs/deployment.md) | Cloudflare Workers·Render 자동 배포, Quick Tunnel 임시 공개, Oracle Cloud 상시 운영 |
 | [주요 API](docs/api.md) | 이벤트·거래·지갑·탐지 규칙·운영 설정·인증 API 목록 |

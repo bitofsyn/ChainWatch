@@ -74,6 +74,8 @@ GitHub Actions가 `main` 브랜치와 Pull Request에서 백엔드, 프론트엔
 
 각 이미지는 `latest`와 배포 원본을 식별할 수 있는 전체 Git 커밋 SHA 태그를 함께 제공합니다.
 
+저장소에 배포 설정이 등록되어 있으면 같은 워크플로가 프런트엔드를 Cloudflare Workers에, 백엔드를 Render에 배포합니다. 설정 방법은 [배포 문서](deployment.md)를 참고하세요.
+
 ## 보안 주의사항
 
 - `.env`, API 키, 개인 키, 인증서와 자격 증명 파일은 Git 추적 대상에서 제외됩니다.
