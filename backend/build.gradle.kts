@@ -49,4 +49,9 @@ tasks.withType<Test> {
     // 테스트 메시지가 실제 최신 피드 캐시에 섞이지 않도록 테스트 전용 키를 사용한다.
     systemProperty("chainwatch.feed.recent-transactions-key", "chainwatch:test:feed:transactions")
     systemProperty("chainwatch.feed.recent-events-key", "chainwatch:test:feed:events")
+    // JWT를 켠 테스트도 초기 계정으로 로그인한다. 운영 코드는 JWT 활성 상태에서 개발 기본값
+    // ({noop}chainwatch)으로 계정을 만들지 않으므로, 같은 비밀번호("chainwatch")의 BCrypt 해시를 준다.
+    val testPasswordHash = "{bcrypt}\$2y\$10\$fsP/xKJwwKsAFRq3LVW5J.1m6XPeQUHSRLkwaIa9ScuKnuDsW38Y6"
+    systemProperty("chainwatch.security.admin-password", testPasswordHash)
+    systemProperty("chainwatch.security.analyst-password", testPasswordHash)
 }

@@ -52,6 +52,34 @@ class UserBootstrapDefaultPasswordTest {
     }
 
     @Test
+    void encodesPasswordEnteredWithoutPrefixSoLoginCanVerifyIt() {
+        var encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+
+        runner(true, "plain-admin-password", DEV_DEFAULT).run(new DefaultApplicationArguments());
+
+        ArgumentCaptor<UserAccount> saved = ArgumentCaptor.forClass(UserAccount.class);
+        verify(repository).save(saved.capture());
+        assertThat(saved.getValue().getPasswordHash()).startsWith("{bcrypt}");
+        assertThat(encoder.matches("plain-admin-password", saved.getValue().getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void repairsExistingAccountStoredWithoutEncodingPrefix() {
+        var encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        UserAccount broken = new UserAccount("admin", "typed-without-prefix", UserRole.ADMIN, "운영 관리자");
+        UserAccount healthy = new UserAccount("analyst", encoder.encode("fine"), UserRole.ANALYST, "탐지 분석가");
+        UserBootstrapRunner runner = runner(true, "ignored", "ignored");
+        when(repository.count()).thenReturn(2L);
+        when(repository.findAll()).thenReturn(java.util.List.of(broken, healthy));
+
+        runner.run(new DefaultApplicationArguments());
+
+        verify(repository).save(broken);
+        verify(repository, never()).save(healthy);
+        assertThat(encoder.matches("typed-without-prefix", broken.getPasswordHash())).isTrue();
+    }
+
+    @Test
     void keepsDevDefaultsWhenJwtDisabledForLocalDevelopment() {
         runner(false, DEV_DEFAULT, DEV_DEFAULT).run(new DefaultApplicationArguments());
 

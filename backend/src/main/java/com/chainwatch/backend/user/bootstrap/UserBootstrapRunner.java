@@ -20,8 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * JWT 인증이 켜진 환경에서 비밀번호가 개발 기본값({noop}chainwatch) 그대로인 계정은 만들지 않는다.
  *
- * {noop} 형식 비밀번호(로컬 개발 기본값)는 DB에 평문 마커로 남기지 않도록 BCrypt로 재인코딩한다.
- * 그 외 값은 이미 DelegatingPasswordEncoder 포맷({bcrypt}... 등)으로 간주해 그대로 저장한다.
+ * {noop} 형식 비밀번호(로컬 개발 기본값)와 인코딩 접두사가 없는 값은 평문으로 보고 BCrypt로 인코딩한다.
+ * {bcrypt}... 등 다른 접두사가 붙은 값은 이미 인코딩된 것으로 간주해 그대로 저장한다.
+ *
+ * 과거 버전은 접두사 없는 값을 그대로 저장해 해당 계정으로 로그인할 수 없었다. 기동 시 그런 계정을 찾아
+ * 저장된 값(=입력했던 평문)을 BCrypt로 다시 인코딩해 복구한다.
  */
 @Component
 public class UserBootstrapRunner implements ApplicationRunner {
@@ -53,6 +56,7 @@ public class UserBootstrapRunner implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        repairUnencodedPasswords();
         if (userAccountRepository.count() > 0) {
             return;
         }
@@ -73,6 +77,27 @@ public class UserBootstrapRunner implements ApplicationRunner {
                 "Seeded initial accounts because user_accounts was empty");
     }
 
+    /** 인코딩 접두사 없이 저장된 비밀번호(과거 버전이 평문을 그대로 저장한 경우)를 BCrypt로 복구한다. */
+    private void repairUnencodedPasswords() {
+        for (UserAccount account : userAccountRepository.findAll()) {
+            String stored = account.getPasswordHash();
+            if (stored == null || stored.isBlank() || hasEncodingPrefix(stored)) {
+                continue;
+            }
+            account.changePassword(passwordEncoder.encode(stored), account.getCurrentPasswordFingerprint());
+            userAccountRepository.save(account);
+            log.warn("[USER_BOOTSTRAP] re-encoded the password of '{}': it was stored without an encoding prefix "
+                    + "and could not be verified at login.", account.getUsername());
+            auditLogService.record("system", null, "USER_PASSWORD_REPAIR", "USER", account.getUsername(),
+                    "Re-encoded a password stored without an encoding prefix");
+        }
+    }
+
+    /** DelegatingPasswordEncoder 형식({id}hash) 여부. */
+    private static boolean hasEncodingPrefix(String value) {
+        return value.startsWith("{") && value.indexOf('}') > 1;
+    }
+
     private void seed(String username, String encodedPassword, UserRole role, String displayName, StringBuilder seeded) {
         if (username == null || username.isBlank() || encodedPassword == null || encodedPassword.isBlank()) {
             return;
@@ -84,9 +109,15 @@ public class UserBootstrapRunner implements ApplicationRunner {
                     username, role);
             return;
         }
-        String passwordHash = encodedPassword.startsWith(NOOP_PREFIX)
-                ? passwordEncoder.encode(encodedPassword.substring(NOOP_PREFIX.length()))
-                : encodedPassword;
+        String passwordHash;
+        if (encodedPassword.startsWith(NOOP_PREFIX)) {
+            passwordHash = passwordEncoder.encode(encodedPassword.substring(NOOP_PREFIX.length()));
+        } else if (!hasEncodingPrefix(encodedPassword)) {
+            // 접두사 없이 입력한 값은 평문이다. 그대로 저장하면 로그인 검증이 불가능하다.
+            passwordHash = passwordEncoder.encode(encodedPassword);
+        } else {
+            passwordHash = encodedPassword;
+        }
         userAccountRepository.save(new UserAccount(username, passwordHash, role, displayName));
         if (!seeded.isEmpty()) {
             seeded.append(", ");
