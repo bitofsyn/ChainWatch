@@ -87,8 +87,9 @@ public class DetectionRuleController {
                 new DetectionRulesResponse.Rule(
                         "WHALE_ACTIVITY",
                         "관심 지갑(고래) 활동 탐지",
-                        "watchlist에 등록된 지갑이 송신 또는 수신에 관여하면 탐지합니다.",
-                        "watchlist 주소 " + watchlistSize + "개 등록",
+                        "관심 주소로 등록된 지갑이 송신 또는 수신에 관여하면 탐지합니다. "
+                                + "같은 주소는 재탐지 억제 시간 동안 1건으로 묶습니다.",
+                        "관심 주소 " + watchlistSize + "개 등록",
                         "HIGH",
                         90,
                         watchlistSize > 0

@@ -13,6 +13,7 @@ import {
   matchOverview,
   matchTransactionDetail,
   matchWalletDetail,
+  consumeExplicitLogout,
   navigate,
   roleHomePath,
   useHashRoute
@@ -110,7 +111,7 @@ export default function App() {
       return;
     }
     if (!user && !onLogin) {
-      navigate(route === "/" ? "/login" : `/login?next=${encodeURIComponent(route)}`);
+      navigate(route === "/" || consumeExplicitLogout() ? "/login" : `/login?next=${encodeURIComponent(route)}`);
     } else if (user && onLogin) {
       // 이미 로그인한 상태로 로그인 화면에 오면 역할별 첫 화면으로 보낸다.
       navigate(roleHomePath(user.role));

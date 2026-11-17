@@ -40,7 +40,7 @@ public class LargeTransferDetectionRule implements DetectionRule {
                 EventType.LARGE_TRANSFER,
                 RiskLevel.HIGH,
                 85,
-                "Large transfer detected: " + transaction.getAmount() + " ETH moved to " + transaction.getToAddress(),
+                "대규모 이체: " + transaction.getAmount().stripTrailingZeros().toPlainString() + " ETH가 " + transaction.getToAddress() + " 주소로 이동했습니다",
                 transaction.getToAddress(),
                 transaction,
                 RULE_NAME,

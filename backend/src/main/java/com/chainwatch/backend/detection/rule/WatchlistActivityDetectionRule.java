@@ -26,20 +26,39 @@ public class WatchlistActivityDetectionRule implements DetectionRule {
         this.addressLists = addressLists;
     }
 
+    /**
+     * 관심 주소가 거래소 지갑·토큰 컨트랙트처럼 거래가 많은 주소면 트랜잭션마다 고위험 이벤트가 생겨
+     * 분석가 큐가 넘친다. 같은 관심 주소는 cooldown 동안 1건으로 묶고, 개별 거래는 지갑 화면에서 본다.
+     */
+    @Override
+    public EventType cooldownEventType() {
+        return EventType.WHALE_ACTIVITY;
+    }
+
+    @Override
+    public String cooldownWalletAddress(Transaction transaction) {
+        return matchedAddress(transaction);
+    }
+
+    /** 이 트랜잭션에서 관심 주소로 일치한 쪽(발신 우선). 일치가 없으면 null. */
+    private String matchedAddress(Transaction transaction) {
+        List<String> watchlistAddresses = normalizeAddresses(addressLists.currentAddresses().watchlistAddresses());
+        if (watchlistAddresses.contains(normalize(transaction.getFromAddress()))) {
+            return transaction.getFromAddress();
+        }
+        if (watchlistAddresses.contains(normalize(transaction.getToAddress()))) {
+            return transaction.getToAddress();
+        }
+        return null;
+    }
+
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
-        List<String> watchlistAddresses = normalizeAddresses(addressLists.currentAddresses().watchlistAddresses());
-        String from = normalize(transaction.getFromAddress());
-        String to = normalize(transaction.getToAddress());
-
-        boolean fromWatchlist = watchlistAddresses.contains(from);
-        boolean toWatchlist = watchlistAddresses.contains(to);
-
-        if (!fromWatchlist && !toWatchlist) {
+        String walletAddress = matchedAddress(transaction);
+        if (walletAddress == null) {
             return Optional.empty();
         }
-
-        String walletAddress = fromWatchlist ? transaction.getFromAddress() : transaction.getToAddress();
+        boolean fromWatchlist = walletAddress.equals(transaction.getFromAddress());
 
         Map<String, Object> evidence = new LinkedHashMap<>();
         evidence.put("matchedAddress", walletAddress);
@@ -51,7 +70,7 @@ public class WatchlistActivityDetectionRule implements DetectionRule {
                 EventType.WHALE_ACTIVITY,
                 RiskLevel.HIGH,
                 90,
-                "Watchlist wallet activity detected for " + walletAddress,
+                "관심 주소 " + walletAddress + (fromWatchlist ? "에서 출금" : "로 입금") + " 거래가 발생했습니다",
                 walletAddress,
                 transaction,
                 RULE_NAME,

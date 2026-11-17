@@ -126,7 +126,7 @@ public class DetectionService {
     }
 
     /**
-     * 룰이 cooldown 대상을 선언했고(fromAddress 계약) 창 안에 기존 이벤트가 있으면 true.
+     * 룰이 cooldown 대상을 선언했고 그 룰의 대상 지갑에 대해 창 안에 기존 이벤트가 있으면 true.
      * detectedAt이 벽시계 기준이므로 cutoff도 현재 시각 기준으로 계산한다 — catch-up으로
      * 과거 블록을 처리 중이어도 실시간 30분당 지갑별 1건으로 발화가 억제된다.
      */
@@ -137,8 +137,12 @@ public class DetectionService {
         }
         Instant cutoff = Instant.now()
                 .minus(thresholds.current().ruleCooldownMinutes(), java.time.temporal.ChronoUnit.MINUTES);
+        String wallet = detectionRule.cooldownWalletAddress(transaction);
+        if (wallet == null) {
+            return false;
+        }
         return detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
-                transaction.getFromAddress(), cooldownType, cutoff);
+                wallet, cooldownType, cutoff);
     }
 
     private static String shortHash(String txHash) {

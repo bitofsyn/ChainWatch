@@ -47,6 +47,7 @@ import { DataState } from "../components/DataState";
 import { Pagination } from "../components/Pagination";
 import { AdminUsersSection } from "./admin/AdminUsersSection";
 import { PolicySuggestionsPanel } from "../components/PolicySuggestionsPanel";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
 
 const SECTION_ITEMS: { section: AdminSection; path: string; label: string; adminOnly?: boolean }[] = [
   // 관리자가 바꿀 수 있는 것
@@ -69,7 +70,11 @@ export function AdminPage({ section }: AdminPageProps) {
 
   // 익명 접근은 App의 라우트 가드가 #/login으로 보낸다.
   // ADMIN 전용 섹션에 ANALYST가 직접 진입하면 각 섹션이 forbidden 패널을 보여준다.
-  const visibleSections = SECTION_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  // AI 분석 서버가 없는 배포에서는 쓸 수 없는 재분석 탭을 메뉴에서 뺀다.
+  const aiOff = useFeatureFlags().aiEnabled === false;
+  const visibleSections = SECTION_ITEMS.filter(
+    (item) => (!item.adminOnly || isAdmin) && !(item.section === "analysis" && aiOff)
+  );
 
   return (
     <>
@@ -95,7 +100,16 @@ export function AdminPage({ section }: AdminPageProps) {
       {section === "dashboard" ? isAdmin ? <AdminDashboard /> : <AdminOnlyNotice /> : null}
       {section === "collection" ? isAdmin ? <AdminCollection /> : <AdminOnlyNotice /> : null}
       {section === "pipeline" ? <AdminPipeline /> : null}
-      {section === "analysis" ? <AdminReanalysis /> : null}
+      {section === "analysis" ? (
+        aiOff ? (
+          <div className="empty-state">
+            이 환경에는 AI 분석 서버가 연결되어 있지 않아 재분석을 실행할 수 없습니다. 탐지와 이벤트 처리는
+            AI 없이 그대로 동작합니다.
+          </div>
+        ) : (
+          <AdminReanalysis />
+        )
+      ) : null}
       {section === "policies" ? <AdminPolicies /> : null}
       {section === "audit" ? <AdminAuditLogs /> : null}
       {section === "users" ? <AdminUsersSection /> : null}
@@ -530,7 +544,9 @@ function AdminReanalysis() {
         if (!active) {
           return;
         }
+        // 이미 종결한 이벤트는 다시 분석할 이유가 없으므로 처리 중인 것만 보여준다.
         const merged = [...criticalPage.content, ...highPage.content]
+          .filter((item) => item.status !== "RESOLVED" && item.status !== "FALSE_POSITIVE")
           .sort((a, b) => b.riskScore - a.riskScore || b.detectedAt.localeCompare(a.detectedAt));
         startTransition(() => {
           setEvents(merged);
@@ -578,7 +594,7 @@ function AdminReanalysis() {
   return (
     <>
       <p className="hint-text">
-        CRITICAL/HIGH 등급 이벤트에 대해 AI 분석을 다시 실행합니다. 분석 결과는 각 이벤트
+아직 종결하지 않은 치명·높음 등급 이벤트에 대해 AI 분석을 다시 실행합니다. 분석 결과는 각 이벤트
         상세 페이지의 AI 해설 섹션에 반영됩니다.
       </p>
 
@@ -952,8 +968,8 @@ const ETH_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const ADDRESS_FIELDS: { key: "watchlistAddresses" | "exchangeAddresses"; label: string; hint: string }[] = [
   {
     key: "watchlistAddresses",
-    label: "watchlist 주소 (WHALE_ACTIVITY)",
-    hint: "한 줄에 주소 1개. 비우면 룰 비활성"
+    label: "관심 주소 (관심 지갑 활동)",
+    hint: "한 줄에 주소 1개. 비우면 룰 비활성. 같은 주소는 재탐지 억제 시간 동안 이벤트 1건으로 묶입니다"
   },
   {
     key: "exchangeAddresses",

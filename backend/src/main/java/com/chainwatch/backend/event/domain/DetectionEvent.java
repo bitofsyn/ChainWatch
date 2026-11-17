@@ -215,6 +215,7 @@ public class DetectionEvent {
      * 분석가 workflow 상태 전이 규칙:
      * RESOLVED는 resolutionReason, FALSE_POSITIVE는 falsePositiveReason이 필수다.
      * assignee/notes는 전달된 경우에만 갱신한다(null이면 기존 값 유지).
+     * 종결(RESOLVED/FALSE_POSITIVE)을 되돌리면 종결 사유를 지우고, NEW로 되돌리면 담당자도 해제한다.
      */
     public void applyStatusChange(
             EventStatus newStatus,
@@ -232,20 +233,34 @@ public class DetectionEvent {
         if (newStatus == EventStatus.FALSE_POSITIVE && isBlank(falsePositiveReason)) {
             throw new IllegalArgumentException("falsePositiveReason is required when status is FALSE_POSITIVE");
         }
+        boolean reopened = isClosed(this.status) && !isClosed(newStatus);
+        if (reopened) {
+            // 종결을 되돌리면 이전 종결 사유는 더 이상 사실이 아니다. 사유는 처리 이력에 남아 있다.
+            this.resolutionReason = null;
+            this.falsePositiveReason = null;
+            if (newStatus == EventStatus.NEW) {
+                // 신규로 되돌리는 것은 "아무도 맡지 않은 상태"로 큐에 다시 올리는 것이다.
+                this.assignee = null;
+            }
+        }
         this.status = newStatus;
         this.statusChangedAt = Instant.now();
         if (assignee != null) {
             this.assignee = assignee.isBlank() ? null : assignee;
         }
-        if (resolutionReason != null) {
+        if (resolutionReason != null && !reopened) {
             this.resolutionReason = resolutionReason;
         }
-        if (falsePositiveReason != null) {
+        if (falsePositiveReason != null && !reopened) {
             this.falsePositiveReason = falsePositiveReason;
         }
         if (notes != null) {
             this.notes = notes.isBlank() ? null : notes;
         }
+    }
+
+    private static boolean isClosed(EventStatus status) {
+        return status == EventStatus.RESOLVED || status == EventStatus.FALSE_POSITIVE;
     }
 
     private static boolean isBlank(String value) {

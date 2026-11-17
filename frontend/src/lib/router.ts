@@ -21,6 +21,20 @@ export function navigate(path: string) {
   window.location.hash = path;
 }
 
+let explicitLogout = false;
+
+/** 사용자가 직접 로그아웃했음을 표시한다. 세션 만료로 밀려난 경우와 구분하기 위한 1회성 표시다. */
+export function markExplicitLogout() {
+  explicitLogout = true;
+}
+
+/** 직접 로그아웃 표시를 읽고 지운다. true면 로그인 후 이전 화면으로 복귀시키지 않는다. */
+export function consumeExplicitLogout(): boolean {
+  const value = explicitLogout;
+  explicitLogout = false;
+  return value;
+}
+
 /** Overview 라우트("/", "/?range=6h") 매칭. 쿼리 문자열(없으면 "")을 반환한다. */
 export function matchOverview(route: string): string | null {
   const match = route.match(/^\/(?:\?(.*))?$/);

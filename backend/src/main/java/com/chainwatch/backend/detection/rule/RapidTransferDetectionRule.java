@@ -67,9 +67,8 @@ public class RapidTransferDetectionRule implements DetectionRule {
                 EventType.RAPID_TRANSFER,
                 RiskLevel.MEDIUM,
                 72,
-                "Rapid transfer pattern detected: " + recentTransferCount
-                        + " transfers from " + transaction.getFromAddress()
-                        + " within " + current.rapidTransferWindowMinutes() + " minutes",
+                "반복 이체: " + transaction.getFromAddress() + " 주소가 "
+                        + current.rapidTransferWindowMinutes() + "분 안에 " + recentTransferCount + "회 이체했습니다",
                 transaction.getFromAddress(),
                 transaction,
                 RULE_NAME,

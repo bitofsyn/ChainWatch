@@ -33,7 +33,7 @@ export function SearchFilterBar({ filters, onChange, onSearch, onReset }: Search
           <span>탐지 유형</span>
           <select value={filters.eventType ?? ""} onChange={(event) => onChange({ ...filters, eventType: event.target.value || undefined })}>
             <option value="">전체 유형</option>
-            {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {Object.entries(EVENT_TYPE_LABELS).filter(([value]) => value !== "WATCHLIST_MATCH").map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
 

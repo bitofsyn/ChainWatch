@@ -165,6 +165,43 @@ class DetectionServiceTest {
         verify(detectionEventRepository, never()).save(any());
     }
 
+    /** 거래가 많은 관심 주소는 cooldown 동안 1건으로 묶인다. 수신 쪽으로 일치해도 그 주소 기준으로 억제한다. */
+    @Test
+    void cooldownSuppressesRepeatedWatchlistEventsForMatchedAddress() {
+        DetectionProperties cooldownProperties = new DetectionProperties(
+                DetectionProperties.DetectionTransport.SYNC,
+                new BigDecimal("100.0"), null, 0, 10, 0, 15, 30, List.of("0xTO"), List.of());
+        DetectionThresholdsProvider cooldownThresholds = () -> DetectionThresholds.fromProperties(cooldownProperties);
+        DetectionService service = new DetectionService(
+                List.of(new com.chainwatch.backend.detection.rule.WatchlistActivityDetectionRule(
+                        () -> new com.chainwatch.backend.detection.config.DetectionAddressLists(
+                                List.of("0xTO"), List.of()))),
+                cooldownThresholds,
+                detectionEventRepository,
+                kafkaProducer,
+                new ChainWatchMetrics(new SimpleMeterRegistry()),
+                objectMapper,
+                faultInjector,
+                failureRecorder,
+                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+        );
+        when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
+                org.mockito.ArgumentMatchers.eq("0xto"),
+                org.mockito.ArgumentMatchers.eq(EventType.WHALE_ACTIVITY),
+                any()))
+                .thenReturn(false, true);
+        when(detectionEventRepository.existsByTransactionIdAndEventType(any(), any())).thenReturn(false);
+        when(detectionEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.analyzeTransaction(transaction(BigDecimal.ONE));
+        service.analyzeTransaction(transaction(BigDecimal.ONE));
+
+        ArgumentCaptor<DetectionEvent> captor = ArgumentCaptor.forClass(DetectionEvent.class);
+        verify(detectionEventRepository).save(captor.capture());
+        assertThat(captor.getValue().getEventType()).isEqualTo(EventType.WHALE_ACTIVITY);
+        assertThat(captor.getValue().getSummary()).contains("관심 주소").contains("입금");
+    }
+
     /** cooldown 창에 기존 이벤트가 없으면 룰이 평소대로 평가·발화한다. */
     @Test
     void cooldownAllowsRuleWhenNoRecentEventExists() {

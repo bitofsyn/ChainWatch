@@ -11,12 +11,19 @@ public interface DetectionRule {
     /**
      * 지갑 단위 cooldown을 적용할 이벤트 유형. null이면 cooldown을 적용하지 않는다.
      *
-     * <p>발신 지갑의 행위 패턴을 보는 룰(RAPID_TRANSFER/FAN_OUT)만 대상으로 한다 — 바쁜 지갑은
-     * 창 안의 모든 후속 트랜잭션이 다시 발화해 트랜잭션당 1건씩 이벤트가 폭증하기 때문이다.
-     * cooldown 대상 룰은 walletAddress로 트랜잭션의 fromAddress를 사용한다는 계약을 전제한다.
+     * <p>지갑의 행위 패턴을 보는 룰(RAPID_TRANSFER/FAN_OUT)과 관심 주소 룰(WHALE_ACTIVITY)이
+     * 대상이다 — 바쁜 지갑은 후속 트랜잭션마다 다시 발화해 트랜잭션당 1건씩 이벤트가 폭증하기 때문이다.
      * 트랜잭션 단건이 그 자체로 의미 있는 룰(LARGE_TRANSFER 등)은 대상이 아니다.
      */
     default EventType cooldownEventType() {
         return null;
+    }
+
+    /**
+     * cooldown을 판단할 지갑. 룰이 이벤트의 walletAddress로 쓰는 주소와 같아야 한다.
+     * 기본은 발신 주소이고, null을 돌려주면 이 트랜잭션에는 cooldown을 적용하지 않는다.
+     */
+    default String cooldownWalletAddress(Transaction transaction) {
+        return transaction.getFromAddress();
     }
 }

@@ -48,7 +48,7 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
             return Optional.empty();
         }
 
-        String direction = toExchange ? "into exchange" : "out of exchange";
+        String direction = toExchange ? "거래소로 입금" : "거래소에서 출금";
         String walletAddress = toExchange ? transaction.getToAddress() : transaction.getFromAddress();
         int riskScore = toExchange ? 88 : 78;
 
@@ -63,7 +63,7 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
                 EventType.EXCHANGE_FLOW,
                 RiskLevel.HIGH,
                 riskScore,
-                "Exchange flow detected: " + transaction.getAmount() + " ETH moved " + direction,
+                "거래소 입출금: " + transaction.getAmount().stripTrailingZeros().toPlainString() + " ETH가 " + direction + "되었습니다",
                 walletAddress,
                 transaction,
                 RULE_NAME,

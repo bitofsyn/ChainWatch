@@ -33,6 +33,7 @@ import { RiskBadge } from "../components/RiskBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ChainBadge } from "../components/ChainBadge";
 import { DataState } from "../components/DataState";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
 
 interface EventDetailPageProps {
   eventId: number;
@@ -374,6 +375,8 @@ function AiAnalysisSection({
   // 요청 중에는 패널 전체를 진행 중 상태로 전환해 응답 도착 즉시 리포트가 그 자리에 표시된다.
   const view: AiReportView = analyzing ? { kind: "pending" } : resolveAiReportView(event.aiReport);
   const authed = useAuth().canOperate;
+  // AI 분석 서버가 연결되지 않은 배포에서는 누를 수 없는 요청 버튼 대신 상태를 알려준다.
+  const aiOff = useFeatureFlags().aiEnabled === false;
   const reportStatus = event.aiReport?.status;
 
   // 백로그 워커 등이 걸어둔 PENDING/IN_PROGRESS 리포트는 완료 시점에 자동 반영한다(수동 새로고침 불필요).
@@ -422,7 +425,7 @@ function AiAnalysisSection({
           <p className="section-kicker">AI 보조 분석</p>
           <h2>근거 기반 분석 리포트</h2>
         </div>
-        {authed && view.kind !== "failed" ? (
+        {authed && !aiOff && view.kind !== "failed" ? (
           <button type="button" className="ghost-button" onClick={handleAnalyze} disabled={analyzing}>
             {analyzing ? "분석 요청 중..." : view.kind === "none" ? "AI 분석 요청" : "재분석 요청"}
           </button>
@@ -455,7 +458,9 @@ function AiAnalysisSection({
         <DataState
           empty
           emptyMessage={
-            authed
+            aiOff
+              ? "이 환경에는 AI 분석 서버가 연결되어 있지 않습니다. 탐지와 처리는 규칙 근거만으로 진행합니다."
+              : authed
               ? "아직 분석 리포트가 없습니다. 상단 버튼으로 분석을 요청하세요."
               : "아직 분석 리포트가 없습니다. 분석 요청은 분석가·관리자만 할 수 있습니다."
           }
@@ -469,7 +474,7 @@ function AiAnalysisSection({
       {view.kind === "failed" ? (
         <div className="data-state error" role="alert">
           <p>AI 분석에 실패했습니다. 분석 서버 또는 프로바이더 상태를 확인한 뒤 재시도할 수 있습니다.</p>
-          {authed ? (
+          {authed && !aiOff ? (
             <button type="button" className="ghost-button" onClick={handleAnalyze} disabled={analyzing}>
               {analyzing ? "재시도 중..." : "분석 재시도"}
             </button>

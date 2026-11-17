@@ -173,7 +173,7 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
           >
             전체 큐
           </button>
-          {user ? (
+          {user && canOperate ? (
             <button
               type="button"
               className={`ghost-button ${activeScope === "mine" ? "selected" : ""}`}
@@ -182,13 +182,15 @@ export function EventsPage({ initialFilters }: EventsPageProps = {}) {
               내 케이스
             </button>
           ) : null}
-          <button
-            type="button"
-            className={`ghost-button ${activeScope === "unassigned" ? "selected" : ""}`}
-            onClick={() => applyScope("unassigned")}
-          >
-            미할당
-          </button>
+          {canOperate ? (
+            <button
+              type="button"
+              className={`ghost-button ${activeScope === "unassigned" ? "selected" : ""}`}
+              onClick={() => applyScope("unassigned")}
+            >
+              미할당
+            </button>
+          ) : null}
         </div>
 
         <SearchFilterBar filters={filters} onChange={setFilters} onSearch={handleSearch} onReset={handleReset} />

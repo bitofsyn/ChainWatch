@@ -59,6 +59,30 @@ class DetectionEventWorkflowTest {
     }
 
     @Test
+    void reopeningClosedEventClearsClosingReasonAndKeepsAssigneeForInvestigation() {
+        DetectionEvent event = newEvent();
+        event.applyStatusChange(EventStatus.RESOLVED, "alice", "정상 출금 확인", null, null);
+
+        event.applyStatusChange(EventStatus.INVESTIGATING, null, null, null, null);
+
+        assertThat(event.getStatus()).isEqualTo(EventStatus.INVESTIGATING);
+        assertThat(event.getResolutionReason()).isNull();
+        assertThat(event.getAssignee()).isEqualTo("alice");
+    }
+
+    @Test
+    void reopeningToNewAlsoReleasesAssignee() {
+        DetectionEvent event = newEvent();
+        event.applyStatusChange(EventStatus.FALSE_POSITIVE, "alice", null, "거래소 지갑", null);
+
+        event.applyStatusChange(EventStatus.NEW, null, null, null, null);
+
+        assertThat(event.getStatus()).isEqualTo(EventStatus.NEW);
+        assertThat(event.getFalsePositiveReason()).isNull();
+        assertThat(event.getAssignee()).isNull();
+    }
+
+    @Test
     void nullStatusIsRejected() {
         DetectionEvent event = newEvent();
         assertThatThrownBy(() -> event.applyStatusChange(null, null, null, null, null))

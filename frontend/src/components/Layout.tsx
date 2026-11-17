@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { Theme } from "../hooks/useTheme";
 import { useAuth } from "../contexts/AuthContext";
-import { navigate } from "../lib/router";
+import { useFeatureFlags, type FeatureFlags } from "../hooks/useFeatureFlags";
+import { markExplicitLogout, navigate } from "../lib/router";
 import type { Role } from "../types";
 
 interface LayoutProps {
@@ -18,29 +19,36 @@ interface NavItem {
 
 const DASHBOARD: NavItem = { path: "/", label: "대시보드" };
 const RULES: NavItem = { path: "/rules", label: "탐지 정책" };
-const AGENTS: NavItem = { path: "/agents", label: "Agent 관제" };
+/** 수집→탐지→분석→알림 단계별 처리량·병목 화면. 시스템 운영자(관리자)용이다. */
+const PIPELINE_OPS: NavItem = { path: "/agents", label: "처리 단계 관제" };
 
-/** 역할별 메뉴. 첫 항목이 그 역할의 주 업무 화면이다. */
-const NAV_BY_ROLE: Record<Role, NavItem[]> = {
-  VIEWER: [DASHBOARD, { path: "/events", label: "이상 거래" }, RULES],
-  ANALYST: [
-    { path: "/work", label: "작업 큐" },
-    { path: "/events", label: "이상 거래" },
-    DASHBOARD,
-    RULES,
-    { path: "/admin/analysis", label: "재분석" },
-    AGENTS
-  ],
-  ADMIN: [
+/**
+ * 역할별 메뉴. 첫 항목이 그 역할의 주 업무 화면이다.
+ * 이상 거래 관제와 직접 관련 없는 선택 기능(AI 재분석, 검증인 조회)은 켜져 있을 때만 보인다.
+ */
+function navFor(role: Role, flags: FeatureFlags): NavItem[] {
+  if (role === "VIEWER") {
+    return [DASHBOARD, { path: "/events", label: "이상 거래" }, RULES];
+  }
+  if (role === "ANALYST") {
+    return [
+      { path: "/work", label: "작업 큐" },
+      { path: "/events", label: "이상 거래" },
+      DASHBOARD,
+      RULES,
+      ...(flags.aiEnabled ? [{ path: "/admin/analysis", label: "재분석" }] : [])
+    ];
+  }
+  return [
     { path: "/admin", label: "운영 설정" },
     { path: "/work", label: "작업 큐" },
     DASHBOARD,
     { path: "/events", label: "이상 거래" },
     RULES,
-    AGENTS,
-    { path: "/staking", label: "검증인" }
-  ]
-};
+    PIPELINE_OPS,
+    ...(flags.stakingEnabled ? [{ path: "/staking", label: "검증인" }] : [])
+  ];
+}
 
 /** 메뉴 아래에 표시하는 역할 안내. 로그인한 사람이 자기 권한 범위를 바로 알 수 있게 한다. */
 const ROLE_SCOPE: Record<Role, string> = {
@@ -68,8 +76,11 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
   const { user, logout } = useAuth();
+  const flags = useFeatureFlags();
 
   async function handleLogout() {
+    // 직접 로그아웃한 경우에는 다음 로그인(다른 계정일 수 있음)을 이전 화면으로 보내지 않는다.
+    markExplicitLogout();
     await logout();
     navigate("/login");
   }
@@ -83,7 +94,7 @@ export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
           <span className="brand-sub">온체인 이상 거래 탐지</span>
         </a>
         <nav className="nav-links" aria-label="주요 메뉴">
-          {(user ? NAV_BY_ROLE[user.role] ?? [] : []).map((item) => (
+          {(user ? navFor(user.role, flags) : []).map((item) => (
             <a
               key={item.path}
               href={`#${item.path}`}

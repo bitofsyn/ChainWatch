@@ -153,6 +153,8 @@ public class EventWorkflowService {
                 detail += " · 사유: " + event.getResolutionReason();
             } else if (event.getStatus() == EventStatus.FALSE_POSITIVE) {
                 detail += " · 사유: " + event.getFalsePositiveReason();
+            } else if (previousStatus == EventStatus.RESOLVED || previousStatus == EventStatus.FALSE_POSITIVE) {
+                detail += " · 재오픈 (이전 종결 사유 해제)";
             }
             activityRepository.save(new EventActivity(event.getId(), actor, EventActivity.TYPE_STATUS, detail));
         }

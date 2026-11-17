@@ -50,7 +50,7 @@ public class SanctionedAddressDetectionRule implements DetectionRule {
                 EventType.SANCTIONED_ADDRESS,
                 RiskLevel.CRITICAL,
                 100,
-                "Sanctioned (OFAC SDN) address activity detected for " + walletAddress,
+                "제재 대상(OFAC SDN) 주소 " + walletAddress + "가 관여한 거래가 발생했습니다",
                 walletAddress,
                 transaction,
                 RULE_NAME,

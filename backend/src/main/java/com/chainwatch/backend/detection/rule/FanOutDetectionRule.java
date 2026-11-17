@@ -75,9 +75,8 @@ public class FanOutDetectionRule implements DetectionRule {
                 EventType.FAN_OUT,
                 RiskLevel.HIGH,
                 78,
-                "Fan-out pattern detected: " + transaction.getFromAddress()
-                        + " sent to " + distinctRecipients + " distinct addresses within "
-                        + current.fanOutWindowMinutes() + " minutes",
+                "자금 분산: " + transaction.getFromAddress() + " 주소가 "
+                        + current.fanOutWindowMinutes() + "분 안에 서로 다른 주소 " + distinctRecipients + "곳으로 송금했습니다",
                 transaction.getFromAddress(),
                 transaction,
                 RULE_NAME,
