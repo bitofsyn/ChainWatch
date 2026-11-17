@@ -48,6 +48,10 @@ springdoc:
     path: /swagger-ui.html
 
 chainwatch:
+  infra:
+    # Kafka·Redis 없이 단독 실행하는 구성에서는 false. 파이프라인 상태에 "미사용"으로 표시된다.
+    kafka-enabled: ${CHAINWATCH_KAFKA_ENABLED:true}
+    redis-enabled: ${CHAINWATCH_REDIS_ENABLED:true}
   staking:
     enabled: ${CHAINWATCH_STAKING_ENABLED:false}
     network: ${CHAINWATCH_STAKING_NETWORK:unconfigured}

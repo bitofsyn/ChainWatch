@@ -1,5 +1,6 @@
 package com.chainwatch.backend.ops.api;
 
+import com.chainwatch.backend.ops.config.InfraProperties;
 import com.chainwatch.backend.analysis.config.AiAnalysisProperties;
 import com.chainwatch.backend.collector.config.CollectorProperties;
 import com.chainwatch.backend.collector.service.BlockCollectionService;
@@ -41,6 +42,7 @@ public class PipelineStatusController {
     private final NotificationProperties notificationProperties;
     private final OperationalSettingsService operationalSettings;
     private final WebClient.Builder webClientBuilder;
+    private final InfraProperties infraProperties;
 
     public PipelineStatusController(
             DetectionEventRepository detectionEventRepository,
@@ -53,7 +55,8 @@ public class PipelineStatusController {
             AiAnalysisProperties aiAnalysisProperties,
             NotificationProperties notificationProperties,
             OperationalSettingsService operationalSettings,
-            WebClient.Builder webClientBuilder
+            WebClient.Builder webClientBuilder,
+            InfraProperties infraProperties
     ) {
         this.detectionEventRepository = detectionEventRepository;
         this.stringRedisTemplate = stringRedisTemplate;
@@ -66,6 +69,7 @@ public class PipelineStatusController {
         this.notificationProperties = notificationProperties;
         this.operationalSettings = operationalSettings;
         this.webClientBuilder = webClientBuilder;
+        this.infraProperties = infraProperties;
     }
 
     @GetMapping
@@ -91,6 +95,9 @@ public class PipelineStatusController {
     }
 
     private ComponentStatus checkRedis() {
+        if (!infraProperties.redisEnabled()) {
+            return ComponentStatus.disabled("redis", "Redis 미사용 구성. 최근 피드 캐시 없이 동작");
+        }
         try {
             String pong = stringRedisTemplate.execute(connection -> connection.ping(), true);
             if ("PONG".equalsIgnoreCase(pong)) {
@@ -103,6 +110,9 @@ public class PipelineStatusController {
     }
 
     private ComponentStatus checkKafka() {
+        if (!infraProperties.kafkaEnabled()) {
+            return ComponentStatus.disabled("kafka", "Kafka 미사용 구성. 탐지는 수집과 같은 요청에서 동기 실행");
+        }
         try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
             var cluster = adminClient.describeCluster(
                     new DescribeClusterOptions().timeoutMs((int) PROBE_TIMEOUT.toMillis()));

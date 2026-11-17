@@ -9,6 +9,13 @@ ChainWatch는 이더리움 블록과 트랜잭션을 수집하고, 규칙 기반
 
 단순히 AI에게 거래 판단을 맡기지 않고, **재현 가능한 규칙이 먼저 이상 징후와 근거를 생성하고 AI는 그 결과를 해석하는 보조 계층으로 동작**하도록 구현했습니다.
 
+## 배포 주소
+
+- **Web UI**: [https://chainwatch.devfolio-2026.workers.dev](https://chainwatch.devfolio-2026.workers.dev)
+- **Backend 상태 확인**: [https://chainwatch-backend.onrender.com/actuator/health](https://chainwatch-backend.onrender.com/actuator/health)
+
+프런트엔드는 Cloudflare Workers, 백엔드는 Render에 배포되어 있으며 `main`의 CI가 성공하면 자동으로 재배포됩니다. Render 무료 인스턴스는 일정 시간 요청이 없으면 중지되므로 첫 접속 시 응답까지 시간이 걸릴 수 있습니다. 배포 환경은 Kafka·Redis 없이 단독 실행하며 자동 수집과 AI 분석은 꺼져 있습니다.
+
 ## 주요 기능
 
 - 이더리움 RPC·Etherscan 기반 블록·트랜잭션 수집 (폴링, WebSocket)

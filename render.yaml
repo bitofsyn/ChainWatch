@@ -25,6 +25,10 @@ services:
         value: "false"
       - key: MANAGEMENT_HEALTH_REDIS_ENABLED
         value: "false"
+      - key: CHAINWATCH_KAFKA_ENABLED
+        value: "false"
+      - key: CHAINWATCH_REDIS_ENABLED
+        value: "false"
       - key: CHAINWATCH_DETECTION_MODE
         value: sync
       - key: CHAINWATCH_NOTIFICATION_DEDUP_STORE
