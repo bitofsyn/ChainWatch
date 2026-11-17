@@ -17,6 +17,12 @@ const NAV_ITEMS = [
   { path: "/admin", label: "운영 관리" }
 ];
 
+// 로그인한 운영자에게만 보이는 메뉴. 두 화면 모두 운영 조회 권한이 필요하다.
+const OPERATOR_NAV_ITEMS = [
+  { path: "/agents", label: "Agent 관제" },
+  { path: "/staking", label: "검증인" }
+];
+
 function isActive(route: string, path: string): boolean {
   if (path === "/") {
     return route === "/";
@@ -46,7 +52,7 @@ export function Layout({ route, theme, onToggleTheme, children }: LayoutProps) {
           <span className="brand-sub">온체인 이상 거래 탐지</span>
         </a>
         <nav className="nav-links" aria-label="주요 메뉴">
-          {NAV_ITEMS.map((item) => (
+          {(user ? [...NAV_ITEMS, ...OPERATOR_NAV_ITEMS] : NAV_ITEMS).map((item) => (
             <a
               key={item.path}
               href={`#${item.path}`}

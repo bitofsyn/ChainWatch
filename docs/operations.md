@@ -30,6 +30,7 @@ Grafana(3000)·Prometheus(9090)·Kafka UI(8081)는 `--profile monitoring`을 추
 | `CHAINWATCH_JWT_ENABLED` | JWT 인증 활성화 (외부 공개 시 필수) | `false` |
 | `CHAINWATCH_JWT_SECRET` / `CHAINWATCH_PASSWORD_PEPPER` | 인증 비밀값 | 개발용 기본값 |
 | `CHAINWATCH_ADMIN_USERNAME` / `CHAINWATCH_ADMIN_PASSWORD` | 최초 관리자 계정 | 미설정 |
+| `CHAINWATCH_ANALYST_PASSWORD` | 최초 분석가 계정 비밀번호. JWT 인증이 켜진 상태에서 개발 기본값이면 계정을 만들지 않음 | 개발용 기본값 |
 
 자동 수집, 웹훅 알림, 최소 알림 위험 점수는 **운영 관리 → 탐지·알림 정책**에서 재시작 없이 변경할 수 있고 변경 내역은 감사 로그에 남습니다.
 

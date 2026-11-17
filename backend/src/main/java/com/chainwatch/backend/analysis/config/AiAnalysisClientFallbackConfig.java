@@ -14,7 +14,8 @@ public class AiAnalysisClientFallbackConfig {
     public AiAnalysisClient aiAnalysisClient() {
         return request -> {
             throw new AiAnalysisException(
-                    "AI analysis server is not configured. Set chainwatch.ai.enabled=true and chainwatch.ai.base-url."
+                    "AI 분석이 비활성화되어 있어 리포트를 생성할 수 없습니다. "
+                            + "관리자가 AI 분석 서버를 설정하면 사용할 수 있습니다."
             );
         };
     }

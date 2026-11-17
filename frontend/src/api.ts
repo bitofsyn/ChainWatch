@@ -80,7 +80,7 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, serverMessage);
 }
 
-async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+export async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
   const doFetch = async (): Promise<Response> => {
     const headers = new Headers(init.headers);
     const token = getAccessToken();

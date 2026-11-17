@@ -124,6 +124,7 @@ services:
       CHAINWATCH_PASSWORD_PEPPER: ${CHAINWATCH_PASSWORD_PEPPER:-chainwatch-local-development-pepper-change-before-deployment}
       CHAINWATCH_ADMIN_USERNAME:
       CHAINWATCH_ADMIN_PASSWORD:
+      CHAINWATCH_ANALYST_PASSWORD:
       # AI 분석 연동 (CHAINWATCH_AI_ENABLED=true 환경변수로 활성화)
       CHAINWATCH_AI_ENABLED: ${CHAINWATCH_AI_ENABLED:-false}
       CHAINWATCH_AI_BASE_URL: http://ai-analysis:8000

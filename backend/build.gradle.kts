@@ -45,4 +45,8 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // 테스트는 기본 설정의 Redis(localhost:6379)에 접속한다. 로컬에서 앱 스택이 떠 있을 때
+    // 테스트 메시지가 실제 최신 피드 캐시에 섞이지 않도록 테스트 전용 키를 사용한다.
+    systemProperty("chainwatch.feed.recent-transactions-key", "chainwatch:test:feed:transactions")
+    systemProperty("chainwatch.feed.recent-events-key", "chainwatch:test:feed:events")
 }

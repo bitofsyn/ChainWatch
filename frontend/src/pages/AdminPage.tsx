@@ -71,12 +71,12 @@ export function AdminPage({ section }: AdminPageProps) {
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">관리자 콘솔</p>
+          <p className="eyebrow">운영 콘솔</p>
           <h1>{SECTION_ITEMS.find((item) => item.section === section)?.label}</h1>
         </div>
       </section>
 
-      <nav className="sub-nav" aria-label="관리자 메뉴">
+      <nav className="sub-nav" aria-label="운영 메뉴">
         {visibleSections.map((item) => (
           <a
             key={item.section}

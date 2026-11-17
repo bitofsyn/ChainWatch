@@ -96,6 +96,9 @@ export function OverviewPage({ route }: OverviewPageProps) {
   }));
 
   const collector = overview?.collector ?? null;
+  // 자동 수집이 꺼져 있으면 lag 0은 "따라잡음"이 아니라 "수집하지 않음"이다. 정상으로 표시하지 않는다.
+  const collectorDisabled =
+    pipeline?.components.find((item) => item.name === "collector")?.status === "DISABLED";
   const kpis = overview?.kpis ?? null;
   const changes = data.kpiChanges;
 
@@ -157,23 +160,27 @@ export function OverviewPage({ route }: OverviewPageProps) {
         <MetricCard
           label="Collector Lag"
           value={
-            <AnimatedMetricValue
-              value={collector?.lagBlocks ?? null}
-              format={(value) => (value == null ? "—" : `${formatNumber(Math.round(value))} 블록`)}
-              change={changes?.lagBlocks ?? null}
-            />
+            collectorDisabled ? (
+              "수집 중지"
+            ) : (
+              <AnimatedMetricValue
+                value={collector?.lagBlocks ?? null}
+                format={(value) => (value == null ? "—" : `${formatNumber(Math.round(value))} 블록`)}
+                change={changes?.lagBlocks ?? null}
+              />
+            )
           }
           sub={
             collector
               ? collector.lastCollectedBlock != null
-                ? `마지막 수집 #${formatNumber(collector.lastCollectedBlock)} · 확정 ${collector.confirmationDepth} conf`
+                ? `${collectorDisabled ? "자동 수집 비활성 · " : ""}마지막 수집 #${formatNumber(collector.lastCollectedBlock)} · 확정 ${collector.confirmationDepth} conf`
                 : "수집 이력 없음"
               : data.overviewError
                 ? "지표 조회 실패"
                 : "불러오는 중"
           }
-          level={collector ? collectorLevel(collector.status) : undefined}
-          change={changes?.lagBlocks ?? null}
+          level={collectorDisabled ? "unknown" : collector ? collectorLevel(collector.status) : undefined}
+          change={collectorDisabled ? null : changes?.lagBlocks ?? null}
           semantic={KPI_SEMANTICS.lagBlocks}
           formatChipDelta={chipBlocks}
           help={`chain head − 마지막 수집 블록. ${LAG_WARN_BLOCKS}블록 이하 정상, ${LAG_DANGER_BLOCKS}블록 이하 주의, 초과 시 위험. head는 수집 사이클의 관측값입니다.`}

@@ -20,7 +20,7 @@ flowchart LR
 ### 최초 1회 설정
 
 1. **PostgreSQL 준비**: [Neon](https://neon.tech) 등 무료 PostgreSQL을 만들고 접속 정보를 확인합니다. JDBC URL 형식은 `jdbc:postgresql://<host>/<db>?sslmode=require`입니다.
-2. **Render 서비스 생성**: Render 대시보드 → New → Blueprint에서 이 저장소를 선택하면 `render.yaml`대로 서비스가 만들어집니다. 생성 화면에서 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `CHAINWATCH_ADMIN_PASSWORD`(`{noop}비밀번호` 형식)를 입력합니다.
+2. **Render 서비스 생성**: Render 대시보드 → New → Blueprint에서 이 저장소를 선택하면 `render.yaml`대로 서비스가 만들어집니다. 생성 화면에서 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `CHAINWATCH_ADMIN_PASSWORD`, `CHAINWATCH_ANALYST_PASSWORD`(둘 다 `{noop}비밀번호` 형식)를 입력합니다.
 3. **Deploy Hook 복사**: Render 서비스 → Settings → Deploy Hook의 URL을 복사합니다.
 4. **Cloudflare API 토큰 발급**: Cloudflare 대시보드 → My Profile → API Tokens에서 "Edit Cloudflare Workers" 템플릿으로 토큰을 만듭니다.
 5. **GitHub 저장소 설정**: Settings → Secrets and variables → Actions에 아래 값을 등록합니다.

@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
  * analyst-*(선택) 속성으로 초기 계정을 만든다. 사용자가 하나라도 있으면 아무것도 하지 않으므로
  * 재기동에 멱등하며, 이후 계정 관리는 전적으로 /api/users API를 통한다(속성 변경은 무시됨).
  *
+ * JWT 인증이 켜진 환경에서 비밀번호가 개발 기본값({noop}chainwatch) 그대로인 계정은 만들지 않는다.
+ *
  * {noop} 형식 비밀번호(로컬 개발 기본값)는 DB에 평문 마커로 남기지 않도록 BCrypt로 재인코딩한다.
  * 그 외 값은 이미 DelegatingPasswordEncoder 포맷({bcrypt}... 등)으로 간주해 그대로 저장한다.
  */
@@ -27,6 +29,9 @@ public class UserBootstrapRunner implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(UserBootstrapRunner.class);
 
     private static final String NOOP_PREFIX = "{noop}";
+
+    /** application.yml의 로컬 개발용 기본 비밀번호. 공개 저장소에 노출된 값이다. */
+    private static final String DEFAULT_DEV_PASSWORD = "{noop}chainwatch";
 
     private final UserAccountRepository userAccountRepository;
     private final SecurityProperties properties;
@@ -70,6 +75,13 @@ public class UserBootstrapRunner implements ApplicationRunner {
 
     private void seed(String username, String encodedPassword, UserRole role, String displayName, StringBuilder seeded) {
         if (username == null || username.isBlank() || encodedPassword == null || encodedPassword.isBlank()) {
+            return;
+        }
+        // JWT 인증을 켠 환경은 외부 공개를 전제로 한다. 저장소에 공개된 기본 비밀번호로는 계정을 만들지 않는다.
+        if (properties.jwtEnabled() && DEFAULT_DEV_PASSWORD.equals(encodedPassword)) {
+            log.warn("[USER_BOOTSTRAP] skipped seeding '{}' ({}): its password is still the built-in development "
+                    + "default while JWT security is enabled. Set a strong password to create this account.",
+                    username, role);
             return;
         }
         String passwordHash = encodedPassword.startsWith(NOOP_PREFIX)

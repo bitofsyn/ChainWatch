@@ -7,14 +7,9 @@ import type {
   AgentTeamStatus,
   SubAgentState
 } from "../types";
+// 인증 헤더와 토큰 갱신을 포함한 공통 요청 함수. JWT 활성 환경에서 agent-ops API는 로그인 토큰이 필요하다.
+import { requestJson } from "../api";
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    throw new Error(`agent-ops API request failed: ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
 
 /** 백엔드 GET /api/agent-ops/snapshot 조회. 실패 시 호출부에서 에러 배너를 표시한다. */
 export async function fetchAgentOpsSnapshot(): Promise<AgentOpsSnapshot> {

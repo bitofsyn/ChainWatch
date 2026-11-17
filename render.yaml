@@ -49,6 +49,9 @@ services:
       # 최초 계정 생성용. `{noop}비밀번호` 형식으로 입력하면 저장 시 BCrypt로 인코딩된다.
       - key: CHAINWATCH_ADMIN_PASSWORD
         sync: false
+      # 분석가 계정도 같은 형식으로 입력한다. 개발 기본값이면 계정이 만들어지지 않는다.
+      - key: CHAINWATCH_ANALYST_PASSWORD
+        sync: false
       # 메인넷 수집은 무료 DB 용량을 빠르게 채우므로 기본은 꺼 둔다.
       - key: CHAINWATCH_COLLECTOR_ENABLED
         value: "false"

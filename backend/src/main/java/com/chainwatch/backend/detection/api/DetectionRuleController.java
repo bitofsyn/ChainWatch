@@ -4,6 +4,7 @@ import com.chainwatch.backend.detection.config.DetectionAddressLists;
 import com.chainwatch.backend.detection.config.DetectionProperties;
 import com.chainwatch.backend.detection.config.DetectionThresholds;
 import com.chainwatch.backend.detection.service.DetectionThresholdSettingsService;
+import com.chainwatch.backend.sanctions.service.SanctionedAddressService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -22,13 +23,16 @@ public class DetectionRuleController {
 
     private final DetectionProperties detectionProperties;
     private final DetectionThresholdSettingsService thresholdSettingsService;
+    private final SanctionedAddressService sanctionedAddressService;
 
     public DetectionRuleController(
             DetectionProperties detectionProperties,
-            DetectionThresholdSettingsService thresholdSettingsService
+            DetectionThresholdSettingsService thresholdSettingsService,
+            SanctionedAddressService sanctionedAddressService
     ) {
         this.detectionProperties = detectionProperties;
         this.thresholdSettingsService = thresholdSettingsService;
+        this.sanctionedAddressService = sanctionedAddressService;
     }
 
     @GetMapping
@@ -48,6 +52,7 @@ public class DetectionRuleController {
         DetectionAddressLists addressLists = thresholdSettingsService.currentAddresses();
         int watchlistSize = addressLists.watchlistAddresses().size();
         int exchangeAddressSize = addressLists.exchangeAddresses().size();
+        int sanctionedAddressSize = sanctionedAddressService.activeCount();
 
         List<DetectionRulesResponse.Rule> rules = List.of(
                 new DetectionRulesResponse.Rule(
@@ -98,6 +103,15 @@ public class DetectionRuleController {
                         "HIGH",
                         78,
                         thresholds.fanOutThresholdRecipients() > 1
+                ),
+                new DetectionRulesResponse.Rule(
+                        "SANCTIONED_ADDRESS",
+                        "제재 주소 활동 탐지",
+                        "OFAC 제재 목록에 등록된 주소가 송신 또는 수신에 관여하면 탐지합니다.",
+                        "제재 주소 " + sanctionedAddressSize + "개 등록",
+                        "CRITICAL",
+                        100,
+                        sanctionedAddressSize > 0
                 )
         );
 
