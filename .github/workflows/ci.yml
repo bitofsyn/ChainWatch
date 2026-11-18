@@ -15,6 +15,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  repo-guard:
+    name: Repository guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # 환경 파일과 인증서·키 파일은 저장소에 올리지 않는다. 예시 파일(.env.prod.example)만 허용한다.
+      - name: Reject committed env and credential files
+        run: |
+          forbidden=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.(pem|key|p12|pfx)$|(^|/)(credentials|secrets)\.json$' | grep -v -x '.env.prod.example' || true)
+          if [ -n "$forbidden" ]; then
+            echo "::error::커밋하면 안 되는 파일이 추적되고 있습니다:"
+            echo "$forbidden"
+            exit 1
+          fi
+
+      # 흔한 형식의 실제 비밀값이 소스에 들어가는 것을 막는다. 값은 로그에 출력하지 않는다.
+      - name: Reject hardcoded secrets
+        run: |
+          pattern='sk-ant-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|gh[pousr]_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|hooks\.slack\.com/services/T[A-Z0-9]+/|discord(app)?\.com/api/webhooks/[0-9]+/|-----BEGIN [A-Z ]*PRIVATE KEY-----|api-key:[[:space:]]*[A-Z0-9]{34}([[:space:]]|$)'
+          hits=$(git grep -I -l -E "$pattern" -- . ':!frontend/package-lock.json' ':!.github/workflows/ci.yml' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::비밀값으로 보이는 문자열이 다음 파일에 있습니다:"
+            echo "$hits"
+            exit 1
+          fi
+
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
