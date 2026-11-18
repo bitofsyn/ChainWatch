@@ -1,8 +1,5 @@
 package com.chainwatch.backend.event.api;
 
-import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
-import com.chainwatch.backend.agentops.service.AgentFaultInjector;
-import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.analysis.api.AiAnalysisReportResponse;
 import com.chainwatch.backend.analysis.service.AiAnalysisService;
 import com.chainwatch.backend.audit.service.AuditLogService;
@@ -41,26 +38,17 @@ public class DetectionEventController {
     private final DetectionEventRepository detectionEventRepository;
     private final AiAnalysisService aiAnalysisService;
     private final AuditLogService auditLogService;
-    private final AgentFaultInjector faultInjector;
-    private final AgentFailureRecorder failureRecorder;
-    private final AgentProcessingTracker processingTracker;
     private final EventWorkflowService workflowService;
 
     public DetectionEventController(
             DetectionEventRepository detectionEventRepository,
             AiAnalysisService aiAnalysisService,
             AuditLogService auditLogService,
-            AgentFaultInjector faultInjector,
-            AgentFailureRecorder failureRecorder,
-            AgentProcessingTracker processingTracker,
             EventWorkflowService workflowService
     ) {
         this.detectionEventRepository = detectionEventRepository;
         this.aiAnalysisService = aiAnalysisService;
         this.auditLogService = auditLogService;
-        this.faultInjector = faultInjector;
-        this.failureRecorder = failureRecorder;
-        this.processingTracker = processingTracker;
         this.workflowService = workflowService;
     }
 

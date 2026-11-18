@@ -82,8 +82,6 @@ class NotificationServiceTest {
     }
 
     private final List<NotificationHistory> savedHistory = new ArrayList<>();
-    private final com.chainwatch.backend.agentops.service.AgentFaultInjector faultInjector =
-            new com.chainwatch.backend.agentops.service.AgentFaultInjector();
 
     private NotificationService service(
             OperationalSettingsService operationalSettings,
@@ -102,23 +100,8 @@ class NotificationServiceTest {
                 channels,
                 new NotificationHistoryRecorder(historyRepository),
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                faultInjector,
                 operationalSettings
         );
-    }
-
-    @Test
-    void recordsFailureHistoryInsteadOfSendingWhenFaultActive() {
-        RecordingChannel slack = new RecordingChannel("slack", true, false);
-        NotificationService service =
-                service(settings(true, 70), new RecordingDeduplicator(), List.of(slack));
-        faultInjector.activate("notification", "test scenario", 60);
-
-        service.notify(message(1, 90));
-
-        assertThat(slack.sent).isEmpty();
-        assertThat(savedHistory).hasSize(1);
-        assertThat(savedHistory.get(0).getSuccess()).isFalse();
     }
 
     @Test

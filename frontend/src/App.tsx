@@ -7,7 +7,6 @@ import {
   isLoginRoute,
   loginNextPath,
   matchAdminSection,
-  matchAgentTeamDetail,
   matchEventDetail,
   matchEventsList,
   matchOverview,
@@ -28,16 +27,9 @@ import { WalletDetailPage } from "./pages/WalletDetailPage";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage";
 import { RulesPage } from "./pages/RulesPage";
 import { AdminPage } from "./pages/AdminPage";
-import { AgentConsolePage } from "./pages/AgentConsolePage";
-import { AgentTeamDetailPage } from "./pages/AgentTeamDetailPage";
-import { AgentActivityPage } from "./pages/AgentActivityPage";
 
-import { DemoGuidePage } from "./pages/DemoGuidePage";
-import { StakingPage } from "./pages/StakingPage";
 
 function resolvePage(route: string) {
-  if (route === "/demo") return <DemoGuidePage />;
-  if (route === "/staking") return <StakingPage />;
   if (isLoginRoute(route)) {
     return <LoginPage nextPath={loginNextPath(route)} />;
   }
@@ -54,16 +46,6 @@ function resolvePage(route: string) {
   }
   if (route === "/rules") {
     return <RulesPage />;
-  }
-  if (route === "/agents") {
-    return <AgentConsolePage />;
-  }
-  if (route === "/agents/activity") {
-    return <AgentActivityPage />;
-  }
-  const agentTeamId = matchAgentTeamDetail(route);
-  if (agentTeamId != null) {
-    return <AgentTeamDetailPage teamId={agentTeamId} />;
   }
   const eventId = matchEventDetail(route);
   if (eventId != null) {
@@ -103,7 +85,7 @@ export default function App() {
   const adminSection = matchAdminSection(route);
   // 조회자는 운영 화면에 들어갈 수 없다. 서버도 같은 규칙으로 막지만 빈 화면 대신 첫 화면으로 돌려보낸다.
   const forbidden =
-    user?.role === "VIEWER" && (adminSection != null || route.startsWith("/agents") || route === "/staking" || route === "/work");
+    user?.role === "VIEWER" && (adminSection != null || route === "/work");
 
   // 모든 화면은 로그인이 필요하다. 세션 확인이 끝난(ready) 뒤에만 판단한다.
   useEffect(() => {

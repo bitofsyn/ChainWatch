@@ -19,12 +19,10 @@ interface NavItem {
 
 const DASHBOARD: NavItem = { path: "/", label: "대시보드" };
 const RULES: NavItem = { path: "/rules", label: "탐지 정책" };
-/** 수집→탐지→분석→알림 단계별 처리량·병목 화면. 시스템 운영자(관리자)용이다. */
-const PIPELINE_OPS: NavItem = { path: "/agents", label: "처리 단계 관제" };
 
 /**
  * 역할별 메뉴. 첫 항목이 그 역할의 주 업무 화면이다.
- * 이상 거래 관제와 직접 관련 없는 선택 기능(AI 재분석, 검증인 조회)은 켜져 있을 때만 보인다.
+ * AI 분석 서버가 없는 배포에서는 재분석 메뉴를 숨긴다.
  */
 function navFor(role: Role, flags: FeatureFlags): NavItem[] {
   if (role === "VIEWER") {
@@ -44,9 +42,7 @@ function navFor(role: Role, flags: FeatureFlags): NavItem[] {
     { path: "/work", label: "작업 큐" },
     DASHBOARD,
     { path: "/events", label: "이상 거래" },
-    RULES,
-    PIPELINE_OPS,
-    ...(flags.stakingEnabled ? [{ path: "/staking", label: "검증인" }] : [])
+    RULES
   ];
 }
 

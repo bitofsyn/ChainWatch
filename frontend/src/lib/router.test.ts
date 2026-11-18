@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   matchAdminSection,
-  matchAgentTeamDetail,
   matchEventDetail,
   matchOverview,
   matchTransactionDetail,
@@ -50,13 +49,6 @@ describe("matchWalletDetail", () => {
     expect(matchWalletDetail("/wallets/0xabc")).toBe("0xabc");
     expect(matchWalletDetail(`/wallets/${encodeURIComponent("0xAB/cd")}`)).toBe("0xAB/cd");
     expect(matchWalletDetail("/wallets")).toBeNull();
-  });
-});
-
-describe("matchAgentTeamDetail", () => {
-  it("matches team detail routes", () => {
-    expect(matchAgentTeamDetail("/agents/teams/detection")).toBe("detection");
-    expect(matchAgentTeamDetail("/agents/teams")).toBeNull();
   });
 });
 

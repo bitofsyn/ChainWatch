@@ -7,8 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
-import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.detection.config.DetectionProperties;
 import com.chainwatch.backend.detection.config.DetectionThresholds;
@@ -41,11 +39,7 @@ class DetectionServiceTest {
     @Mock
     private ChainWatchKafkaProducer kafkaProducer;
 
-    @Mock
-    private AgentFailureRecorder failureRecorder;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final AgentFaultInjector faultInjector = new AgentFaultInjector();
 
     private DetectionService detectionService;
 
@@ -61,23 +55,8 @@ class DetectionServiceTest {
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                objectMapper,
-                faultInjector,
-                failureRecorder,
-                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+                objectMapper
         );
-    }
-
-    @Test
-    void recordsFailureAndSkipsRulesWhenDetectionFaultActive() {
-        faultInjector.activate("detection", "test scenario", 60);
-
-        detectionService.analyzeTransaction(transaction(new BigDecimal("250")));
-
-        verify(failureRecorder).record(
-                org.mockito.ArgumentMatchers.eq("detection"), anyString(), anyString(),
-                org.mockito.ArgumentMatchers.eq(true));
-        verify(detectionEventRepository, never()).save(any());
     }
 
     @Test
@@ -148,10 +127,7 @@ class DetectionServiceTest {
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                objectMapper,
-                faultInjector,
-                failureRecorder,
-                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+                objectMapper
         );
         when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
                 org.mockito.ArgumentMatchers.eq("0xfrom"),
@@ -180,10 +156,7 @@ class DetectionServiceTest {
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                objectMapper,
-                faultInjector,
-                failureRecorder,
-                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+                objectMapper
         );
         when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
                 org.mockito.ArgumentMatchers.eq("0xto"),
@@ -218,10 +191,7 @@ class DetectionServiceTest {
                 detectionEventRepository,
                 kafkaProducer,
                 new ChainWatchMetrics(new SimpleMeterRegistry()),
-                objectMapper,
-                faultInjector,
-                failureRecorder,
-                new com.chainwatch.backend.agentops.service.AgentProcessingTracker()
+                objectMapper
         );
         when(detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
                 anyString(), any(), any())).thenReturn(false);

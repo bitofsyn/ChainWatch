@@ -1,6 +1,5 @@
 package com.chainwatch.backend.notification.service;
 
-import com.chainwatch.backend.agentops.service.AgentFaultInjector;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.notification.channel.NotificationChannel;
 import com.chainwatch.backend.notification.domain.NotificationMessage;
@@ -19,7 +18,6 @@ public class NotificationService {
     private final List<NotificationChannel> channels;
     private final NotificationHistoryRecorder historyRecorder;
     private final ChainWatchMetrics metrics;
-    private final AgentFaultInjector faultInjector;
     private final OperationalSettingsService operationalSettings;
 
     public NotificationService(
@@ -27,14 +25,12 @@ public class NotificationService {
             List<NotificationChannel> channels,
             NotificationHistoryRecorder historyRecorder,
             ChainWatchMetrics metrics,
-            AgentFaultInjector faultInjector,
             OperationalSettingsService operationalSettings
     ) {
         this.deduplicator = deduplicator;
         this.channels = channels;
         this.historyRecorder = historyRecorder;
         this.metrics = metrics;
-        this.faultInjector = faultInjector;
         this.operationalSettings = operationalSettings;
     }
 
@@ -51,25 +47,6 @@ public class NotificationService {
         String dedupKey = message.dedupKey();
         if (deduplicator.isDuplicate(dedupKey)) {
             log.debug("notification suppressed as duplicate | key={}", dedupKey);
-            return;
-        }
-
-        // 장애 주입 활성 시 실제 발송 대신 채널별 실패 이력을 남긴다. 채널 미구성 환경에서도 확인
-        // 가능하도록 구성 채널이 없으면 시뮬레이션 채널로 기록한다.
-        if (faultInjector.isActive("notification")) {
-            boolean anyConfigured = false;
-            for (NotificationChannel channel : channels) {
-                if (!channel.isConfigured()) {
-                    continue;
-                }
-                anyConfigured = true;
-                historyRecorder.record(message, channel.name(), false, "장애 주입 활성 — 발송 강제 실패");
-                metrics.recordNotification(channel.name(), false);
-            }
-            if (!anyConfigured) {
-                historyRecorder.record(message, "simulated", false, "장애 주입 활성 — 발송 강제 실패");
-            }
-            log.warn("notification forced to fail by fault injection | eventId={}", message.eventId());
             return;
         }
 

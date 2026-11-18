@@ -1,8 +1,5 @@
 package com.chainwatch.backend.detection.service;
 
-import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
-import com.chainwatch.backend.agentops.service.AgentFaultInjector;
-import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
@@ -44,9 +41,6 @@ public class DetectionService {
     private final ChainWatchKafkaProducer kafkaProducer;
     private final ChainWatchMetrics metrics;
     private final ObjectMapper objectMapper;
-    private final AgentFaultInjector faultInjector;
-    private final AgentFailureRecorder failureRecorder;
-    private final AgentProcessingTracker processingTracker;
     private com.chainwatch.backend.casework.service.ExcludedAddressRegistry excludedAddressRegistry;
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -56,10 +50,7 @@ public class DetectionService {
             DetectionEventRepository detectionEventRepository,
             ChainWatchKafkaProducer kafkaProducer,
             ChainWatchMetrics metrics,
-            ObjectMapper objectMapper,
-            AgentFaultInjector faultInjector,
-            AgentFailureRecorder failureRecorder,
-            AgentProcessingTracker processingTracker
+            ObjectMapper objectMapper
     ) {
         this.detectionRules = detectionRules;
         this.thresholds = thresholds;
@@ -67,9 +58,6 @@ public class DetectionService {
         this.kafkaProducer = kafkaProducer;
         this.metrics = metrics;
         this.objectMapper = objectMapper;
-        this.faultInjector = faultInjector;
-        this.failureRecorder = failureRecorder;
-        this.processingTracker = processingTracker;
     }
 
     /** 관리자가 승인한 탐지 예외 주소. 테스트 등 레지스트리가 없는 구성에서는 예외 없이 동작한다. */
@@ -101,13 +89,6 @@ public class DetectionService {
 
     @Transactional
     public void analyzeTransaction(Transaction transaction) {
-        if (faultInjector.isActive("detection")) {
-            failureRecorder.record("detection",
-                    "트랜잭션 " + shortHash(transaction.getTxHash()) + " 스크리닝 실패",
-                    "장애 주입 활성 — 룰 평가가 강제 실패 처리됨", true);
-            return;
-        }
-        long startedNanos = System.nanoTime();
         for (DetectionRule detectionRule : detectionRules) {
             // cooldown 안에 같은 지갑·같은 유형 이벤트가 이미 있으면 룰 평가 자체를 건너뛴다.
             // 발화 폭증 방지가 목적이고, 부수적으로 룰의 창 집계 쿼리도 절감된다(catch-up 성능).
@@ -134,7 +115,6 @@ public class DetectionService {
                         }
                     });
         }
-        processingTracker.record("detection", System.nanoTime() - startedNanos);
     }
 
     /**
@@ -155,13 +135,6 @@ public class DetectionService {
         }
         return detectionEventRepository.existsByWalletAddressAndEventTypeAndDetectedAtAfter(
                 wallet, cooldownType, cutoff);
-    }
-
-    private static String shortHash(String txHash) {
-        if (txHash == null) {
-            return "(hash 없음)";
-        }
-        return txHash.length() <= 14 ? txHash : txHash.substring(0, 14) + "…";
     }
 
     private DetectionEvent toDetectionEvent(DetectionCommand command) {

@@ -1,12 +1,8 @@
 package com.chainwatch.backend.casework.service;
 
-import com.chainwatch.backend.agentops.service.AgentFailureRecorder;
-import com.chainwatch.backend.agentops.service.AgentFaultInjector;
-import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.audit.service.AuditLogService;
 import com.chainwatch.backend.casework.domain.EventActivity;
 import com.chainwatch.backend.casework.repository.EventActivityRepository;
-import com.chainwatch.backend.common.exception.ConflictException;
 import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.event.api.EventStatusUpdateRequest;
 import com.chainwatch.backend.event.domain.DetectionEvent;
@@ -45,24 +41,15 @@ public class EventWorkflowService {
     private final DetectionEventRepository detectionEventRepository;
     private final EventActivityRepository activityRepository;
     private final AuditLogService auditLogService;
-    private final AgentFaultInjector faultInjector;
-    private final AgentFailureRecorder failureRecorder;
-    private final AgentProcessingTracker processingTracker;
 
     public EventWorkflowService(
             DetectionEventRepository detectionEventRepository,
             EventActivityRepository activityRepository,
-            AuditLogService auditLogService,
-            AgentFaultInjector faultInjector,
-            AgentFailureRecorder failureRecorder,
-            AgentProcessingTracker processingTracker
+            AuditLogService auditLogService
     ) {
         this.detectionEventRepository = detectionEventRepository;
         this.activityRepository = activityRepository;
         this.auditLogService = auditLogService;
-        this.faultInjector = faultInjector;
-        this.failureRecorder = failureRecorder;
-        this.processingTracker = processingTracker;
     }
 
     /** 일괄 처리 결과. missingIds는 존재하지 않아 건너뛴 이벤트. */
@@ -73,8 +60,6 @@ public class EventWorkflowService {
     public DetectionEvent changeStatus(Long id, EventStatusUpdateRequest request) {
         DetectionEvent event = detectionEventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Detection event not found: " + id));
-        rejectWhenFaultInjected(id, event.getStatus(), request.status());
-        long startedNanos = System.nanoTime();
         EventStatus previousStatus = event.getStatus();
         apply(event, request);
         auditLogService.record(
@@ -84,7 +69,6 @@ public class EventWorkflowService {
                 previousStatus + " -> " + request.status()
                         + (request.assignee() != null ? ", assignee=" + request.assignee() : "")
         );
-        processingTracker.record("triage", System.nanoTime() - startedNanos);
         return event;
     }
 
@@ -98,11 +82,9 @@ public class EventWorkflowService {
         if (uniqueIds.size() > MAX_BULK_SIZE) {
             throw new IllegalArgumentException("한 번에 처리할 수 있는 이벤트는 최대 " + MAX_BULK_SIZE + "건입니다.");
         }
-        long startedNanos = System.nanoTime();
         List<DetectionEvent> events = detectionEventRepository.findAllById(uniqueIds);
         List<Long> missing = new ArrayList<>(uniqueIds);
         for (DetectionEvent event : events) {
-            rejectWhenFaultInjected(event.getId(), event.getStatus(), request.status());
             apply(event, request);
             missing.remove(event.getId());
         }
@@ -114,7 +96,6 @@ public class EventWorkflowService {
                         + (request.assignee() != null ? ", assignee=" + request.assignee() : "")
                         + ", ids=" + events.stream().map(DetectionEvent::getId).toList()
         );
-        processingTracker.record("triage", System.nanoTime() - startedNanos);
         return new BulkResult(events.size(), missing);
     }
 
@@ -165,16 +146,6 @@ public class EventWorkflowService {
         if (event.getNotes() != null && !Objects.equals(previousNotes, event.getNotes())) {
             activityRepository.save(
                     new EventActivity(event.getId(), actor, EventActivity.TYPE_COMMENT, event.getNotes()));
-        }
-    }
-
-    private void rejectWhenFaultInjected(Long id, EventStatus from, EventStatus to) {
-        // 장애 주입 활성 시 실패를 기록(REQUIRES_NEW라 롤백과 무관하게 남음)하고 전이를 거부한다.
-        if (faultInjector.isActive("triage")) {
-            failureRecorder.record("triage",
-                    "이벤트 #" + id + " 상태 전이 실패",
-                    "장애 주입 활성 — " + from + " → " + to + " 전이 거부", true);
-            throw new ConflictException("장애 주입 활성 — Triage 팀 상태 전이가 강제 실패하도록 설정되어 있습니다.");
         }
     }
 

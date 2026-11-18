@@ -55,15 +55,6 @@ chainwatch:
     # Kafka·Redis 없이 단독 실행하는 구성에서는 false. 파이프라인 상태에 "미사용"으로 표시된다.
     kafka-enabled: ${CHAINWATCH_KAFKA_ENABLED:true}
     redis-enabled: ${CHAINWATCH_REDIS_ENABLED:true}
-  staking:
-    enabled: ${CHAINWATCH_STAKING_ENABLED:false}
-    network: ${CHAINWATCH_STAKING_NETWORK:unconfigured}
-    beacon-url: ${CHAINWATCH_BEACON_URL:}
-    genesis-validators-root: ${CHAINWATCH_BEACON_GENESIS_ROOT:}
-    validator-ids: ${CHAINWATCH_STAKING_VALIDATORS:}
-    request-timeout: 5s
-    stale-after: 15m
-    max-checkpoint-age: 30m
   security:
     password-pepper: ${CHAINWATCH_PASSWORD_PEPPER:chainwatch-local-development-pepper-change-before-deployment}
     jwt-enabled: ${CHAINWATCH_JWT_ENABLED:false}
