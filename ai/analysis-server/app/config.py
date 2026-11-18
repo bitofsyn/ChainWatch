@@ -39,6 +39,10 @@ class Settings(BaseSettings):
 
     http_timeout_seconds: float = 60.0
 
+    # 공개 주소로 배포할 때 백엔드만 분석을 요청할 수 있게 하는 공유 토큰.
+    # 비어 있으면 검사하지 않는다(로컬·docker-compose 내부망).
+    api_token: str = ""
+
     def fallback_providers(self) -> list[str]:
         return [name.strip() for name in self.fallback_chain.split(",") if name.strip()]
 

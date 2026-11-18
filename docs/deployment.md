@@ -15,6 +15,7 @@ flowchart LR
 
 - **프런트엔드**: [`frontend/wrangler.jsonc`](../frontend/wrangler.jsonc)와 [`frontend/worker/index.js`](../frontend/worker/index.js). Worker가 `/api/*` 요청을 백엔드로 전달하므로 브라우저는 같은 출처만 호출합니다.
 - **백엔드**: [`render.yaml`](../render.yaml). 무료 인스턴스(512MB)에 맞춰 Kafka·Redis 없이 단독 실행합니다. 탐지는 sync 모드로 동작하고, 수집기와 AI 분석은 기본으로 꺼져 있습니다.
+- **AI 분석 서버(선택)**: 같은 `render.yaml`의 `chainwatch-ai-analysis`. 아래 "AI 분석 서버 켜기" 참고.
 - **제약**: Render 무료 인스턴스는 15분간 요청이 없으면 중지되어 첫 응답에 1분가량 걸릴 수 있습니다. Kafka 기반 비동기 파이프라인과 모니터링 스택은 이 구성에 포함되지 않습니다.
 
 ### 최초 1회 설정
@@ -33,6 +34,21 @@ flowchart LR
 | Variable | `BACKEND_URL` | Render 서비스 주소 (예: `https://chainwatch-backend.onrender.com`) |
 
 `CLOUDFLARE_ACCOUNT_ID`가 없으면 프런트엔드 배포를, `BACKEND_URL`이 없으면 백엔드 배포를 건너뜁니다. 설정을 마친 뒤 Actions → CD → Run workflow로 첫 배포를 실행합니다.
+
+### AI 분석 서버 켜기 (선택)
+
+`render.yaml`의 `chainwatch-ai-analysis` 서비스(FastAPI, Render 무료)를 띄우고 백엔드에 연결합니다. AI 서버는 공개 주소이므로 백엔드가 공유 토큰(`X-ChainWatch-AI-Token`)을 실어 보낸 요청만 처리합니다.
+
+1. **Gemini 키 발급**: [Google AI Studio](https://aistudio.google.com/apikey)에서 API 키를 만듭니다. 결제를 연결하지 않은 프로젝트의 키를 쓰면 무료 한도를 넘어도 요금이 나가지 않고 요청만 실패합니다.
+2. **AI 서버 생성**
+   - Blueprint로 관리 중이면 Render 대시보드 → Blueprints → 이 저장소 → Sync를 누르면 `chainwatch-ai-analysis`가 만들어집니다. `CHAINWATCH_AI_GEMINI_API_KEY`에 1번 키를 입력하고, 공유 토큰은 자동 생성되어 백엔드에도 같은 값이 들어갑니다.
+   - 직접 만든다면 New → Web Service → 이 저장소, Root Directory `ai/analysis-server`, Runtime Docker, Instance Free, Health Check Path `/health`로 만들고 환경변수 `PORT=8000`, `CHAINWATCH_AI_DEFAULT_PROVIDER=gemini`, `CHAINWATCH_AI_FALLBACK_CHAIN=gemini`, `CHAINWATCH_AI_GEMINI_API_KEY`, `CHAINWATCH_AI_API_TOKEN`(`openssl rand -hex 32`로 생성)을 넣습니다.
+3. **동작 확인**: `https://<AI 서버 주소>/health`가 `{"status":"UP"}`를 돌려주면 됩니다.
+4. **백엔드 연결**: 백엔드 서비스 → Environment에 `CHAINWATCH_AI_BASE_URL=https://<AI 서버 주소>`, `CHAINWATCH_AI_ENABLED=true`를 넣습니다. 직접 만든 경우 `CHAINWATCH_AI_API_TOKEN`도 2번과 같은 값으로 넣습니다. 저장하면 백엔드가 재시작되고, 이벤트 상세에 AI 분석 버튼이 나타납니다.
+
+- 자동 분석 워커는 꺼 둡니다(`CHAINWATCH_AI_WORKER_ENABLED=false`). 버튼으로 요청한 건만 분석해 Gemini 무료 한도를 아낍니다.
+- Render 무료 인스턴스 시간은 워크스페이스 전체 합산입니다. AI 서버는 요청이 없으면 15분 뒤 잠들어 시간을 거의 쓰지 않지만, 잠든 상태의 첫 분석은 기동 시간만큼 늦어집니다(백엔드는 최대 120초 기다림).
+- AI 서버 코드가 바뀐 커밋만 Render가 자동 배포합니다(`buildFilter`). 백엔드처럼 CI 통과 후 배포하지는 않습니다.
 
 ## 임시 공개: Cloudflare Quick Tunnel
 

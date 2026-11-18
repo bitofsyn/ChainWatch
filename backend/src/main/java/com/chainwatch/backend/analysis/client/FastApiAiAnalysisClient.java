@@ -21,6 +21,8 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
     /** AI 서버의 프로바이더 폴백(최악 ~90s: claude 45s → gemini 45s)을 수용한다. 호출은 @Async 경로. */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(120);
 
+    static final String TOKEN_HEADER = "X-ChainWatch-AI-Token";
+
     private final WebClient webClient;
     private final AiAnalysisProperties properties;
     private final ObjectMapper objectMapper;
@@ -30,7 +32,11 @@ public class FastApiAiAnalysisClient implements AiAnalysisClient {
             AiAnalysisProperties properties,
             ObjectMapper objectMapper
     ) {
-        this.webClient = webClientBuilder.baseUrl(properties.baseUrl()).build();
+        WebClient.Builder builder = webClientBuilder.baseUrl(properties.baseUrl());
+        if (properties.apiToken() != null && !properties.apiToken().isBlank()) {
+            builder = builder.defaultHeader(TOKEN_HEADER, properties.apiToken());
+        }
+        this.webClient = builder.build();
         this.properties = properties;
         this.objectMapper = objectMapper;
     }

@@ -106,6 +106,8 @@ chainwatch:
     model: ${CHAINWATCH_AI_MODEL:}
     base-url: ${CHAINWATCH_AI_BASE_URL:}
     analyze-path: /api/v1/analyze
+    # AI 서버의 CHAINWATCH_AI_API_TOKEN과 같은 값. 공개 주소로 배포한 AI 서버를 보호한다.
+    api-token: ${CHAINWATCH_AI_API_TOKEN:}
     worker:
       # 미분석 고위험(HIGH/CRITICAL) 이벤트를 오래된 순으로 자동 분석해 백로그를 소비한다.
       # ai.enabled=true일 때만 동작. 실패(FAILED)는 자동 재시도하지 않는다(수동 재분석).

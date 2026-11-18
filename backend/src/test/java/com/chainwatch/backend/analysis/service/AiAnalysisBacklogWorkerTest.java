@@ -100,7 +100,7 @@ class AiAnalysisBacklogWorkerTest {
     private AiAnalysisBacklogWorker worker(boolean aiEnabled, boolean workerEnabled) {
         AiAnalysisProperties properties = new AiAnalysisProperties(
                 aiEnabled, "", "", "", "/api/v1/analyze",
-                new AiAnalysisProperties.Worker(workerEnabled, 30_000, 3, 10));
+                new AiAnalysisProperties.Worker(workerEnabled, 30_000, 3, 10), "");
         return new AiAnalysisBacklogWorker(properties, detectionEventRepository,
                 aiAnalysisReportRepository, aiAnalysisService, asyncAiAnalysisRunner);
     }

@@ -6,8 +6,11 @@ from app.services.analysis_service import AnalysisService
 from tests.conftest import StubAdapter
 
 
-def make_client(fallback_chain: str = "mock", adapters: dict | None = None) -> TestClient:
+def make_client(
+    fallback_chain: str = "mock", adapters: dict | None = None, api_token: str = ""
+) -> TestClient:
     settings = Settings(
+        api_token=api_token,
         default_provider="mock",
         fallback_chain=fallback_chain,
         retry_max_attempts=1,
@@ -112,3 +115,24 @@ def test_providers_endpoint_lists_mock():
     body = response.json()
     assert "mock" in body["availableProviders"]
     assert body["defaultProvider"] == "mock"
+
+
+def test_analyze_rejects_missing_or_wrong_token_when_configured():
+    client = make_client(api_token="secret-token")
+
+    assert client.post("/api/v1/analyze", json=ANALYZE_BODY).status_code == 401
+    wrong = client.post(
+        "/api/v1/analyze", json=ANALYZE_BODY, headers={"X-ChainWatch-AI-Token": "nope"}
+    )
+    assert wrong.status_code == 401
+    assert client.get("/api/v1/providers").status_code == 401
+
+
+def test_analyze_accepts_matching_token_and_health_stays_open():
+    client = make_client(api_token="secret-token")
+
+    ok = client.post(
+        "/api/v1/analyze", json=ANALYZE_BODY, headers={"X-ChainWatch-AI-Token": "secret-token"}
+    )
+    assert ok.status_code == 200
+    assert client.get("/health").status_code == 200
