@@ -6,6 +6,7 @@ import com.chainwatch.backend.agentops.service.AgentProcessingTracker;
 import com.chainwatch.backend.common.metrics.ChainWatchMetrics;
 import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
+import com.chainwatch.backend.detection.domain.DetectionEventCreated;
 import com.chainwatch.backend.detection.rule.DetectionRule;
 import com.chainwatch.backend.event.domain.DetectionEvent;
 import com.chainwatch.backend.event.domain.EventType;
@@ -47,6 +48,7 @@ public class DetectionService {
     private final AgentFailureRecorder failureRecorder;
     private final AgentProcessingTracker processingTracker;
     private com.chainwatch.backend.casework.service.ExcludedAddressRegistry excludedAddressRegistry;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public DetectionService(
             List<DetectionRule> detectionRules,
@@ -75,6 +77,12 @@ public class DetectionService {
     void setExcludedAddressRegistry(
             com.chainwatch.backend.casework.service.ExcludedAddressRegistry excludedAddressRegistry) {
         this.excludedAddressRegistry = excludedAddressRegistry;
+    }
+
+    /** 탐지 이벤트 저장을 프로세스 안의 후속 처리(단독 실행 구성의 알림)에 알린다. 테스트 구성에서는 없을 수 있다. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setEventPublisher(org.springframework.context.ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /** 제재 주소 탐지는 예외 주소로도 끌 수 없다. */
@@ -116,10 +124,14 @@ public class DetectionService {
                     .map(detectionEventRepository::save)
                     .ifPresent(event -> {
                         metrics.recordDetectionEvent(event.getEventType().name(), event.getRiskLevel().name());
+                        DetectedEventMessage message = DetectedEventMessage.from(event);
                         kafkaProducer.publishDetectedEvent(
-                                DetectedEventMessage.from(event),
+                                message,
                                 event.getTransaction() != null ? event.getTransaction().getTxHash() : String.valueOf(event.getId())
                         );
+                        if (eventPublisher != null) {
+                            eventPublisher.publishEvent(new DetectionEventCreated(message));
+                        }
                     });
         }
         processingTracker.record("detection", System.nanoTime() - startedNanos);

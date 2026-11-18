@@ -1,5 +1,7 @@
 package com.chainwatch.backend.notification.service;
 
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import com.chainwatch.backend.notification.domain.NotificationHistory;
 import com.chainwatch.backend.notification.domain.NotificationMessage;
 import com.chainwatch.backend.notification.repository.NotificationHistoryRepository;
@@ -24,10 +26,16 @@ public class NotificationHistoryRecorder {
         this.repository = repository;
     }
 
+    /**
+     * 새 트랜잭션으로 저장한다. 단독 실행 구성에서는 탐지 트랜잭션의 커밋 직후(AFTER_COMMIT)에 알림이 나가는데,
+     * 그 시점의 기존 트랜잭션에 참여하면 이미 커밋이 끝나 이력이 DB에 남지 않는다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(NotificationMessage message, String channel, boolean success, String errorMessage) {
         record(message, channel, success, errorMessage, null);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(
             NotificationMessage message,
             String channel,
