@@ -1491,10 +1491,53 @@ a {
   margin-bottom: 8px;
 }
 
-.component-head h2 {
+.component-head h2,
+.component-head h3 {
   margin: 0;
   font-size: 0.98rem;
   font-weight: 700;
+}
+
+.pipeline-group + .pipeline-group {
+  margin-top: 26px;
+}
+
+.pipeline-group-head {
+  margin-bottom: 12px;
+}
+
+.pipeline-group-head h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pipeline-group-head p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+/* 카드 높이가 달라도 버튼·환경변수 줄이 아래에 맞춰지도록 세로로 배치한다. */
+.component-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.component-foot {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.component-foot small {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.component-foot code {
+  font-size: 0.78rem;
+  /* 변수 이름 중간이 아니라 구분자에서 먼저 줄바꿈하고, 그래도 넘치면 그때 끊는다. */
+  overflow-wrap: anywhere;
 }
 
 .component-card p {
@@ -4086,7 +4129,9 @@ tr.row-new {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 12px 0 18px;
+  /* 상단 메뉴·본문과 같은 폭으로 가운데 정렬한다. 폭이 없으면 넓은 화면에서 혼자 왼쪽으로 튀어나온다. */
+  width: min(1320px, 100%);
+  margin: 12px auto 18px;
   padding: 0 4px;
   color: var(--text-soft);
   font-size: 0.84rem;

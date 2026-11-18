@@ -466,7 +466,51 @@ const COMPONENT_STATUS_LABELS: Record<string, string> = {
   DISABLED: "비활성"
 };
 
+/**
+ * 구성 요소별 "어디서 바꾸는가". 상태만 보여주면 비활성 항목을 어떻게 켜는지 알 수 없으므로
+ * 화면에서 바꿀 수 있는 것은 해당 설정 탭으로 연결하고, 배포 구성으로 정해지는 것은 환경변수를 알려준다.
+ */
+interface ComponentGuide {
+  group: "runtime" | "deploy";
+  /** 설정을 바꾸는 탭. adminOnly면 관리자에게만 버튼을 보여준다. */
+  action?: { path: string; label: string; adminOnly?: boolean };
+  /** 배포 환경변수 이름. 화면에서는 바꿀 수 없다. */
+  env?: string;
+}
+
+const COMPONENT_GUIDE: Record<string, ComponentGuide> = {
+  collector: { group: "runtime", action: { path: "/admin/collection", label: "수집 설정 변경", adminOnly: true } },
+  detection: { group: "runtime", action: { path: "/admin/policies", label: "임계값·주소 목록 보기" } },
+  notification: { group: "runtime", action: { path: "/admin/collection", label: "알림 채널 설정", adminOnly: true } },
+  aiServer: { group: "deploy", env: "CHAINWATCH_AI_ENABLED · CHAINWATCH_AI_BASE_URL" },
+  kafka: { group: "deploy", env: "CHAINWATCH_KAFKA_ENABLED" },
+  redis: { group: "deploy", env: "CHAINWATCH_REDIS_ENABLED" },
+  database: { group: "deploy", env: "SPRING_DATASOURCE_URL" }
+};
+
+const PIPELINE_GROUPS: { group: ComponentGuide["group"]; title: string; hint: string }[] = [
+  {
+    group: "runtime",
+    title: "운영 설정에서 바꾸는 항목",
+    hint: "재시작 없이 바로 적용되고 감사 로그에 기록됩니다."
+  },
+  {
+    group: "deploy",
+    title: "배포 구성으로 정해지는 항목",
+    hint: "서버를 띄울 때 환경변수로 정합니다. 연결할 서버가 따로 필요해 이 화면에서는 바꿀 수 없습니다."
+  }
+];
+
+/** 구성상 쓰지 않는 인프라(Kafka·Redis)는 꺼진 기능과 구분해 "미사용"으로 표시한다. */
+function componentStatusLabel(component: { name: string; status: string }): string {
+  if (component.status === "DISABLED" && (component.name === "kafka" || component.name === "redis")) {
+    return "미사용";
+  }
+  return COMPONENT_STATUS_LABELS[component.status] ?? component.status;
+}
+
 function AdminPipeline() {
+  const { isAdmin } = useAuth();
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -492,12 +536,16 @@ function AdminPipeline() {
     load();
   }, [load]);
 
+  // Kafka를 쓰지 않는 단독 실행 구성인지. 이 구성에서는 탐지가 수집 요청 안에서 바로 실행된다.
+  const standalone = status?.components.some((c) => c.name === "kafka" && c.status === "DISABLED") ?? false;
+
   return (
     <>
       <div className="section-toolbar">
         <p className="hint-text">
-          수집 → Kafka → 탐지 → 저장/피드 → 알림/AI 해설로 이어지는 파이프라인의 구성 요소별
-          상태입니다.
+          {standalone
+            ? "수집 → 탐지 → 저장 → 알림으로 이어지는 파이프라인의 구성 요소별 상태입니다. 이 환경은 Kafka·Redis 없이 단독 실행하도록 설정되어 있어, 두 항목은 장애가 아니라 \"미사용\"으로 표시됩니다."
+            : "수집 → Kafka → 탐지 → 저장/피드 → 알림/AI 해설로 이어지는 파이프라인의 구성 요소별 상태입니다."}
           {status ? ` 마지막 점검: ${formatDate(status.checkedAt)}` : ""}
         </p>
         <button type="button" className="ghost-button" onClick={load} disabled={loading}>
@@ -508,19 +556,57 @@ function AdminPipeline() {
       {error ? <div className="banner error">{error}</div> : null}
       {loading && !status ? <div className="empty-state">파이프라인 점검 중...</div> : null}
 
-      <section className="pipeline-grid">
-        {(status?.components ?? []).map((component) => (
-          <article className={`glass-card component-card ${component.status.toLowerCase()}`} key={component.name}>
-            <div className="component-head">
-              <h2>{COMPONENT_LABELS[component.name] ?? component.name}</h2>
-              <span className={`status-pill component-${component.status.toLowerCase()}`}>
-                {COMPONENT_STATUS_LABELS[component.status] ?? component.status}
-              </span>
-            </div>
-            <p>{component.detail}</p>
-          </article>
-        ))}
-      </section>
+      {status
+        ? PIPELINE_GROUPS.map(({ group, title, hint }) => {
+            const components = status.components.filter(
+              (component) => (COMPONENT_GUIDE[component.name]?.group ?? "deploy") === group
+            );
+            if (components.length === 0) {
+              return null;
+            }
+            return (
+              <section className="pipeline-group" key={group}>
+                <div className="pipeline-group-head">
+                  <h2>{title}</h2>
+                  <p>{hint}</p>
+                </div>
+                <div className="pipeline-grid">
+                  {components.map((component) => {
+                    const guide = COMPONENT_GUIDE[component.name];
+                    const action = guide?.action && (!guide.action.adminOnly || isAdmin) ? guide.action : null;
+                    return (
+                      <article
+                        className={`glass-card component-card ${component.status.toLowerCase()}`}
+                        key={component.name}
+                      >
+                        <div className="component-head">
+                          <h3>{COMPONENT_LABELS[component.name] ?? component.name}</h3>
+                          <span className={`status-pill component-${component.status.toLowerCase()}`}>
+                            {componentStatusLabel(component)}
+                          </span>
+                        </div>
+                        <p>{component.detail}</p>
+                        <div className="component-foot">
+                          {action ? (
+                            <a className="ghost-button" href={`#${action.path}`}>
+                              {action.label}
+                            </a>
+                          ) : guide?.action ? (
+                            <small>관리자가 운영 설정에서 변경합니다.</small>
+                          ) : guide?.env ? (
+                            <small>
+                              환경변수 <code>{guide.env}</code>
+                            </small>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })
+        : null}
     </>
   );
 }
