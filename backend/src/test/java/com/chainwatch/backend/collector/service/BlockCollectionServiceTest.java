@@ -74,6 +74,25 @@ class BlockCollectionServiceTest {
         verify(rawEventPublisher).publishBlock(any(BlockDto.class));
     }
 
+    /** 자동 수집을 끄면 진행 중인 주기도 다음 블록에서 멈추고, 이미 처리한 블록은 유지한다. */
+    @Test
+    void stopsCatchUpAtNextBlockWhenOperatorDisablesCollection() {
+        when(blockchainClient.fetchLatestBlockNumber()).thenReturn(14L);
+        when(collectorStateRepository.findById(any()))
+                .thenReturn(Optional.of(new CollectorState("ethereum-main-collector", 9L, Instant.now())));
+        when(blockchainClient.fetchBlock(anyLong())).thenAnswer(invocation -> block(invocation.getArgument(0)));
+        when(blockProcessor.process(any())).thenReturn(List.of());
+        java.util.concurrent.atomic.AtomicInteger checks = new java.util.concurrent.atomic.AtomicInteger();
+
+        // 두 번째 블록까지는 켜져 있다가 그 뒤에 꺼진 상황
+        int collected = service.collectUpToLatest(() -> checks.incrementAndGet() < 2);
+
+        assertThat(collected).isEqualTo(2);
+        verify(blockchainClient).fetchBlock(10L);
+        verify(blockchainClient).fetchBlock(11L);
+        verify(blockchainClient, org.mockito.Mockito.never()).fetchBlock(12L);
+    }
+
     @Test
     void resumesFromLastCollectedBlockAfterRestart() {
         when(blockchainClient.fetchLatestBlockNumber()).thenReturn(12L);

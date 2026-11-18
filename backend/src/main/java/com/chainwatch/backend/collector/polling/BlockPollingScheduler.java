@@ -41,7 +41,9 @@ public class BlockPollingScheduler {
             return;
         }
         try {
-            int collected = blockCollectionService.collectUpToLatest();
+            // 주기 도중 관리자가 자동 수집을 끄면 다음 블록부터 멈춘다.
+            int collected = blockCollectionService.collectUpToLatest(
+                    () -> operationalSettings.current().collectorEnabled());
             if (collected > 0) {
                 log.debug("Polling cycle collected {} block(s)", collected);
             }

@@ -11,6 +11,7 @@ import com.chainwatch.backend.collector.repository.CollectorStateRepository;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,16 @@ public class BlockCollectionService {
      * @return 이번 호출에서 수집한 블록 수
      */
     public int collectUpToLatest() {
-        return collectUpTo(blockchainClient.fetchLatestBlockNumber());
+        return collectUpToLatest(() -> true);
+    }
+
+    /**
+     * {@link #collectUpToLatest()}와 같지만 블록 하나를 처리할 때마다 {@code keepGoing}을 확인한다.
+     * 관리자가 자동 수집을 끄면 진행 중이던 catch-up 주기도 다음 블록에서 멈춘다 — 느린 환경에서는
+     * 한 주기(max-blocks-per-poll)가 수 분씩 걸려, 끈 뒤에도 수집이 한참 이어졌다.
+     */
+    public int collectUpToLatest(BooleanSupplier keepGoing) {
+        return collectUpTo(blockchainClient.fetchLatestBlockNumber(), keepGoing);
     }
 
     /**
@@ -64,6 +74,11 @@ public class BlockCollectionService {
      * 재시작 후에도 저장된 상태에서 이어서 수집하므로 중복·누락이 없다.
      */
     public int collectUpTo(long targetBlockNumber) {
+        return collectUpTo(targetBlockNumber, () -> true);
+    }
+
+    /** {@code keepGoing}이 false가 되면 이미 처리한 블록까지만 저장하고 주기를 끝낸다. */
+    public int collectUpTo(long targetBlockNumber, BooleanSupplier keepGoing) {
         if (!collecting.compareAndSet(false, true)) {
             log.debug("Collection already in progress, skipping trigger up to block {}", targetBlockNumber);
             return 0;
@@ -74,6 +89,10 @@ public class BlockCollectionService {
             String expectedParentHash = expectedParentHashFor(next);
             int processed = 0;
             while (next <= targetBlockNumber && processed < collectorProperties.maxBlocksPerPoll()) {
+                if (processed > 0 && !keepGoing.getAsBoolean()) {
+                    log.info("Collection stopped by operator after {} block(s) (next={})", processed, next);
+                    return processed;
+                }
                 BlockDto block = blockchainClient.fetchBlock(next);
                 if (isReorged(expectedParentHash, block)) {
                     rewindAfterReorg(block, expectedParentHash);

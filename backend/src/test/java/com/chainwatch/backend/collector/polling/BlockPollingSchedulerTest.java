@@ -47,17 +47,17 @@ class BlockPollingSchedulerTest {
     @Test
     void collectsUpToLatestInPollingMode() {
         BlockPollingScheduler scheduler = scheduler(true, CollectionMode.POLLING);
-        when(blockCollectionService.collectUpToLatest()).thenReturn(2);
+        when(blockCollectionService.collectUpToLatest(org.mockito.ArgumentMatchers.any())).thenReturn(2);
 
         scheduler.poll();
 
-        verify(blockCollectionService).collectUpToLatest();
+        verify(blockCollectionService).collectUpToLatest(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void survivesCollectorFailures() {
         BlockPollingScheduler scheduler = scheduler(true, CollectionMode.POLLING);
-        when(blockCollectionService.collectUpToLatest()).thenThrow(new CollectorException("rpc down"));
+        when(blockCollectionService.collectUpToLatest(org.mockito.ArgumentMatchers.any())).thenThrow(new CollectorException("rpc down"));
 
         scheduler.poll();
     }
