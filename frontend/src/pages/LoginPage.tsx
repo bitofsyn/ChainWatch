@@ -18,7 +18,7 @@ const ROLE_GUIDE: { role: string; summary: string; tasks: string }[] = [
   {
     role: "분석가",
     summary: "탐지된 이벤트를 검토하고 처리합니다.",
-    tasks: "담당자 지정, 접수 → 조사중 → 해결·오탐 종결, 운영 메모, AI 분석 요청을 할 수 있습니다."
+    tasks: "담당자 지정, 접수 → 조사중 → 해결·오탐 종결, 운영 메모를 남길 수 있습니다."
   },
   {
     role: "관리자",

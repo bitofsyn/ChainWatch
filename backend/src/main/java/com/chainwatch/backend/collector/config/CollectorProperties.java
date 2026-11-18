@@ -14,7 +14,9 @@ public record CollectorProperties(
         int confirmationDepth,
         Backoff retry,
         Backoff websocketReconnect,
-        Throttle throttle
+        Throttle throttle,
+        // 수집이 체인보다 이만큼 넘게 밀리면 밀린 구간을 건너뛰고 최신 블록부터 수집한다. 0 이하면 건너뛰지 않음.
+        long maxLagBlocks
 ) {
 
     public CollectorProperties {

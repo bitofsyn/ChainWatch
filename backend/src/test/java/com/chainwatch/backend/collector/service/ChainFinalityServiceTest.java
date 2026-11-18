@@ -32,14 +32,14 @@ class ChainFinalityServiceTest {
     void setUp() {
         CollectorProperties properties = new CollectorProperties(
                 ProviderType.RPC, CollectionMode.POLLING, true,
-                15_000, 0, 5, 6, CONFIRMATION_DEPTH, null, null, null);
+                15_000, 0, 5, 6, CONFIRMATION_DEPTH, null, null, null, 0);
         service = new ChainFinalityService(collectorStateRepository, properties);
     }
 
     @Test
     void defaultsConfirmationDepthDeeperThanReorgRewind() {
         CollectorProperties defaults = new CollectorProperties(
-                null, null, false, 0, 0, 0, 0, 0, null, null, null);
+                null, null, false, 0, 0, 0, 0, 0, null, null, null, 0);
         assertThat(defaults.confirmationDepth()).isEqualTo(12);
         assertThat(defaults.confirmationDepth()).isGreaterThan(defaults.reorgRewindDepth());
     }

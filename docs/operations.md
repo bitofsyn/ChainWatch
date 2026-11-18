@@ -23,6 +23,7 @@ Grafana(3000)·Prometheus(9090)·Kafka UI(8081)는 `--profile monitoring`을 추
 | 변수 | 설명 | 기본 상태 |
 |---|---|---|
 | `CHAINWATCH_COLLECTOR_ENABLED` | 자동 블록 수집 활성화 | `false` |
+| `CHAINWATCH_COLLECTOR_MAX_LAG_BLOCKS` | 수집이 이 블록 수보다 더 밀리면 밀린 구간을 건너뛰고 최신 블록부터 수집 (`0`이면 건너뛰지 않음) | `100` |
 | `CHAINWATCH_COLLECTOR_PROVIDER` | `rpc` 또는 `etherscan` 선택 | `rpc` |
 | `CHAINWATCH_ETHERSCAN_API_KEY` | Etherscan API 키 | 미설정 |
 | `CHAINWATCH_AI_ENABLED` | AI 분석 연동 활성화 | `false` |

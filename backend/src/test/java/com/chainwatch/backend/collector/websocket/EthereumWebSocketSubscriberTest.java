@@ -122,7 +122,7 @@ class EthereumWebSocketSubscriberTest {
                 ProviderType.RPC, CollectionMode.WEBSOCKET, true, 15_000, 0, 5, 6, 12,
                 null,
                 new CollectorProperties.Backoff(maxReconnectAttempts, 1, 1.0, 5),
-                null);
+                null, 0);
         EthereumProperties ethereumProperties = new EthereumProperties(
                 "ethereum-mainnet", "1", null, "wss://example.invalid/ws", 30);
         return new EthereumWebSocketSubscriber(

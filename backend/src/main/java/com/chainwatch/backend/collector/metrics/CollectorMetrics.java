@@ -20,6 +20,7 @@ public class CollectorMetrics {
     private final Counter errors;
     private final Counter websocketReconnects;
     private final Counter reorgs;
+    private final Counter blocksSkipped;
     private final Timer rpcLatency;
 
     public CollectorMetrics(MeterRegistry registry) {
@@ -46,6 +47,9 @@ public class CollectorMetrics {
                 .register(registry);
         this.reorgs = Counter.builder("chainwatch.collector.reorgs")
                 .description("Chain reorganizations detected")
+                .register(registry);
+        this.blocksSkipped = Counter.builder("chainwatch.collector.blocks.skipped")
+                .description("Blocks skipped because the collector fell too far behind the chain head")
                 .register(registry);
         this.rpcLatency = Timer.builder("chainwatch.collector.rpc.latency")
                 .description("Latency of blockchain RPC calls")
@@ -80,6 +84,10 @@ public class CollectorMetrics {
 
     public void incrementReorg() {
         reorgs.increment();
+    }
+
+    public void recordBlocksSkipped(long count) {
+        blocksSkipped.increment(count);
     }
 
     public void recordRpcLatency(Duration duration) {

@@ -53,7 +53,7 @@ class BlockCollectionServiceTest {
     void setUp() {
         CollectorProperties properties = new CollectorProperties(
                 ProviderType.RPC, CollectionMode.POLLING, true,
-                15_000, 0, 5, 6, 12, null, null, null);
+                15_000, 0, 5, 6, 12, null, null, null, 0);
         service = new BlockCollectionService(
                 blockchainClient, properties, collectorStateRepository,
                 blockProcessor, rawEventPublisher,
@@ -124,6 +124,49 @@ class BlockCollectionServiceTest {
         verify(blockchainClient).fetchBlock(1L);
         verify(blockchainClient).fetchBlock(5L);
         verify(blockchainClient, never()).fetchBlock(6L);
+    }
+
+    /** 지연이 상한을 넘으면 밀린 구간을 건너뛰고 체인 최신 블록부터 수집한다. */
+    @Test
+    void jumpsToChainHeadWhenLagExceedsLimit() {
+        BlockCollectionService skipping = serviceWithMaxLag(100);
+        when(blockchainClient.fetchLatestBlockNumber()).thenReturn(1_000L);
+        when(collectorStateRepository.findById(any()))
+                .thenReturn(Optional.of(new CollectorState("ethereum-main-collector", 500L, Instant.now())));
+        when(blockchainClient.fetchBlock(1_000L)).thenReturn(block(1_000));
+        when(blockProcessor.process(any())).thenReturn(List.of());
+
+        int collected = skipping.collectUpToLatest();
+
+        assertThat(collected).isEqualTo(1);
+        verify(blockchainClient).fetchBlock(1_000L);
+        verify(blockchainClient, never()).fetchBlock(501L);
+    }
+
+    /** 지연이 상한 이내면 기존처럼 밀린 블록부터 순서대로 따라잡는다. */
+    @Test
+    void keepsCatchingUpWhenLagWithinLimit() {
+        BlockCollectionService skipping = serviceWithMaxLag(100);
+        when(blockchainClient.fetchLatestBlockNumber()).thenReturn(550L);
+        when(collectorStateRepository.findById(any()))
+                .thenReturn(Optional.of(new CollectorState("ethereum-main-collector", 500L, Instant.now())));
+        when(blockchainClient.fetchBlock(anyLong())).thenAnswer(invocation -> block(invocation.getArgument(0)));
+        when(blockProcessor.process(any())).thenReturn(List.of());
+
+        skipping.collectUpToLatest();
+
+        verify(blockchainClient).fetchBlock(501L);
+        verify(blockchainClient, never()).fetchBlock(550L);
+    }
+
+    private BlockCollectionService serviceWithMaxLag(long maxLagBlocks) {
+        CollectorProperties properties = new CollectorProperties(
+                ProviderType.RPC, CollectionMode.POLLING, true,
+                15_000, 0, 5, 6, 12, null, null, null, maxLagBlocks);
+        return new BlockCollectionService(
+                blockchainClient, properties, collectorStateRepository,
+                blockProcessor, rawEventPublisher,
+                new CollectorMetrics(new SimpleMeterRegistry()));
     }
 
     @Test

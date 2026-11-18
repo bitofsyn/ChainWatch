@@ -64,7 +64,7 @@ class BlockPollingSchedulerTest {
 
     private BlockPollingScheduler scheduler(boolean enabled, CollectionMode mode) {
         CollectorProperties properties = new CollectorProperties(
-                ProviderType.RPC, mode, enabled, 15_000, 0, 5, 6, 12, null, null, null);
+                ProviderType.RPC, mode, enabled, 15_000, 0, 5, 6, 12, null, null, null, 0);
         OperationalSettingsService operationalSettings = Mockito.mock(OperationalSettingsService.class);
         Mockito.lenient().when(operationalSettings.current()).thenReturn(new OperationalSettingsService.Snapshot(
                 enabled, false, 70, null, null, null, null));

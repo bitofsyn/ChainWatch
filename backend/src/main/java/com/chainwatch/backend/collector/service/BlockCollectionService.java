@@ -85,7 +85,7 @@ public class BlockCollectionService {
         }
         try {
             recordObservedChainHead(targetBlockNumber);
-            long next = nextBlockNumber(targetBlockNumber);
+            long next = skipStaleBacklog(nextBlockNumber(targetBlockNumber), targetBlockNumber);
             String expectedParentHash = expectedParentHashFor(next);
             int processed = 0;
             while (next <= targetBlockNumber && processed < collectorProperties.maxBlocksPerPoll()) {
@@ -194,6 +194,25 @@ public class BlockCollectionService {
                 block.network(),
                 collectorProperties.provider().name()
         );
+    }
+
+    /**
+     * 처리 속도가 체인보다 느린 환경(무료 호스팅 등)에서는 catch-up이 끝나지 않고 지연만 계속 커진다.
+     * 지연이 max-lag-blocks를 넘으면 밀린 구간은 수집·탐지하지 않고 최신 블록부터 다시 시작해
+     * 관제 화면이 오래된 데이터에 묶이지 않게 한다. 건너뛴 구간은 경고 로그로 남긴다.
+     * 다음 블록의 parentHash 비교는 직전 블록이 아니므로 자연히 생략된다.
+     */
+    private long skipStaleBacklog(long next, long chainHead) {
+        long maxLag = collectorProperties.maxLagBlocks();
+        long lag = chainHead - next + 1;
+        if (maxLag <= 0 || lag <= maxLag) {
+            return next;
+        }
+        metrics.recordBlocksSkipped(chainHead - next);
+        log.warn("[COLLECTOR_SKIP] Collector is {} blocks behind (limit {}). Skipping blocks {}..{} "
+                        + "and resuming from chain head {}",
+                lag, maxLag, next, chainHead - 1, chainHead);
+        return chainHead;
     }
 
     private long nextBlockNumber(long chainHead) {
