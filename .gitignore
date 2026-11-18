@@ -1,75 +1,46 @@
-.gradle
-.gradle-user-home/
-**/.gradle-user-home/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-.kotlin
+##############################################
+# 공통: 운영체제·편집기·로컬 도구
+##############################################
+.DS_Store
+# iCloud 동기화가 만드는 중복 사본 (예: "build 2", "Foo 3.class")
+* [2-9]
+* [2-9].*
 
-### IntelliJ IDEA ###
 .idea/
-**/.idea/
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
 *.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### Eclipse ###
-.apt_generated
+.vscode/
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+.sts4-cache/
+.apt_generated/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# Claude Code 등 로컬 AI 도구 설정
+.claude/
+CLAUDE.md
 
-### VS Code ###
-.vscode/
+# 임시·산출물 폴더
+_workspace/
+output/
+tmp/
+scripts/
+*.log
 
-### Mac OS ###
-.DS_Store
-
-### Frontend ###
-frontend/node_modules/
-frontend/dist/
-
-### Python (AI Analysis Server) ###
-ai/analysis-server/.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-ai/analysis-server/.env
-
-### Frontend build artifacts ###
-*.tsbuildinfo
-
-### Env files ###
+##############################################
+# 비밀값: 절대 커밋하지 않음 (CI repo-guard도 검사)
+##############################################
 .env
 **/.env
 .env.*
 **/.env.*
 *.env.local
-# 배포용 예시 파일은 추적한다 (실제 비밀값 없음)
+# 배포용 예시 파일만 추적한다 (실제 비밀값 없음)
 !.env.prod.example
 
-### Secrets and credentials ###
 *.pem
 *.key
 *.p12
@@ -77,15 +48,47 @@ ai/analysis-server/.env
 credentials.json
 secrets.json
 
-### Local-only tooling ###
-.claude/
-CLAUDE.md
-docker-compose.override.yml
+##############################################
+# backend/ (Spring Boot, Gradle)
+##############################################
+.gradle/
+.gradle-user-home/
+.kotlin/
+build/
+out/
+bin/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/main/**/out/
+!**/src/test/**/out/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
 
-### Scratch / generated artifacts ###
-_workspace/
-output/
-tmp/
-
-# Cloudflare Wrangler 로컬 상태
+##############################################
+# frontend/ (React, Vite, Cloudflare Worker)
+##############################################
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
 .wrangler/
+
+##############################################
+# ai/ (FastAPI 분석 서버)
+##############################################
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+##############################################
+# 배포 (docker-compose, Render, Cloudflare)
+##############################################
+# 개인 로컬 오버라이드
+docker-compose.override.yml
