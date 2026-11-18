@@ -79,6 +79,7 @@ secrets.json
 
 ### Local-only tooling ###
 .claude/
+CLAUDE.md
 docker-compose.override.yml
 
 ### Scratch / generated artifacts ###
