@@ -110,3 +110,44 @@ async def test_empty_text_raises_adapter_error(monkeypatch):
 
     with pytest.raises(ModelAdapterError, match="empty report"):
         await GeminiAdapter(_settings()).generate("prompt")
+
+
+async def test_falls_back_to_next_model_when_primary_is_overloaded(monkeypatch):
+    called: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = request.url.path.split("/models/")[1].split(":")[0]
+        called.append(model)
+        if model == "gemini-2.5-flash":
+            return httpx.Response(503, json={"error": {"message": "The model is overloaded."}})
+        return httpx.Response(200, json=_gemini_ok_body('{"report": "ok"}'))
+
+    _patch_transport(monkeypatch, handler)
+    settings = _settings().model_copy(update={"gemini_fallback_models": "gemini-flash-lite-latest"})
+
+    result = await GeminiAdapter(settings).generate("prompt")
+
+    assert called == ["gemini-2.5-flash", "gemini-flash-lite-latest"]
+    assert result.model == "gemini-flash-lite-latest"
+
+
+async def test_does_not_try_other_models_on_client_error(monkeypatch):
+    called: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        called.append(request.url.path)
+        return httpx.Response(400, json={"error": {"message": "bad request"}})
+
+    _patch_transport(monkeypatch, handler)
+
+    with pytest.raises(ModelAdapterError):
+        await GeminiAdapter(_settings()).generate("prompt")
+    assert len(called) == 1
+
+
+async def test_raises_when_every_model_is_unavailable(monkeypatch):
+    _patch_transport(monkeypatch, lambda request: httpx.Response(503))
+    settings = _settings().model_copy(update={"gemini_fallback_models": "gemini-flash-lite-latest"})
+
+    with pytest.raises(ModelAdapterError, match="503"):
+        await GeminiAdapter(settings).generate("prompt")

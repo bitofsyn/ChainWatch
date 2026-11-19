@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-latest"  # 고정 버전 모델은 신규 계정에서 차단될 수 있어 alias 기본
     gemini_base_url: str = "https://generativelanguage.googleapis.com"
+    # 기본 모델이 과부하(503)·한도 초과(429)·미지원(404)이면 순서대로 시도할 예비 모델(쉼표 구분).
+    gemini_fallback_models: str = "gemini-flash-lite-latest,gemini-2.5-flash"
 
     # OpenAI-compatible local servers (LM Studio, Hermes)
     lmstudio_base_url: str = ""
@@ -42,6 +44,10 @@ class Settings(BaseSettings):
     # 공개 주소로 배포할 때 백엔드만 분석을 요청할 수 있게 하는 공유 토큰.
     # 비어 있으면 검사하지 않는다(로컬·docker-compose 내부망).
     api_token: str = ""
+
+    def gemini_models(self) -> list[str]:
+        models = [self.gemini_model] + self.gemini_fallback_models.split(",")
+        return list(dict.fromkeys(m.strip() for m in models if m.strip()))
 
     def fallback_providers(self) -> list[str]:
         return [name.strip() for name in self.fallback_chain.split(",") if name.strip()]
