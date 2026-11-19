@@ -52,7 +52,7 @@ public class LargeTransferDetectionRule implements DetectionRule {
 
     /** 컨트랙트 생성 거래는 받는 주소가 없어 수집기가 표식 문자열을 넣는다. 그대로 주소처럼 보여주지 않는다. */
     private static String summary(Transaction transaction) {
-        String amount = transaction.getAmount().stripTrailingZeros().toPlainString();
+        String amount = EthAmountFormat.forSummary(transaction.getAmount());
         if (CONTRACT_CREATION_MARKER.equals(transaction.getToAddress())) {
             return "대규모 이체: " + amount + " ETH가 컨트랙트 생성 거래로 전송되었습니다";
         }

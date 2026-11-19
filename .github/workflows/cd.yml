@@ -187,7 +187,7 @@ jobs:
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Request Render deploy
         env:
@@ -197,17 +197,22 @@ jobs:
           curl --fail-with-body --silent --show-error --request POST \
             "${RENDER_DEPLOY_HOOK_URL}&ref=${COMMIT_SHA}"
 
-      - name: Wait for backend health
+      - name: Wait for new backend version
         env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          # 무료 인스턴스는 빌드와 기동에 수 분이 걸린다. 15초 간격으로 최대 15분 대기.
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent --max-time 10 "${BACKEND_URL}/actuator/health" | grep -q '"UP"'; then
-              echo "Backend is healthy."
+          # 새 인스턴스가 뜨기 전에는 이전 버전이 응답하므로 헬스 체크만으로는 배포 완료를 알 수 없다.
+          # /api/health의 commit(Render가 넣는 RENDER_GIT_COMMIT)이 요청한 커밋과 같아질 때까지 기다린다.
+          # 무료 인스턴스는 빌드와 기동에 수 분이 걸린다. 15초 간격으로 최대 20분 대기.
+          for attempt in $(seq 1 80); do
+            running=$(curl --silent --max-time 10 "${BACKEND_URL}/api/health" | jq -r '.commit // empty' 2>/dev/null || true)
+            if [ "${running}" = "${COMMIT_SHA}" ]; then
+              echo "Backend is running ${COMMIT_SHA}."
               exit 0
             fi
+            echo "Waiting for ${COMMIT_SHA} (running: ${running:-unknown})"
             sleep 15
           done
-          echo "::error::Backend did not become healthy within 15 minutes."
+          echo "::error::Backend did not start running ${COMMIT_SHA} within 20 minutes."
           exit 1

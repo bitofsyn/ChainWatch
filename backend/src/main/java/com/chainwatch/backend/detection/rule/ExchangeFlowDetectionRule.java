@@ -63,7 +63,7 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
                 EventType.EXCHANGE_FLOW,
                 RiskLevel.HIGH,
                 riskScore,
-                "거래소 입출금: " + transaction.getAmount().stripTrailingZeros().toPlainString() + " ETH가 " + direction + "되었습니다",
+                "거래소 입출금: " + EthAmountFormat.forSummary(transaction.getAmount()) + " ETH가 " + direction + "되었습니다",
                 walletAddress,
                 transaction,
                 RULE_NAME,
