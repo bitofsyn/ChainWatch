@@ -151,3 +151,22 @@ async def test_raises_when_every_model_is_unavailable(monkeypatch):
 
     with pytest.raises(ModelAdapterError, match="503"):
         await GeminiAdapter(settings).generate("prompt")
+
+
+async def test_falls_back_to_next_model_when_primary_times_out(monkeypatch):
+    called: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = request.url.path.split("/models/")[1].split(":")[0]
+        called.append(model)
+        if model == "gemini-2.5-flash":
+            raise httpx.ReadTimeout("timed out", request=request)
+        return httpx.Response(200, json=_gemini_ok_body('{"report": "ok"}'))
+
+    _patch_transport(monkeypatch, handler)
+    settings = _settings().model_copy(update={"gemini_fallback_models": "gemini-flash-lite-latest"})
+
+    result = await GeminiAdapter(settings).generate("prompt")
+
+    assert called == ["gemini-2.5-flash", "gemini-flash-lite-latest"]
+    assert result.model == "gemini-flash-lite-latest"

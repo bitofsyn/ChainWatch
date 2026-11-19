@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     gemini_base_url: str = "https://generativelanguage.googleapis.com"
     # 기본 모델이 과부하(503)·한도 초과(429)·미지원(404)이면 순서대로 시도할 예비 모델(쉼표 구분).
     gemini_fallback_models: str = "gemini-flash-lite-latest,gemini-2.5-flash"
+    # 모델 하나당 대기 시간. 과부하 모델이 응답 없이 붙잡고 있어도 예비 모델로 넘어가
+    # 백엔드 요청 제한(120초) 안에 끝나도록 짧게 둔다(3개 모델 × 30초 = 90초).
+    gemini_timeout_seconds: float = 30.0
 
     # OpenAI-compatible local servers (LM Studio, Hermes)
     lmstudio_base_url: str = ""

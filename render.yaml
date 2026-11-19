@@ -97,6 +97,9 @@ services:
         value: gemini
       - key: CHAINWATCH_AI_FALLBACK_CHAIN
         value: gemini
+      # 재시도는 Gemini 예비 모델 전환이 대신한다. 체인 전체를 두 번 돌면 백엔드 제한(120초)을 넘을 수 있다.
+      - key: CHAINWATCH_AI_RETRY_MAX_ATTEMPTS
+        value: "1"
       # Google AI Studio에서 발급. 결제를 연결하지 않은 프로젝트의 키를 쓰면 무료 한도 안에서만 동작한다.
       - key: CHAINWATCH_AI_GEMINI_API_KEY
         sync: false

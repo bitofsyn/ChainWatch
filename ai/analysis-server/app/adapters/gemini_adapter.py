@@ -22,7 +22,7 @@ class GeminiAdapter(ModelAdapter):
         self._base_url = settings.gemini_base_url.rstrip("/")
         self._api_key = settings.gemini_api_key
         self._models = settings.gemini_models()
-        self._timeout = settings.http_timeout_seconds
+        self._timeout = settings.gemini_timeout_seconds
 
     async def generate(self, prompt: str, system: str | None = None) -> AdapterResult:
         payload: dict = {
@@ -57,6 +57,8 @@ class GeminiAdapter(ModelAdapter):
                 return response.json()
         except _RetryableModelError:
             raise
+        except httpx.TimeoutException as error:
+            raise _RetryableModelError("timeout") from error
         except httpx.HTTPError as error:
             raise ModelAdapterError(f"Gemini request failed: {error}") from error
         except ValueError as error:
@@ -77,6 +79,6 @@ class GeminiAdapter(ModelAdapter):
 
 
 class _RetryableModelError(Exception):
-    def __init__(self, status: int):
+    def __init__(self, status: int | str):
         super().__init__(f"HTTP {status}")
         self.status = status
