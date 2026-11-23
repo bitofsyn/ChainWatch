@@ -104,6 +104,18 @@ flowchart LR
 | Monitoring | Spring Actuator, Micrometer, Prometheus, Grafana |
 | Infrastructure | Docker, Docker Compose, Nginx |
 
+## 부하 테스트
+
+거래 351만 건과 탐지 이벤트 9.5만 건이 저장된 Docker Compose 환경에서 k6와 JMeter로 조회 API 부하를 측정했습니다. 거래 목록의 전체 건수 조회를 Slice 방식으로 바꾸고 이벤트 통계에 10초 캐시를 적용한 뒤, 500 TPS에서도 오류와 dropped iteration 없이 SLO(p95 500ms, p99 1초)를 만족했습니다.
+
+| 구간 | 실제 TPS | p95 | p99 | 오류 | Drop |
+|---|---:|---:|---:|---:|---:|
+| 개선 전 150 TPS | 139.47 | 2.31s | 3.18s | 0% | 59 |
+| 개선 후 150 TPS | 149.94 | 9.32ms | 10.71ms | 0% | 0 |
+| 개선 후 500 TPS | 499.65 | 7.31ms | 9.00ms | 0% | 0 |
+
+테스트 조건, 엔드포인트별 결과와 실행 방법은 [부하 테스트 보고서](load-tests/REPORT-2026-11-23.md)와 [실행 가이드](load-tests/README.md)에 정리했습니다. 이 결과는 로컬 12 CPU·8GB Docker 환경의 20초 정속 조회 테스트이며, 외부 RPC·수집·AI 분석을 포함한 운영 환경의 절대 용량을 의미하지는 않습니다.
+
 ## 빠른 시작
 
 Docker Desktop이 필요합니다. 저장소 루트에서 실행합니다.
