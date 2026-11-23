@@ -107,9 +107,10 @@ export interface TransactionItem {
 
 export interface TransactionPage {
   content: TransactionItem[];
-  totalElements: number;
-  totalPages: number;
   number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
 }
 
 /* ── 감사 로그 (ADMIN 전용, Wave1 계약) ─────────── */

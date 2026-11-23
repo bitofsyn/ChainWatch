@@ -5,9 +5,9 @@ import com.chainwatch.backend.common.exception.ResourceNotFoundException;
 import com.chainwatch.backend.transaction.domain.Transaction;
 import com.chainwatch.backend.transaction.repository.TransactionRepository;
 import java.time.Instant;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +34,7 @@ public class TransactionController {
     }
 
     @GetMapping
-    public Page<TransactionResponse> getTransactions(
+    public Slice<TransactionResponse> getTransactions(
             @RequestParam(required = false) String wallet,
             @RequestParam(required = false) Long blockNumber,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
@@ -46,7 +46,7 @@ public class TransactionController {
         Pageable pageable = PageRequest.of(page, safeSize, Sort.by(Sort.Direction.DESC, "timestamp"));
         // head는 요청당 한 번만 조회하고 페이지 요소들의 confirmations 계산에 재사용한다.
         Long chainHead = chainFinalityService.lastKnownChainHead().orElse(null);
-        return transactionRepository.search(wallet, blockNumber, from, to, pageable)
+        return transactionRepository.searchSlice(wallet, blockNumber, from, to, pageable)
                 .map(transaction -> TransactionResponse.from(
                         transaction,
                         chainFinalityService.confirmationFor(transaction.getBlockNumber(), chainHead)

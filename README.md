@@ -128,3 +128,4 @@ docker compose --profile app down            # 종료
 | [실행·설정·테스트](docs/operations.md) | 환경변수, 운영 설정, 개별 실행과 테스트, CI/CD, 보안 주의사항 |
 | [배포](docs/deployment.md) | Cloudflare Workers·Render 자동 배포, Quick Tunnel 임시 공개, Oracle Cloud 상시 운영 |
 | [주요 API](docs/api.md) | 이벤트·거래·지갑·탐지 규칙·운영 설정·인증 API 목록 |
+| [부하 테스트](load-tests/README.md) | k6·JMeter 기반 스모크·점진 부하·정속 TPS 테스트 |

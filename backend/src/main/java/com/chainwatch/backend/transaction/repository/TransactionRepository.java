@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TransactionRepository
-        extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
+        extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction>, TransactionSliceRepository {
 
     Optional<Transaction> findByTxHash(String txHash);
 

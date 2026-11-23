@@ -88,6 +88,7 @@ chainwatch:
     slack-webhook-url: ${CHAINWATCH_SLACK_WEBHOOK_URL:}
     discord-webhook-url: ${CHAINWATCH_DISCORD_WEBHOOK_URL:}
   events:
+    stats-cache-ttl: ${CHAINWATCH_EVENTS_STATS_CACHE_TTL:10s}
     expiry:
       # 저위험(MEDIUM/LOW) NEW 이벤트를 보존 기간 경과 시 RESOLVED+사유로 자동 종결한다.
       # CRITICAL/HIGH는 대상이 아니다(대응 backlog KPI, 사람이 처리). interval-ms는 잡 주기.
