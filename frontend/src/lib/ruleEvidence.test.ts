@@ -53,7 +53,7 @@ describe("resolveRuleEvidence — 룰별 알려진 키", () => {
     })!;
 
     expect(entryFor(entries, "direction").value).toBe("거래소 입금 (INBOUND)");
-    expect(entryFor(entries, "matchedExchangeAddress").label).toBe("매칭 거래소 주소");
+    expect(entryFor(entries, "matchedExchangeAddress").label).toBe("매칭 자사 지갑");
     expect(entryFor(entries, "counterpartyAddress").label).toBe("상대 주소");
   });
 

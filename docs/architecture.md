@@ -38,9 +38,11 @@ flowchart LR
 | 고액 송금 (`LARGE_TRANSFER`) | 설정한 ETH 기준값 이상의 단일 송금 | HIGH |
 | 단시간 반복 송금 (`RAPID_TRANSFER`) | 지정 시간 동안 동일 지갑에서 발생한 송금 횟수 | MEDIUM |
 | 자금 분산 (`FAN_OUT`) | 지정 시간 동안 한 지갑이 다수의 서로 다른 주소로 송금 | HIGH |
-| 거래소 자금 이동 (`EXCHANGE_FLOW`) | 등록된 거래소 주소와 기준값 이상의 자금 이동 | HIGH |
+| 자사 지갑 대량 입출금 (`EXCHANGE_FLOW`) | 등록된 거래소 주소(자사 입출금 지갑)와 기준값 이상의 자금 이동 | HIGH |
 | 관심 주소 활동 (`WHALE_ACTIVITY`) | Watchlist에 등록된 주소가 거래에 참여 | HIGH |
 | 제재 주소 활동 (`SANCTIONED_ADDRESS`) | OFAC 제재 목록의 주소가 거래에 참여 | CRITICAL |
+
+자사 입출금 지갑은 고객 출금을 한꺼번에 보내므로 반복 송금·자금 분산 판정에서 제외하고, 대량 입출금만 `EXCHANGE_FLOW`로 봅니다. 기본 기준값은 대규모 이체 100 ETH, 자사 지갑 입출금 50 ETH, 반복 송금 10분 20회, 자금 분산 15분 20개 주소이며, 반복 송금·자금 분산·관심 주소는 같은 지갑을 30분 동안 1건으로 묶습니다.
 
 각 이벤트에는 단순한 결과만 저장하지 않고 `thresholdEth`, `observedAmountEth`, `windowMinutes`, `matchedAddress` 등 규칙별 판단 근거도 함께 기록합니다. 임계값은 관리자 API와 화면에서 변경할 수 있습니다.
 

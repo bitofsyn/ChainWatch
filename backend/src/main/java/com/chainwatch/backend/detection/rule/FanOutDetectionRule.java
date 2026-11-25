@@ -1,5 +1,6 @@
 package com.chainwatch.backend.detection.rule;
 
+import com.chainwatch.backend.detection.config.DetectionAddressListsProvider;
 import com.chainwatch.backend.detection.config.DetectionThresholds;
 import com.chainwatch.backend.detection.config.DetectionThresholdsProvider;
 import com.chainwatch.backend.detection.domain.DetectionCommand;
@@ -29,13 +30,16 @@ public class FanOutDetectionRule implements DetectionRule {
     static final String RULE_VERSION = "1.0";
 
     private final DetectionThresholdsProvider thresholds;
+    private final DetectionAddressListsProvider addressLists;
     private final TransactionRepository transactionRepository;
 
     public FanOutDetectionRule(
             DetectionThresholdsProvider thresholds,
+            DetectionAddressListsProvider addressLists,
             TransactionRepository transactionRepository
     ) {
         this.thresholds = thresholds;
+        this.addressLists = addressLists;
         this.transactionRepository = transactionRepository;
     }
 
@@ -47,6 +51,11 @@ public class FanOutDetectionRule implements DetectionRule {
 
     @Override
     public Optional<DetectionCommand> evaluate(Transaction transaction) {
+        // 자사 입출금 지갑(등록된 거래소 주소)은 고객 출금을 한꺼번에 보내므로 이 패턴이 정상이다.
+        // 자사 지갑의 대량 입출금은 자사 지갑 입출금 룰(EXCHANGE_FLOW)이 따로 본다.
+        if (addressLists.currentAddresses().isExchangeAddress(transaction.getFromAddress())) {
+            return Optional.empty();
+        }
         DetectionThresholds current = thresholds.current();
         if (current.fanOutThresholdRecipients() <= 1) {
             return Optional.empty();

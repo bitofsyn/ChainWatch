@@ -56,6 +56,9 @@ services:
       # 분석가 계정도 같은 형식으로 입력한다. 개발 기본값이면 계정이 만들어지지 않는다.
       - key: CHAINWATCH_ANALYST_PASSWORD
         sync: false
+      # OFAC 제재 주소 목록을 기동 1분 뒤와 이후 24시간마다 공개 목록에서 동기화한다(제재 주소 탐지 룰의 기준).
+      - key: CHAINWATCH_SANCTIONS_SYNC_ENABLED
+        value: "true"
       # 메인넷 수집은 무료 DB 용량을 빠르게 채우므로 기본은 꺼 둔다.
       - key: CHAINWATCH_COLLECTOR_ENABLED
         value: "false"

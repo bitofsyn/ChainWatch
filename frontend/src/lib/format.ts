@@ -5,8 +5,8 @@ export const HIGH_THRESHOLD = 70;
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   LARGE_TRANSFER: "대규모 이체",
-  WHALE_ACTIVITY: "관심 지갑 활동",
-  EXCHANGE_FLOW: "거래소 입출금",
+  WHALE_ACTIVITY: "관심 주소 활동",
+  EXCHANGE_FLOW: "자사 지갑 입출금",
   RAPID_TRANSFER: "반복 이체",
   // 현재 이 유형을 만드는 규칙은 없다. 과거 데이터 표시용으로만 남긴다.
   WATCHLIST_MATCH: "관심 주소 일치",

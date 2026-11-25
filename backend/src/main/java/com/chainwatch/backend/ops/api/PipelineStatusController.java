@@ -165,7 +165,7 @@ public class PipelineStatusController {
     private ComponentStatus describeDetection() {
         DetectionThresholds current = detectionThresholds.current();
         String detail = String.format(
-                "mode=%s, 대규모 이체 %s ETH↑, 거래소 플로우 %s ETH↑, 반복 이체 %d회/%d분",
+                "mode=%s, 대규모 이체 %s ETH↑, 자사 지갑 입출금 %s ETH↑, 반복 이체 %d회/%d분",
                 detectionProperties.mode(),
                 current.largeTransferThresholdEth(),
                 current.exchangeFlowThresholdEth(),

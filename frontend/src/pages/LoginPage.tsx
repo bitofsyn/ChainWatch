@@ -12,18 +12,18 @@ interface LoginPageProps {
 const ROLE_GUIDE: { role: string; summary: string; tasks: string }[] = [
   {
     role: "조회자",
-    summary: "탐지 현황을 확인합니다.",
-    tasks: "대시보드, 이상 거래 목록과 탐지 근거, 적용 중인 탐지 규칙을 볼 수 있습니다."
+    summary: "준법감시인·감사. 현황과 처리 근거를 확인합니다.",
+    tasks: "대시보드, 이상 거래와 탐지 근거, 처리 이력, 적용 중인 탐지 규칙을 볼 수 있습니다."
   },
   {
     role: "분석가",
-    summary: "탐지된 이벤트를 검토하고 처리합니다.",
-    tasks: "담당자 지정, 접수 → 조사중 → 해결·오탐 종결, 운영 메모를 남길 수 있습니다."
+    summary: "이상거래 모니터링 담당자. 작업 큐에서 이벤트를 맡아 처리합니다.",
+    tasks: "근거·거래·지갑의 거래 상대를 확인하고 접수 → 조사중 → 해결·오탐으로 종결하며, 오탐 지갑은 예외로 제안합니다."
   },
   {
     role: "관리자",
-    summary: "탐지 시스템을 운영합니다.",
-    tasks: "블록 수집, 탐지 임계값과 관심 주소, 알림 웹훅, 사용자 계정과 감사 로그를 관리합니다."
+    summary: "리스크팀 리드. 탐지 기준과 운영을 책임집니다.",
+    tasks: "탐지 임계값과 자사 입출금 지갑·관심 주소, 예외 승인, 블록 수집과 알림, 사용자 계정과 감사 로그를 관리합니다."
   }
 ];
 
@@ -76,11 +76,12 @@ export function LoginPage({ nextPath }: LoginPageProps) {
   return (
     <div className="login-layout">
       <section className="login-intro">
-        <p className="eyebrow">On-chain risk monitoring</p>
-        <h1>온체인 이상 거래 관제</h1>
+        <p className="eyebrow">Exchange on-chain monitoring</p>
+        <h1>거래소 온체인 이상거래 관제</h1>
         <p className="page-lede">
-          이더리움 거래를 수집해 재현 가능한 규칙으로 이상 징후를 탐지하고, 탐지 근거와 함께 검토·처리하는
-          운영 콘솔입니다. 로그인한 역할에 따라 할 수 있는 일이 달라집니다.
+          가상자산 거래소의 이상거래 모니터링 담당자가 이더리움에서 자사 입출금 지갑·제재 주소·관심 주소가
+          얽힌 위험 거래를 놓치지 않도록 돕습니다. 규칙이 탐지 근거를 남기고, 담당자는 근거를 확인해 처리한 뒤
+          사유를 기록합니다. 로그인한 역할에 따라 할 수 있는 일이 달라집니다.
         </p>
         <dl className="role-guide">
           {ROLE_GUIDE.map((item) => (

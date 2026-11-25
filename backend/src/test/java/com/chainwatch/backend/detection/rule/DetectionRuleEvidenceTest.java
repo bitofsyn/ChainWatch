@@ -65,7 +65,7 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countRecentTransfersFromAddress(anyString(), any())).thenReturn(5L);
         Transaction transaction = transaction("0xburst", "0xto", BigDecimal.ONE);
 
-        DetectionCommand command = new RapidTransferDetectionRule(thresholds, transactionRepository)
+        DetectionCommand command = new RapidTransferDetectionRule(thresholds, addressLists, transactionRepository)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.ruleName()).isEqualTo("rapid-transfer");
@@ -123,7 +123,7 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(6L);
         Transaction transaction = transaction("0xsplitter", "0xr1", BigDecimal.ONE);
 
-        DetectionCommand command = new FanOutDetectionRule(thresholds, transactionRepository)
+        DetectionCommand command = new FanOutDetectionRule(thresholds, addressLists, transactionRepository)
                 .evaluate(transaction).orElseThrow();
 
         assertThat(command.eventType()).isEqualTo(EventType.FAN_OUT);
@@ -141,8 +141,22 @@ class DetectionRuleEvidenceTest {
         when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(2L);
         Transaction transaction = transaction("0xrepeat", "0xsame", BigDecimal.ONE);
 
-        assertThat(new FanOutDetectionRule(thresholds, transactionRepository).evaluate(transaction))
+        assertThat(new FanOutDetectionRule(thresholds, addressLists, transactionRepository).evaluate(transaction))
                 .isEmpty();
+    }
+
+    /** 자사 입출금 지갑(등록된 거래소 주소)의 일괄 출금은 반복 이체·자금 분산으로 보지 않는다. */
+    @Test
+    void ownExchangeWalletIsExcludedFromRapidTransferAndFanOut() {
+        TransactionRepository transactionRepository = mock(TransactionRepository.class);
+        when(transactionRepository.countRecentTransfersFromAddress(anyString(), any())).thenReturn(50L);
+        when(transactionRepository.countDistinctRecipientsFromAddress(anyString(), any())).thenReturn(50L);
+        Transaction fromOwnWallet = transaction("0xEXCHANGE", "0xcustomer", BigDecimal.ONE);
+
+        assertThat(new RapidTransferDetectionRule(thresholds, addressLists, transactionRepository)
+                .evaluate(fromOwnWallet)).isEmpty();
+        assertThat(new FanOutDetectionRule(thresholds, addressLists, transactionRepository)
+                .evaluate(fromOwnWallet)).isEmpty();
     }
 
     private Transaction transaction(String from, String to, BigDecimal amount) {

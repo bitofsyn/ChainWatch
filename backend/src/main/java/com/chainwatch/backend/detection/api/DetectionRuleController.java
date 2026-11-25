@@ -66,9 +66,10 @@ public class DetectionRuleController {
                 ),
                 new DetectionRulesResponse.Rule(
                         "EXCHANGE_FLOW",
-                        "거래소 입출금 탐지",
-                        "등록된 거래소 주소로의 대규모 입금(위험 88점) 또는 출금(78점)을 탐지합니다.",
-                        formatEth(thresholds.exchangeFlowThresholdEth()) + " ETH 이상, 거래소 주소 "
+                        "자사 지갑 입출금 탐지",
+                        "등록된 거래소 주소(자사 입출금 지갑)로 들어오는 대규모 입금(위험 88점)이나 "
+                                + "나가는 출금(78점)을 탐지합니다.",
+                        formatEth(thresholds.exchangeFlowThresholdEth()) + " ETH 이상, 자사 입출금 지갑 "
                                 + exchangeAddressSize + "개 등록",
                         "HIGH",
                         88,
@@ -77,7 +78,8 @@ public class DetectionRuleController {
                 new DetectionRulesResponse.Rule(
                         "RAPID_TRANSFER",
                         "반복 이체 탐지",
-                        "동일 지갑이 짧은 시간 창 안에서 임계 횟수 이상 이체하면 탐지합니다.",
+                        "동일 지갑이 짧은 시간 창 안에서 임계 횟수 이상 이체하면 탐지합니다. "
+                                + "고객 출금을 한꺼번에 보내는 자사 입출금 지갑은 제외합니다.",
                         thresholds.rapidTransferWindowMinutes() + "분 내 "
                                 + thresholds.rapidTransferThresholdCount() + "회 이상",
                         "MEDIUM",
@@ -86,7 +88,7 @@ public class DetectionRuleController {
                 ),
                 new DetectionRulesResponse.Rule(
                         "WHALE_ACTIVITY",
-                        "관심 지갑(고래) 활동 탐지",
+                        "관심 주소 활동 탐지",
                         "관심 주소로 등록된 지갑이 송신 또는 수신에 관여하면 탐지합니다. "
                                 + "같은 주소는 재탐지 억제 시간 동안 1건으로 묶습니다.",
                         "관심 주소 " + watchlistSize + "개 등록",
@@ -98,7 +100,8 @@ public class DetectionRuleController {
                         "FAN_OUT",
                         "자금 분산(fan-out) 그래프 탐지",
                         "한 지갑이 짧은 시간 창 안에 임계값 이상의 서로 다른 주소로 송금하는 "
-                                + "그래프 out-degree 패턴(peeling chain/스플리팅)을 탐지합니다.",
+                                + "그래프 out-degree 패턴(peeling chain/스플리팅)을 탐지합니다. "
+                                + "자사 입출금 지갑은 제외합니다.",
                         thresholds.fanOutWindowMinutes() + "분 내 서로 다른 수신자 "
                                 + thresholds.fanOutThresholdRecipients() + "개 이상",
                         "HIGH",

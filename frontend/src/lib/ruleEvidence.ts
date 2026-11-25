@@ -29,7 +29,7 @@ const MATCHED_DIRECTION_LABELS: Record<string, string> = {
 
 const RULE_NAME_LABELS: Record<string, string> = {
   "large-transfer": "대규모 이체 룰",
-  "exchange-flow": "거래소 입출금 룰",
+  "exchange-flow": "자사 지갑 입출금 룰",
   "rapid-transfer": "반복 이체 룰",
   "watchlist-activity": "watchlist 활동 룰"
 };
@@ -74,7 +74,7 @@ const KNOWN_KEYS: Record<string, KnownKeySpec> = {
     label: "자금 방향",
     format: (value) => DIRECTION_LABELS[String(value)] ?? String(value)
   },
-  matchedExchangeAddress: { label: "매칭 거래소 주소", mono: true },
+  matchedExchangeAddress: { label: "매칭 자사 지갑", mono: true },
   counterpartyAddress: { label: "상대 주소", mono: true },
   windowMinutes: {
     label: "집계 창",

@@ -119,7 +119,7 @@ public class DetectionThresholdSettingsService implements DetectionThresholdsPro
                         ? normalizeAddresses(request.watchlistAddresses(), "watchlist 주소")
                         : currentAddresses.watchlistAddresses(),
                 request.exchangeAddresses() != null
-                        ? normalizeAddresses(request.exchangeAddresses(), "거래소 주소")
+                        ? normalizeAddresses(request.exchangeAddresses(), "자사 입출금 지갑")
                         : currentAddresses.exchangeAddresses()
         );
         validate(next);
@@ -166,7 +166,7 @@ public class DetectionThresholdSettingsService implements DetectionThresholdsPro
 
     private static void validate(DetectionThresholds next) {
         requirePositive(next.largeTransferThresholdEth(), "대규모 이체 임계값(ETH)");
-        requirePositive(next.exchangeFlowThresholdEth(), "거래소 플로우 임계값(ETH)");
+        requirePositive(next.exchangeFlowThresholdEth(), "자사 지갑 입출금 임계값(ETH)");
         requireRange(next.rapidTransferThresholdCount(), 2, 100_000, "반복 이체 기준 횟수");
         requireRange(next.rapidTransferWindowMinutes(), 1, 1_440, "반복 이체 집계 창(분)");
         requireRange(next.fanOutThresholdRecipients(), 2, 100_000, "자금 분산 기준 수신자 수");

@@ -162,13 +162,23 @@ chainwatch:
     exchange-flow-threshold-eth: 50.0
     # 메인넷 실데이터 기준 임계값. 3건/10분·5주소/15분은 거래소·봇 지갑이 상시 발화해
     # 하루 수만 건이 쌓였다(2026-07-19 backlog 7만 건 원인). 패턴 룰은 cooldown과 함께 조정한다.
-    rapid-transfer-threshold-count: 10
+    # 2026-11-26 운영: 반복 이체가 전체 이벤트의 76%였고, 최근 80건 표본은 반복 이체·자금 분산 모두
+    # 중앙값이 기준값(10회·15주소) 그대로였다. 둘 다 20으로 올리면 표본 기준 각각 9%·14%만 남는다.
+    rapid-transfer-threshold-count: 20
     rapid-transfer-window-minutes: 10
     # 자금 분산(FAN_OUT) 그래프 룰: 창 내 서로 다른 수신 주소 수 임계값
-    fan-out-threshold-recipients: 15
+    fan-out-threshold-recipients: 20
     fan-out-window-minutes: 15
     # 지갑 단위 재발화 억제(분): 같은 지갑·같은 패턴 룰(RAPID/FAN_OUT) 이벤트가 이 시간 안에
     # 있으면 재평가 생략 — 트랜잭션당 1건씩 발화하는 폭증을 막는다. 0 이하면 비활성.
     rule-cooldown-minutes: 30
-    watchlist-addresses: []
-    exchange-addresses: []
+    # 아래 두 목록은 데모 예시다(주소 라벨은 Etherscan 기준). 실제로 쓸 때는 관리자 화면 → 탐지 기준에서
+    # 자사 입출금 지갑과 관심 주소로 바꾼다. 관리자 화면에서 저장한 값이 이 기본값보다 우선한다.
+    # 관심 주소: 해킹 자금 이동 경로로 자주 쓰이는 크로스체인 라우터
+    watchlist-addresses:
+      - "0xd37bbe5744d730a1d98d8dc97c42f0ca46ad7146"   # THORChain: Router v4.1.1
+    # 거래소 주소 = 자사 입출금 지갑. 데모에서는 Kraken의 공개 지갑을 자사 지갑으로 가정한다.
+    # 등록된 지갑은 대량 입출금(EXCHANGE_FLOW)으로 보고, 반복 이체·자금 분산 판정에서는 제외한다.
+    exchange-addresses:
+      - "0x2910543af39aba0cd09dbb2d50200b3e800a63d2"   # Kraken 1
+      - "0xf30ba13e4b04ce5dc4d254ae5fa95477800f0eb0"   # Kraken: Hot Wallet 2

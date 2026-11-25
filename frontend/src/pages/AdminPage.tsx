@@ -889,7 +889,7 @@ const THRESHOLD_FIELDS: {
   step?: string;
 }[] = [
   { key: "largeTransferThresholdEth", label: "대규모 이체 임계값", hint: "ETH", step: "0.1" },
-  { key: "exchangeFlowThresholdEth", label: "거래소 플로우 임계값", hint: "ETH", step: "0.1" },
+  { key: "exchangeFlowThresholdEth", label: "자사 지갑 입출금 임계값", hint: "ETH", step: "0.1" },
   { key: "rapidTransferThresholdCount", label: "반복 이체 기준 횟수", hint: "회" },
   { key: "rapidTransferWindowMinutes", label: "반복 이체 집계 창", hint: "분" },
   { key: "fanOutThresholdRecipients", label: "자금 분산 기준 수신자", hint: "주소" },
@@ -1054,13 +1054,13 @@ const ETH_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const ADDRESS_FIELDS: { key: "watchlistAddresses" | "exchangeAddresses"; label: string; hint: string }[] = [
   {
     key: "watchlistAddresses",
-    label: "관심 주소 (관심 지갑 활동)",
+    label: "관심 주소 (관심 주소 활동)",
     hint: "한 줄에 주소 1개. 비우면 룰 비활성. 같은 주소는 재탐지 억제 시간 동안 이벤트 1건으로 묶입니다"
   },
   {
     key: "exchangeAddresses",
-    label: "거래소 주소 (EXCHANGE_FLOW)",
-    hint: "한 줄에 주소 1개. 비우면 룰 비활성"
+    label: "자사 입출금 지갑 (자사 지갑 입출금)",
+    hint: "한 줄에 주소 1개. 비우면 룰 비활성. 등록한 지갑은 반복 이체·자금 분산 판정에서 제외됩니다"
   }
 ];
 

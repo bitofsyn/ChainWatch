@@ -122,7 +122,9 @@ class DetectionServiceTest {
                 org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
         DetectionService service = new DetectionService(
                 List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
-                        cooldownThresholds, transactionRepository)),
+                        cooldownThresholds,
+                        () -> new com.chainwatch.backend.detection.config.DetectionAddressLists(List.of(), List.of()),
+                        transactionRepository)),
                 cooldownThresholds,
                 detectionEventRepository,
                 kafkaProducer,
@@ -186,7 +188,9 @@ class DetectionServiceTest {
                 org.mockito.Mockito.mock(com.chainwatch.backend.transaction.repository.TransactionRepository.class);
         DetectionService service = new DetectionService(
                 List.of(new com.chainwatch.backend.detection.rule.RapidTransferDetectionRule(
-                        cooldownThresholds, transactionRepository)),
+                        cooldownThresholds,
+                        () -> new com.chainwatch.backend.detection.config.DetectionAddressLists(List.of(), List.of()),
+                        transactionRepository)),
                 cooldownThresholds,
                 detectionEventRepository,
                 kafkaProducer,
