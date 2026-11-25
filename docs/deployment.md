@@ -35,6 +35,8 @@ flowchart LR
 
 `CLOUDFLARE_ACCOUNT_ID`가 없으면 프런트엔드 배포를, `BACKEND_URL`이 없으면 백엔드 배포를 건너뜁니다. 설정을 마친 뒤 Actions → CD → Run workflow로 첫 배포를 실행합니다.
 
+백엔드 배포는 Deploy Hook으로 요청한 뒤 `BACKEND_URL/api/health`의 `commit`이 배포한 커밋과 같아질 때까지 최대 20분 기다립니다. 새 인스턴스가 뜨기 전에는 이전 버전이 응답하므로, 헬스 체크만으로 배포 완료를 판단하지 않습니다.
+
 ### AI 분석 서버 켜기 (선택)
 
 `render.yaml`의 `chainwatch-ai-analysis` 서비스(FastAPI, Render 무료)를 띄우고 백엔드에 연결합니다. AI 서버는 공개 주소이므로 백엔드가 공유 토큰(`X-ChainWatch-AI-Token`)을 실어 보낸 요청만 처리합니다.
@@ -42,9 +44,9 @@ flowchart LR
 1. **Gemini 키 발급**: [Google AI Studio](https://aistudio.google.com/apikey)에서 API 키를 만듭니다. 결제를 연결하지 않은 프로젝트의 키를 쓰면 무료 한도를 넘어도 요금이 나가지 않고 요청만 실패합니다.
 2. **AI 서버 생성**
    - Blueprint로 관리 중이면 Render 대시보드 → Blueprints → 이 저장소 → Sync를 누르면 `chainwatch-ai-analysis`가 만들어집니다. `CHAINWATCH_AI_GEMINI_API_KEY`에 1번 키를 입력하고, 공유 토큰은 자동 생성되어 백엔드에도 같은 값이 들어갑니다.
-   - 직접 만든다면 New → Web Service → 이 저장소, Root Directory `ai/analysis-server`, Runtime Docker, Instance Free, Health Check Path `/health`로 만들고 환경변수 `PORT=8000`, `CHAINWATCH_AI_DEFAULT_PROVIDER=gemini`, `CHAINWATCH_AI_FALLBACK_CHAIN=gemini`, `CHAINWATCH_AI_GEMINI_API_KEY`, `CHAINWATCH_AI_API_TOKEN`(`openssl rand -hex 32`로 생성)을 넣습니다.
+   - 직접 만든다면 New → Web Service → 이 저장소, Root Directory `ai/analysis-server`, Runtime Docker, Instance Free, Health Check Path `/health`로 만들고 환경변수 `PORT=8000`, `CHAINWATCH_AI_DEFAULT_PROVIDER=gemini`, `CHAINWATCH_AI_FALLBACK_CHAIN=gemini`, `CHAINWATCH_AI_RETRY_MAX_ATTEMPTS=1`, `CHAINWATCH_AI_GEMINI_API_KEY`, `CHAINWATCH_AI_API_TOKEN`(`openssl rand -hex 32`로 생성)을 넣습니다.
 3. **동작 확인**: `https://<AI 서버 주소>/health`가 `{"status":"UP"}`를 돌려주면 됩니다.
-4. **백엔드 연결**: 백엔드 서비스 → Environment에 `CHAINWATCH_AI_BASE_URL=https://<AI 서버 주소>`, `CHAINWATCH_AI_ENABLED=true`를 넣습니다. 직접 만든 경우 `CHAINWATCH_AI_API_TOKEN`도 2번과 같은 값으로 넣습니다. 저장하면 백엔드가 재시작되고, 이벤트 상세에 AI 분석 버튼이 나타납니다.
+4. **백엔드 연결**: 백엔드 서비스 → Environment에 `CHAINWATCH_AI_BASE_URL=https://<AI 서버 주소>`, `CHAINWATCH_AI_ENABLED=true`를 넣습니다. 직접 만든 경우 `CHAINWATCH_AI_API_TOKEN`도 2번과 같은 값으로 넣습니다. 저장할 때 배포까지 함께 하는 옵션을 고르거나 저장 후 Manual Deploy를 실행해야 반영됩니다. 저장만 하면 다음 배포 때 적용됩니다. 반영되면 이벤트 상세에 AI 분석 버튼이 나타납니다.
 
 - 자동 분석 워커는 꺼 둡니다(`CHAINWATCH_AI_WORKER_ENABLED=false`). 버튼으로 요청한 건만 분석해 Gemini 무료 한도를 아낍니다.
 - Render 무료 인스턴스 시간은 워크스페이스 전체 합산입니다. AI 서버는 요청이 없으면 15분 뒤 잠들어 시간을 거의 쓰지 않지만, 잠든 상태의 첫 분석은 기동 시간만큼 늦어집니다(백엔드는 최대 120초 기다림).
@@ -113,7 +115,7 @@ curl --fail http://127.0.0.1:18080/actuator/health
 docker compose -f docker-compose.prod.yml logs cloudflared-quick | grep -o 'https://.*trycloudflare.com'
 ```
 
-출력된 `https://....trycloudflare.com` 주소가 공개 데모 주소입니다. README의 데모 링크를 이 주소로 갱신합니다.
+출력된 `https://....trycloudflare.com` 주소로 접속합니다.
 
 ### Quick Tunnel의 한계와 주소 고정
 

@@ -87,7 +87,7 @@ Kafka 없이도 단독 실행할 수 있습니다. 상세 구조는 [시스템 �
 
 ## 부하 테스트
 
-실데이터 360만 건 환경에서 k6·JMeter로 조회 API를 검증했습니다.
+거래 351만 건·탐지 이벤트 9.5만 건이 쌓인 로컬 환경에서 k6·JMeter로 조회 API를 검증했습니다.
 
 | 구간 | 실제 TPS | p95 | p99 | 오류 | Drop |
 |---|---:|---:|---:|---:|---:|
@@ -119,6 +119,6 @@ docker compose --profile app down            # 종료
 |---|---|
 | [시스템 구조](docs/architecture.md) | 처리 흐름, 탐지 규칙과 판단 근거, AI 분석 방식 |
 | [실행·설정·테스트](docs/operations.md) | 환경변수, 운영 설정, 개별 실행과 테스트, CI/CD, 보안 주의사항 |
-| [배포](docs/deployment.md) | Cloudflare Workers·Render 자동 배포, Quick Tunnel 임시 공개, Oracle Cloud 상시 운영 |
-| [주요 API](docs/api.md) | 이벤트·거래·지갑·탐지 규칙·운영 설정·인증 API 목록 |
+| [배포](docs/deployment.md) | Cloudflare Workers·Render 자동 배포와 AI 분석 서버 연결, Quick Tunnel 임시 공개, Oracle Cloud 상시 운영 |
+| [주요 API](docs/api.md) | 전체 API 목록과 역할별 권한 |
 | [부하 테스트](load-tests/README.md) | k6·JMeter 기반 스모크·점진 부하·정속 TPS 테스트 |
