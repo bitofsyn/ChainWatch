@@ -138,11 +138,27 @@ public class PipelineStatusController {
                     .retrieve()
                     .toBodilessEntity()
                     .block(PROBE_TIMEOUT);
-            return ComponentStatus.up("aiServer",
-                    aiAnalysisProperties.provider() + " 분석 서버 헬스 체크 정상 (" + aiAnalysisProperties.model() + ")");
+            return ComponentStatus.up("aiServer", "분석 서버 헬스 체크 정상 (" + aiProviderLabel() + ")");
         } catch (RuntimeException exception) {
-            return ComponentStatus.down("aiServer", "분석 서버 응답 없음: " + aiAnalysisProperties.baseUrl());
+            // 무료 호스팅의 AI 서버는 요청이 없으면 잠든다. 이 점검 요청이 서버를 깨우므로 잠시 뒤에는 정상으로 바뀐다.
+            return ComponentStatus.down("aiServer", "분석 서버 응답 없음: " + aiAnalysisProperties.baseUrl()
+                    + ". 잠들어 있던 서버라면 1분쯤 뒤 다시 점검하면 정상으로 바뀝니다");
         }
+    }
+
+    /** 백엔드에서 제공자·모델을 지정하지 않으면 AI 서버의 기본 설정이 고른다. */
+    private String aiProviderLabel() {
+        String provider = aiAnalysisProperties.provider();
+        String model = aiAnalysisProperties.model();
+        boolean hasProvider = provider != null && !provider.isBlank();
+        boolean hasModel = model != null && !model.isBlank();
+        if (!hasProvider && !hasModel) {
+            return "제공자·모델은 AI 서버 설정을 따름";
+        }
+        if (hasProvider && hasModel) {
+            return provider + " · " + model;
+        }
+        return hasProvider ? provider : model;
     }
 
     private ComponentStatus checkCollector() {

@@ -129,8 +129,8 @@ public class OpsOverviewService {
         Instant windowStart = now.minus(KPI_WINDOW);
         Instant previousWindowStart = now.minus(KPI_WINDOW.multipliedBy(2));
 
-        long collected = transactionRepository.countInWindow(windowStart, now);
-        long collectedPrevious = transactionRepository.countInWindow(previousWindowStart, windowStart);
+        long collected = transactionRepository.countCollectedInWindow(windowStart, now);
+        long collectedPrevious = transactionRepository.countCollectedInWindow(previousWindowStart, windowStart);
         long detected = detectionEventRepository.countDetectedInWindow(windowStart, now);
 
         double perMinute = collected / (double) KPI_WINDOW.toMinutes();
@@ -170,7 +170,7 @@ public class OpsOverviewService {
         for (int i = 0; i < bucketCount; i++) {
             buckets.put(firstBucketStart + (long) i * bucketSeconds, new long[2]);
         }
-        mergeBucketCounts(buckets, transactionRepository.countByTimeBucketSince(since, bucketSeconds), 0);
+        mergeBucketCounts(buckets, transactionRepository.countCollectedByTimeBucketSince(since, bucketSeconds), 0);
         mergeBucketCounts(buckets, detectionEventRepository.countByTimeBucketSince(since, bucketSeconds), 1);
 
         List<SeriesPoint> points = new ArrayList<>(bucketCount);

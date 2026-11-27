@@ -21,28 +21,35 @@ public interface TransactionRepository
 
     long countByTimestampAfter(Instant threshold);
 
-    /** 반열림 구간 [from, to) 수집 건수. KPI 창 비교(현재 5분 vs 직전 5분)에 사용한다. */
-    @Query("select count(t) from Transaction t where t.timestamp >= :from and t.timestamp < :to")
-    long countInWindow(@Param("from") Instant from, @Param("to") Instant to);
+    /**
+     * 반열림 구간 [from, to)에 수집(저장)한 건수. KPI 창 비교(현재 5분 vs 직전 5분)에 사용한다.
+     * 블록 시각이 아니라 수집 시각 기준이다 — 수집이 체인보다 몇 분 늦으면 블록 시각 기준으로는
+     * 최근 5분이 0건으로 보여, 탐지는 계속되는데 처리량만 0으로 표시됐다.
+     */
+    @Query("select count(t) from Transaction t where t.collectedAt >= :from and t.collectedAt < :to")
+    long countCollectedInWindow(@Param("from") Instant from, @Param("to") Instant to);
 
     /**
-     * 시간 버킷별 수집 건수를 DB에서 집계한다(행 로드 없이 group by).
+     * 수집 시각의 시간 버킷별 수집 건수를 DB에서 집계한다(행 로드 없이 group by).
+     * 수집 시각이 없는 예전 행은 블록 시각으로 대신한다.
      * epoch 초를 버킷 크기로 내림해 그룹핑하며 H2(PostgreSQL 모드)/PostgreSQL 모두 동작한다.
      * 결과 행: [bucketEpochSeconds(Number), count(Number)]
      */
     @Query(value = """
-            select cast(floor(extract(epoch from t.timestamp) / :bucketSeconds) as bigint) * :bucketSeconds
-                       as bucket_epoch,
+            select cast(floor(extract(epoch from coalesce(t.collected_at, t.timestamp)) / :bucketSeconds) as bigint)
+                       * :bucketSeconds as bucket_epoch,
                    count(*) as cnt
             from transactions t
-            where t.timestamp >= :since
+            where t.collected_at >= :since
+               or (t.collected_at is null and t.timestamp >= :since)
             group by bucket_epoch
             order by bucket_epoch
             """, nativeQuery = true)
-    List<Object[]> countByTimeBucketSince(
+    List<Object[]> countCollectedByTimeBucketSince(
             @Param("since") Instant since,
             @Param("bucketSeconds") long bucketSeconds
     );
+
 
     @Query("""
             select count(t)

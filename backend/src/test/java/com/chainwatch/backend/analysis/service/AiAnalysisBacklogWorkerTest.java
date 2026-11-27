@@ -56,10 +56,10 @@ class AiAnalysisBacklogWorkerTest {
     }
 
     @Test
-    void submitsOldestPendingEventsAsPendingThenRuns() {
+    void submitsSelectedPendingEventsAsPendingThenRuns() {
         AiAnalysisBacklogWorker worker = worker(true, true);
         List<DetectionEvent> batch = List.of(event(1L), event(2L));
-        when(detectionEventRepository.findPendingAnalysisOldestFirst(anyCollection(), any()))
+        when(detectionEventRepository.findPendingAnalysisHighestRiskNewestFirst(anyCollection(), any()))
                 .thenReturn(batch);
         when(aiAnalysisReportRepository
                 .findTop3ByStatusAndAnalyzedAtBeforeOrderByAnalyzedAtAsc(eq(AnalysisStatus.PENDING), any()))
@@ -76,7 +76,7 @@ class AiAnalysisBacklogWorkerTest {
     @Test
     void resubmitsStalePendingReports() {
         AiAnalysisBacklogWorker worker = worker(true, true);
-        when(detectionEventRepository.findPendingAnalysisOldestFirst(anyCollection(), any()))
+        when(detectionEventRepository.findPendingAnalysisHighestRiskNewestFirst(anyCollection(), any()))
                 .thenReturn(List.of());
         DetectionEvent staleEvent = event(9L);
         AiAnalysisReport stale = new AiAnalysisReport(

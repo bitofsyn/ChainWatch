@@ -32,25 +32,38 @@ public interface DetectionEventRepository
 
     List<DetectionEvent> findTop6ByStatusInOrderByDetectedAtDesc(Collection<EventStatus> statuses);
 
-    /** AI 분석 리포트가 아직 없는 고위험 이벤트 수 (Analysis 팀 대기 큐) */
+    /** 자동 분석 대상 수: AI 리포트가 아직 없고 종결되지 않은 고위험 이벤트. */
     @Query("""
             select count(e)
             from DetectionEvent e
             where e.riskLevel in :levels
+              and (e.status is null or e.status not in (
+                  com.chainwatch.backend.event.domain.EventStatus.RESOLVED,
+                  com.chainwatch.backend.event.domain.EventStatus.FALSE_POSITIVE))
               and not exists (select 1 from AiAnalysisReport r where r.detectionEvent = e)
             """)
     long countPendingAnalysis(@Param("levels") Collection<RiskLevel> levels);
 
-    /** AI 분석 리포트가 아직 없는 고위험 이벤트를 오래된 순으로 조회 (자동 분석 워커 배치 선정) */
+    /**
+     * 자동 분석 워커의 배치 선정: AI 리포트가 아직 없고 종결되지 않은 고위험 이벤트를
+     * 위험 점수가 높은 순, 같은 점수면 최신순으로 고른다. 분석 속도가 탐지 속도보다 느린 환경에서
+     * 오래된 순으로 고르면 워커가 지난 이벤트에만 묶여, 지금 검토 중인 이벤트에는 리포트가 붙지 않는다.
+     */
     @Query("""
             select e
             from DetectionEvent e
             where e.riskLevel in :levels
+              and (e.status is null or e.status not in (
+                  com.chainwatch.backend.event.domain.EventStatus.RESOLVED,
+                  com.chainwatch.backend.event.domain.EventStatus.FALSE_POSITIVE))
               and not exists (select 1 from AiAnalysisReport r where r.detectionEvent = e)
-            order by e.detectedAt asc
+            order by e.riskScore desc, e.detectedAt desc
             """)
-    List<DetectionEvent> findPendingAnalysisOldestFirst(
-            @Param("levels") Collection<RiskLevel> levels, Pageable pageable);
+    List<DetectionEvent> findPendingAnalysisHighestRiskNewestFirst(
+            @Param("levels") Collection<RiskLevel> levels,
+            Pageable pageable
+    );
+
 
     /** AI 분석 대기 중 가장 오래된 이벤트의 탐지 시각 */
     @Query("""

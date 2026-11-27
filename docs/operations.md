@@ -32,7 +32,8 @@ Grafana(3000)·Prometheus(9090)·Kafka UI(8081)는 `--profile monitoring`을 추
 | `CHAINWATCH_AI_ENABLED` | AI 분석 연동 활성화 | `false` |
 | `CHAINWATCH_AI_BASE_URL` | AI 분석 서버 주소 | 미설정 (docker compose는 `http://ai-analysis:8000`) |
 | `CHAINWATCH_AI_API_TOKEN` | AI 서버와 공유하는 토큰. AI 서버를 공개 주소로 띄울 때 양쪽에 같은 값 설정 | 미설정 |
-| `CHAINWATCH_AI_WORKER_ENABLED` | 분석되지 않은 고위험 이벤트를 자동 분석하는 워커. AI 연동이 켜졌을 때만 동작 | `true` |
+| `CHAINWATCH_AI_WORKER_ENABLED` | 아직 분석되지 않은 미종결 고위험 이벤트를 자동 분석하는 워커. 위험 점수가 높은 순, 같은 점수면 최신순으로 고르며 AI 연동이 켜졌을 때만 동작 | `true` |
+| `CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS` / `CHAINWATCH_AI_WORKER_BATCH_SIZE` | 자동 분석 주기와 한 번에 분석할 건수. 제공자의 무료 한도에 맞춰 조절 | `30000` / `3` |
 | `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` | AI 제공자 인증 키. docker compose가 AI 서버에 전달 | 미설정 |
 | `CHAINWATCH_JWT_ENABLED` | JWT 인증 활성화 (외부 공개 시 필수) | `false` |
 | `CHAINWATCH_JWT_SECRET` / `CHAINWATCH_PASSWORD_PEPPER` | 인증 비밀값 | 개발용 기본값 |

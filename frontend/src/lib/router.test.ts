@@ -6,7 +6,8 @@ import {
   matchTransactionDetail,
   matchWalletDetail,
   overviewPath,
-  parseOverviewRange
+  parseOverviewRange,
+  rootedEntryUrl
 } from "./router";
 
 describe("Overview range URL 보존", () => {
@@ -66,5 +67,18 @@ describe("matchAdminSection", () => {
 
   it("rejects unknown sections", () => {
     expect(matchAdminSection("/admin/unknown")).toBeNull();
+  });
+});
+
+describe("진입 경로 정리", () => {
+  it("루트가 아닌 경로로 들어오면 해시를 유지한 채 루트 주소를 돌려준다", () => {
+    expect(rootedEntryUrl("/login", "", "")).toBe("/");
+    expect(rootedEntryUrl("/login", "", "#/work")).toBe("/#/work");
+    expect(rootedEntryUrl("/events", "?x=1", "#/events/3")).toBe("/?x=1#/events/3");
+  });
+
+  it("이미 루트면 바꾸지 않는다", () => {
+    expect(rootedEntryUrl("/", "", "#/work")).toBeNull();
+    expect(rootedEntryUrl("/index.html", "", "")).toBeNull();
   });
 });

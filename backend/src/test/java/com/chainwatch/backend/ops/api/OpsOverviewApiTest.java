@@ -86,7 +86,7 @@ class OpsOverviewApiTest {
     void aggregatesKpisSeriesAndMatrixFromSeededData() throws Exception {
         Instant now = Instant.now();
 
-        // KPI 창: 최근 5분 수집 2건, 직전 5분 1건 → 증감률 +100%
+        // KPI 창(수집 시각 기준): 최근 5분 수집 2건, 직전 5분 1건 → 증감률 +100%
         saveTransaction("0xtx-recent-1", now.minus(Duration.ofMinutes(1)));
         saveTransaction("0xtx-recent-2", now.minus(Duration.ofMinutes(2)));
         saveTransaction("0xtx-previous", now.minus(Duration.ofMinutes(7)));
@@ -202,17 +202,23 @@ class OpsOverviewApiTest {
                 .andExpect(jsonPath("$.collector.status").value("DOWN"));
     }
 
-    private void saveTransaction(String txHash, Instant timestamp) {
-        transactionRepository.save(new Transaction(
+    /**
+     * 수집이 밀린 상황을 재현한다: 블록 시각은 수집 시각보다 20분 이르다.
+     * 처리량은 수집 시각으로 세므로, 블록 시각이 KPI 창 밖이어도 집계에 들어가야 한다.
+     */
+    private void saveTransaction(String txHash, Instant collectedAt) {
+        Transaction transaction = new Transaction(
                 txHash,
                 "0xfrom",
                 "0xto",
                 new BigDecimal("1.5"),
                 new BigDecimal("0.001"),
                 100L,
-                timestamp,
+                collectedAt.minus(Duration.ofMinutes(20)),
                 null
-        ));
+        );
+        org.springframework.test.util.ReflectionTestUtils.setField(transaction, "collectedAt", collectedAt);
+        transactionRepository.save(transaction);
     }
 
     private DetectionEvent saveEvent(EventType eventType, RiskLevel riskLevel, Instant detectedAt) {

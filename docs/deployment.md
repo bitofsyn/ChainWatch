@@ -48,7 +48,7 @@ flowchart LR
 3. **동작 확인**: `https://<AI 서버 주소>/health`가 `{"status":"UP"}`를 돌려주면 됩니다.
 4. **백엔드 연결**: 백엔드 서비스 → Environment에 `CHAINWATCH_AI_BASE_URL=https://<AI 서버 주소>`, `CHAINWATCH_AI_ENABLED=true`를 넣습니다. 직접 만든 경우 `CHAINWATCH_AI_API_TOKEN`도 2번과 같은 값으로 넣습니다. 저장할 때 배포까지 함께 하는 옵션을 고르거나 저장 후 Manual Deploy를 실행해야 반영됩니다. 저장만 하면 다음 배포 때 적용됩니다. 반영되면 이벤트 상세에 AI 분석 버튼이 나타납니다.
 
-- 자동 분석 워커는 꺼 둡니다(`CHAINWATCH_AI_WORKER_ENABLED=false`). 버튼으로 요청한 건만 분석해 Gemini 무료 한도를 아낍니다.
+- 자동 분석 워커는 낮은 빈도로 켭니다(`CHAINWATCH_AI_WORKER_POLL_INTERVAL_MS=180000`, `CHAINWATCH_AI_WORKER_BATCH_SIZE=1`). 아직 분석되지 않은 미종결 고위험 이벤트를 3분에 1건씩 분석하므로, 24시간 깨어 있어도 하루 최대 480건입니다. Gemini 무료 한도는 자주 바뀌며 2026년 10월 기준 Flash 약 20건, Flash-Lite 약 500건/일로 알려져 있습니다. 기본 모델의 한도를 넘으면 예비 모델로 넘어가고, 그래도 실패한 건은 분석 실패로 남아 이벤트 상세에서 다시 요청할 수 있습니다. 백엔드가 잠들면 워커도 멈춥니다.
 - Render 무료 인스턴스 시간은 워크스페이스 전체 합산입니다. AI 서버는 요청이 없으면 15분 뒤 잠들어 시간을 거의 쓰지 않지만, 잠든 상태의 첫 분석은 기동 시간만큼 늦어집니다(백엔드는 최대 120초 기다림).
 - AI 서버 코드가 바뀐 커밋만 Render가 자동 배포합니다(`buildFilter`). 백엔드처럼 CI 통과 후 배포하지는 않습니다.
 

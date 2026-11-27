@@ -48,7 +48,7 @@ public class ExchangeFlowDetectionRule implements DetectionRule {
             return Optional.empty();
         }
 
-        String direction = toExchange ? "거래소로 입금" : "거래소에서 출금";
+        String direction = toExchange ? "자사 지갑으로 입금" : "자사 지갑에서 출금";
         String walletAddress = toExchange ? transaction.getToAddress() : transaction.getFromAddress();
         int riskScore = toExchange ? 88 : 78;
 

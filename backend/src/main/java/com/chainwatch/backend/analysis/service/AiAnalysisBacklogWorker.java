@@ -17,7 +17,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 미분석 고위험(HIGH/CRITICAL) 이벤트를 오래된 순으로 자동 분석해 백로그를 소비한다.
+ * 아직 분석되지 않았고 종결되지 않은 고위험(HIGH/CRITICAL) 이벤트를 위험 점수가 높은 순,
+ * 같은 점수면 최신순으로 자동 분석한다.
  *
  * <p>스케줄 틱은 배치 선정과 PENDING 마킹만 수행하고, 실제 분석은 AI 전용 executor를 쓰는
  * {@link AsyncAiAnalysisRunner}에 위임한다. 단일 스레드 스케줄러를 점유하지 않으므로 블록 폴링
@@ -32,7 +33,7 @@ public class AiAnalysisBacklogWorker {
 
     private static final Logger log = LoggerFactory.getLogger(AiAnalysisBacklogWorker.class);
 
-    /** AgentOpsService의 분석 대상 기준과 동일하게 유지한다. */
+    /** 자동 분석 대상 위험도. */
     private static final List<RiskLevel> TARGET_LEVELS = List.of(RiskLevel.CRITICAL, RiskLevel.HIGH);
 
     private final AiAnalysisProperties properties;
@@ -71,7 +72,7 @@ public class AiAnalysisBacklogWorker {
 
     private int submitPendingBacklog(int batchSize) {
         List<DetectionEvent> batch = detectionEventRepository
-                .findPendingAnalysisOldestFirst(TARGET_LEVELS, PageRequest.of(0, batchSize));
+                .findPendingAnalysisHighestRiskNewestFirst(TARGET_LEVELS, PageRequest.of(0, batchSize));
         for (DetectionEvent event : batch) {
             submit(event.getId());
         }

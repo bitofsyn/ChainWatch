@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.time.Instant;
                 @Index(name = "idx_transactions_to_address", columnList = "to_address"),
                 @Index(name = "idx_transactions_block_number", columnList = "block_number"),
                 @Index(name = "idx_transactions_timestamp", columnList = "timestamp"),
+                @Index(name = "idx_transactions_collected_at", columnList = "collected_at"),
                 @Index(name = "idx_transactions_network", columnList = "network")
         }
 )
@@ -58,7 +60,21 @@ public class Transaction {
     @Column(length = 100)
     private String contractAddress;
 
+    /**
+     * 수집기가 이 거래를 저장한 시각. 블록 시각({@link #timestamp})과 달리 수집이 밀려도 실제로 처리한
+     * 시점을 가리키므로, 대시보드 처리량·탐지율의 기준으로 쓴다. 이 컬럼이 생기기 전 행은 null이다.
+     */
+    @Column(name = "collected_at")
+    private Instant collectedAt;
+
     protected Transaction() {
+    }
+
+    @PrePersist
+    void markCollected() {
+        if (collectedAt == null) {
+            collectedAt = Instant.now();
+        }
     }
 
     /** 체인 미지정 하위호환 생성자. network는 기본 체인으로 설정된다. */
@@ -99,6 +115,10 @@ public class Transaction {
 
     public Long getId() {
         return id;
+    }
+
+    public Instant getCollectedAt() {
+        return collectedAt;
     }
 
     public String getTxHash() {

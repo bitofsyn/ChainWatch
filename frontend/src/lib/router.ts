@@ -21,6 +21,27 @@ export function navigate(path: string) {
   window.location.hash = path;
 }
 
+/**
+ * 화면 이동은 해시(#/work)로만 하므로 주소의 경로는 항상 앱 루트여야 한다.
+ * "/login"처럼 경로로 들어오면 그 경로가 주소창에 계속 남아 "/login#/work"가 되므로,
+ * 루트가 아닌 경로로 들어왔을 때 바꿔 쓸 주소를 돌려준다. 이미 루트면 null.
+ */
+export function rootedEntryUrl(pathname: string, search: string, hash: string, base = "/"): string | null {
+  if (pathname === base || pathname === `${base}index.html`) {
+    return null;
+  }
+  return `${base}${search}${hash}`;
+}
+
+/** 앱을 띄우기 전에 한 번 호출해 주소의 경로를 앱 루트로 맞춘다(페이지를 다시 불러오지 않는다). */
+export function normalizeEntryPath(base = "/") {
+  const { pathname, search, hash } = window.location;
+  const rooted = rootedEntryUrl(pathname, search, hash, base);
+  if (rooted !== null) {
+    window.history.replaceState(null, "", rooted);
+  }
+}
+
 let explicitLogout = false;
 
 /** 사용자가 직접 로그아웃했음을 표시한다. 세션 만료로 밀려난 경우와 구분하기 위한 1회성 표시다. */
